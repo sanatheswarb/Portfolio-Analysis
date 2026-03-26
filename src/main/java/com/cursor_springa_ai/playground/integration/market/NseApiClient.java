@@ -104,8 +104,8 @@ public class NseApiClient {
                     }
 
                     String sector = "N/A";
-                    if (nseResponse.industryInfo() != null && nseResponse.industryInfo().sector() != null) {
-                        sector = nseResponse.industryInfo().sector();
+                    if (nseResponse.industryInfo() != null && nseResponse.industryInfo().industry() != null) {
+                        sector = nseResponse.industryInfo().industry();
                     }
 
                     BigDecimal sectorPe = null;
