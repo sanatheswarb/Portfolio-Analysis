@@ -104,7 +104,7 @@ public class NseApiClient {
                     }
 
                     String sector = "N/A";
-                    if (nseResponse.industryInfo() != null && nseResponse.industryInfo().sector() != null) {
+                    if (nseResponse.industryInfo() != null && nseResponse.industryInfo().industry() != null) {
                         sector = nseResponse.industryInfo().industry();
                     }
 
@@ -118,10 +118,13 @@ public class NseApiClient {
                         issuedSize = nseResponse.securityInfo().issuedSize();
                     }
 
+                    // Market cap type is not directly provided by NSE API.
+                    // It can be approximated from the company's market cap (issuedSize * price),
+                    // but SEBI thresholds change periodically. Left as N/A for now.
                     StockMetrics metrics = new StockMetrics(
                             symbol,
                             sector,
-                            nseResponse.industryInfo() != null ? nseResponse.industryInfo().industry() : "N/A",
+                            "N/A", // marketCapType: not available from NSE quote API
                             pe,
                             null, // NSE API doesn't provide beta
                             week52High,

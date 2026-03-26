@@ -8,6 +8,7 @@ import com.cursor_springa_ai.playground.model.Portfolio;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.ollama.api.OllamaChatOptions;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -21,10 +22,20 @@ public class AiPortfolioAdvisorService {
         private final ObjectMapper objectMapper;
         private final PortfolioAdvisorPromptBuilder promptBuilder;
 
-        public AiPortfolioAdvisorService(ChatClient.Builder chatClientBuilder) {
+        @Value("${portfolio.advisor.model:qwen2.5:7b-instruct}")
+        private String advisorModel;
+
+        @Value("${portfolio.advisor.temperature:0.2}")
+        private double temperature;
+
+        @Value("${portfolio.advisor.num-predict:512}")
+        private int numPredict;
+
+        public AiPortfolioAdvisorService(ChatClient.Builder chatClientBuilder,
+                        PortfolioAdvisorPromptBuilder promptBuilder) {
                 this.chatClient = chatClientBuilder.build();
                 this.objectMapper = new ObjectMapper();
-                this.promptBuilder = new PortfolioAdvisorPromptBuilder(this.objectMapper);
+                this.promptBuilder = promptBuilder;
         }
 
         public PortfolioAdviceResponse generateInsightsWithMetrics(
@@ -40,11 +51,10 @@ public class AiPortfolioAdvisorService {
                 logger.info("User prompt length: " + userPrompt.length());
 
                 OllamaChatOptions options = OllamaChatOptions.builder()
-                                .model("qwen2.5:7b-instruct")
-                                .temperature(0.2)
-                                .numPredict(180)
+                                .model(advisorModel)
+                                .temperature(temperature)
+                                .numPredict(numPredict)
                                 .topP(0.9)
-                                .stop(List.of("\n\n"))
                                 .build();
 
                 long startTime = System.currentTimeMillis();

@@ -4,12 +4,14 @@ import com.cursor_springa_ai.playground.dto.EnrichedHoldingData;
 import com.cursor_springa_ai.playground.dto.PortfolioMetrics;
 import com.cursor_springa_ai.playground.dto.PortfolioSummary;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.springframework.stereotype.Component;
 
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.logging.Logger;
 
+@Component
 public class PortfolioAdvisorPromptBuilder {
 
     private static final Logger logger = Logger.getLogger(PortfolioAdvisorPromptBuilder.class.getName());
