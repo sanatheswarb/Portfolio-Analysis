@@ -62,32 +62,32 @@ public class PortfolioAdvisorPromptBuilder {
                         DRAWDOWN RISK:
                         Stocks more than 25% below 52 week high indicate weakness or correction risk.
 
-                         SMALLCAP RISK:
-                         High smallcap exposure increases volatility risk.
+                        SMALLCAP RISK:
+                        High smallcap exposure increases volatility risk.
 
-                         PROFIT CONCENTRATION:
-                         Large profit from few holdings increases reversal risk.
+                        PROFIT CONCENTRATION:
+                        Large profit from few holdings increases reversal risk.
 
-                         --------------------------------
+                        --------------------------------
 
-                         TOOL USAGE RULES:
+                        TOOL USAGE RULES:
 
-                         You have access to the getPortfolioMetrics tool.
-                         Call getPortfolioMetrics when you need portfolio-level metrics such as top holding concentration, top 3 concentration, sector exposure, portfolio risk flags, or diversification score.
-                         Use the holdings and totalCurrentValue from the provided portfolio data as tool inputs.
-                         Use the returned portfolio metrics as the primary basis for portfolio-level conclusions.
+                        You have access to the getPortfolioMetrics tool.
+                        Call getPortfolioMetrics when you need portfolio-level metrics such as top holding concentration, top 3 concentration, sector exposure, portfolio risk flags, or diversification score.
+                        Use the holdings and totalCurrentValue from the provided portfolio data as tool inputs.
+                        Use the returned portfolio metrics as the primary basis for portfolio-level conclusions.
 
-                         --------------------------------
+                        --------------------------------
 
-                         INTERPRETATION RULES:
+                        INTERPRETATION RULES:
 
-                         Portfolio metrics returned by getPortfolioMetrics represent portfolio structure.
-                         Holdings provide supporting evidence and tool inputs.
+                        Portfolio metrics returned by getPortfolioMetrics represent portfolio structure.
+                        Holdings provide supporting evidence and tool inputs.
 
-                         Base conclusions primarily on portfolio metrics returned by the tool.
-                         Use holdings only to justify observations.
+                        Base conclusions primarily on portfolio metrics returned by the tool.
+                        Use holdings only to justify observations.
 
-                         If portfolio risk flags exist, prioritize addressing them in suggestions.
+                        If portfolio risk flags exist, prioritize addressing them in suggestions.
 
                         Do not repeat raw numbers unless necessary.
 

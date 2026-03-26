@@ -15,6 +15,18 @@ class PortfolioAdvisorPromptBuilderTest {
     private final PortfolioAdvisorPromptBuilder builder = new PortfolioAdvisorPromptBuilder(new ObjectMapper());
 
     @Test
+    void defaultConstructor_initializesObjectMapper() {
+        PortfolioAdvisorPromptBuilder defaultBuilder = new PortfolioAdvisorPromptBuilder();
+
+        String json = defaultBuilder.buildPortfolioSummaryJson(
+                new PortfolioSummary(BigDecimal.TEN, BigDecimal.ONE, BigDecimal.ZERO, BigDecimal.ZERO, 1)
+        );
+
+        assertNotNull(json);
+        assertTrue(json.contains("totalInvested"));
+    }
+
+    @Test
     void buildEnrichedHoldingsJson_excludesPeFromOutput() {
         EnrichedHoldingData holding = new EnrichedHoldingData(
                 "ABC",
