@@ -4,7 +4,6 @@ import com.cursor_springa_ai.playground.dto.EnrichedHoldingData;
 import com.cursor_springa_ai.playground.dto.HoldingPerformance;
 import com.cursor_springa_ai.playground.dto.PortfolioAdviceResponse;
 import com.cursor_springa_ai.playground.dto.PortfolioAnalysisResponse;
-import com.cursor_springa_ai.playground.dto.PortfolioMetrics;
 import com.cursor_springa_ai.playground.dto.PortfolioSummary;
 import com.cursor_springa_ai.playground.model.Holding;
 import com.cursor_springa_ai.playground.model.Portfolio;
@@ -22,20 +21,17 @@ public class PortfolioAnalysisService {
     private final MarketPriceService marketPriceService;
     private final AiPortfolioAdvisorService aiPortfolioAdvisorService;
     private final EnrichedHoldingDataCache enrichedHoldingDataCache;
-    private final PortfolioMetricsService portfolioMetricsService;
 
     public PortfolioAnalysisService(
             PortfolioService portfolioService,
             MarketPriceService marketPriceService,
             AiPortfolioAdvisorService aiPortfolioAdvisorService,
-            EnrichedHoldingDataCache enrichedHoldingDataCache,
-            PortfolioMetricsService portfolioMetricsService
+            EnrichedHoldingDataCache enrichedHoldingDataCache
     ) {
         this.portfolioService = portfolioService;
         this.marketPriceService = marketPriceService;
         this.aiPortfolioAdvisorService = aiPortfolioAdvisorService;
         this.enrichedHoldingDataCache = enrichedHoldingDataCache;
-        this.portfolioMetricsService = portfolioMetricsService;
     }
 
     public PortfolioAnalysisResponse analyzePortfolio(String portfolioId) {
@@ -92,16 +88,9 @@ public class PortfolioAnalysisService {
                 enrichedHoldings.size()
         );
         
-        // Calculate portfolio-level metrics
-        PortfolioMetrics portfolioMetrics = portfolioMetricsService.calculatePortfolioMetrics(
-                enrichedHoldings,
-                totalCurrentValue
-        );
-        
         PortfolioAdviceResponse aiInsights = aiPortfolioAdvisorService.generateInsightsWithMetrics(
                 portfolio,
                 enrichedHoldings,
-                portfolioMetrics,
                 portfolioSummary
         );
 

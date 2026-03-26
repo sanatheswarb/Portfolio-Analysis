@@ -2,7 +2,6 @@ package com.cursor_springa_ai.playground.service;
 
 import com.cursor_springa_ai.playground.dto.EnrichedHoldingData;
 import com.cursor_springa_ai.playground.dto.PortfolioAdviceResponse;
-import com.cursor_springa_ai.playground.dto.PortfolioMetrics;
 import com.cursor_springa_ai.playground.dto.PortfolioSummary;
 import com.cursor_springa_ai.playground.model.Portfolio;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -21,6 +20,7 @@ public class AiPortfolioAdvisorService {
         private final ChatClient chatClient;
         private final ObjectMapper objectMapper;
         private final PortfolioAdvisorPromptBuilder promptBuilder;
+        private final PortfolioMetricsService portfolioMetricsService;
 
         @Value("${portfolio.advisor.model:qwen2.5:7b-instruct}")
         private String advisorModel;
@@ -32,19 +32,20 @@ public class AiPortfolioAdvisorService {
         private int numPredict;
 
         public AiPortfolioAdvisorService(ChatClient.Builder chatClientBuilder,
-                        PortfolioAdvisorPromptBuilder promptBuilder) {
+                        PortfolioAdvisorPromptBuilder promptBuilder,
+                        PortfolioMetricsService portfolioMetricsService) {
                 this.chatClient = chatClientBuilder.build();
                 this.objectMapper = new ObjectMapper();
                 this.promptBuilder = promptBuilder;
+                this.portfolioMetricsService = portfolioMetricsService;
         }
 
         public PortfolioAdviceResponse generateInsightsWithMetrics(
                         Portfolio portfolio,
                         List<EnrichedHoldingData> enrichedHoldings,
-                        PortfolioMetrics portfolioMetrics,
                         PortfolioSummary portfolioSummary) {
                 String systemPrompt = promptBuilder.buildSystemPrompt();
-                String userPrompt = promptBuilder.buildPortfolioDataWithMetrics(portfolio, enrichedHoldings, portfolioMetrics,
+                String userPrompt = promptBuilder.buildPortfolioDataWithMetrics(portfolio, enrichedHoldings,
                                 portfolioSummary);
 
                 logger.info("System prompt length: " + systemPrompt.length());
@@ -61,6 +62,7 @@ public class AiPortfolioAdvisorService {
                 String aiResponse = chatClient.prompt()
                                 .system(systemPrompt)
                                 .user(userPrompt)
+                                .tools(portfolioMetricsService)
                                 .options(options)
                                 .call()
                                 .content();

@@ -1,7 +1,6 @@
 package com.cursor_springa_ai.playground.service;
 
 import com.cursor_springa_ai.playground.dto.EnrichedHoldingData;
-import com.cursor_springa_ai.playground.dto.PortfolioMetrics;
 import com.cursor_springa_ai.playground.dto.PortfolioSummary;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.stereotype.Component;
@@ -16,6 +15,10 @@ public class PortfolioAdvisorPromptBuilder {
 
     private static final Logger logger = Logger.getLogger(PortfolioAdvisorPromptBuilder.class.getName());
     private final ObjectMapper objectMapper;
+
+    public PortfolioAdvisorPromptBuilder() {
+        this(new ObjectMapper());
+    }
 
     public PortfolioAdvisorPromptBuilder(ObjectMapper objectMapper) {
         this.objectMapper = objectMapper;
@@ -59,23 +62,32 @@ public class PortfolioAdvisorPromptBuilder {
                         DRAWDOWN RISK:
                         Stocks more than 25% below 52 week high indicate weakness or correction risk.
 
-                        SMALLCAP RISK:
-                        High smallcap exposure increases volatility risk.
+                         SMALLCAP RISK:
+                         High smallcap exposure increases volatility risk.
 
-                        PROFIT CONCENTRATION:
-                        Large profit from few holdings increases reversal risk.
+                         PROFIT CONCENTRATION:
+                         Large profit from few holdings increases reversal risk.
 
-                        --------------------------------
+                         --------------------------------
 
-                        INTERPRETATION RULES:
+                         TOOL USAGE RULES:
 
-                        Portfolio_metrics represent portfolio structure.
-                        Holdings provide supporting evidence.
+                         You have access to the getPortfolioMetrics tool.
+                         Call getPortfolioMetrics when you need portfolio-level metrics such as top holding concentration, top 3 concentration, sector exposure, portfolio risk flags, or diversification score.
+                         Use the holdings and totalCurrentValue from the provided portfolio data as tool inputs.
+                         Use the returned portfolio metrics as the primary basis for portfolio-level conclusions.
 
-                        Base conclusions primarily on portfolio_metrics.
-                        Use holdings only to justify observations.
+                         --------------------------------
 
-                        If portfolio risk flags exist, prioritize addressing them in suggestions.
+                         INTERPRETATION RULES:
+
+                         Portfolio metrics returned by getPortfolioMetrics represent portfolio structure.
+                         Holdings provide supporting evidence and tool inputs.
+
+                         Base conclusions primarily on portfolio metrics returned by the tool.
+                         Use holdings only to justify observations.
+
+                         If portfolio risk flags exist, prioritize addressing them in suggestions.
 
                         Do not repeat raw numbers unless necessary.
 
@@ -179,11 +191,9 @@ public class PortfolioAdvisorPromptBuilder {
     public String buildPortfolioDataWithMetrics(
             com.cursor_springa_ai.playground.model.Portfolio portfolio,
             List<EnrichedHoldingData> enrichedHoldings,
-            PortfolioMetrics portfolioMetrics,
             PortfolioSummary portfolioSummary) {
 
         String holdingsJson = buildEnrichedHoldingsJson(enrichedHoldings);
-        String metricsJson = buildPortfolioMetricsJson(portfolioMetrics);
         String summaryJson = buildPortfolioSummaryJson(portfolioSummary);
 
         return """
@@ -193,14 +203,13 @@ public class PortfolioAdvisorPromptBuilder {
                         Portfolio Summary:
                         %s
 
-                        Portfolio Metrics:
-                        %s
+                        Use the getPortfolioMetrics tool if you need portfolio-level metrics before finalizing your advice.
 
                         Holdings (enriched with market metrics and risk flags):
                         %s
 
                         """
-                .formatted(summaryJson, metricsJson, holdingsJson);
+                .formatted(summaryJson, holdingsJson);
     }
 
     public String buildEnrichedHoldingsJson(List<EnrichedHoldingData> enrichedHoldings) {
@@ -237,13 +246,4 @@ public class PortfolioAdvisorPromptBuilder {
         }
     }
 
-    public String buildPortfolioMetricsJson(PortfolioMetrics portfolioMetrics) {
-        try {
-            String json = objectMapper.writeValueAsString(portfolioMetrics);
-            logger.info("Built portfolio metrics JSON length=" + json.length());
-            return json;
-        } catch (Exception e) {
-            throw new RuntimeException("Failed to serialize portfolio metrics", e);
-        }
-    }
 }
