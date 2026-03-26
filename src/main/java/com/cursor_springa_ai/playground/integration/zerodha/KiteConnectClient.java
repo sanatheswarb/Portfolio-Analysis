@@ -3,6 +3,7 @@ package com.cursor_springa_ai.playground.integration.zerodha;
 import com.zerodhatech.kiteconnect.KiteConnect;
 import com.zerodhatech.kiteconnect.kitehttp.exceptions.KiteException;
 import com.zerodhatech.models.Holding;
+import com.zerodhatech.models.Order;
 import com.zerodhatech.models.User;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
@@ -119,6 +120,64 @@ public class KiteConnectClient {
             if (message != null && message.contains("403")) {
                 throw new ZerodhaClientException(
                         "Access denied fetching holdings. The access token may have expired or is invalid. " +
+                        "Fix: Re-login via /api/zerodha/login-url",
+                        ex);
+            }
+            throw ex;
+        }
+    }
+
+    /**
+     * Fetch all open/pending orders for the authenticated user.
+     *
+     * @return List of orders
+     * @throws KiteException If orders retrieval fails
+     * @throws IOException   If network error occurs
+     */
+    public List<Order> getOrders() throws KiteException, IOException {
+        if (!hasActiveSession()) {
+            throw new ZerodhaClientException(
+                    "No active session. Complete login first: GET /api/zerodha/login-url → callback → generateSession()");
+        }
+
+        try {
+            return kiteSdk.getOrders();
+        } catch (KiteException ex) {
+            String message = ex.getMessage();
+            if (message != null && message.contains("403")) {
+                throw new ZerodhaClientException(
+                        "Access denied fetching orders. The access token may have expired or is invalid. " +
+                        "Fix: Re-login via /api/zerodha/login-url",
+                        ex);
+            }
+            throw ex;
+        }
+    }
+
+    /**
+     * Fetch the history (all status changes) for a specific order.
+     *
+     * @param orderId Zerodha order ID
+     * @return List of order states
+     * @throws KiteException If order history retrieval fails
+     * @throws IOException   If network error occurs
+     */
+    public List<Order> getOrderHistory(String orderId) throws KiteException, IOException {
+        if (!hasActiveSession()) {
+            throw new ZerodhaClientException(
+                    "No active session. Complete login first: GET /api/zerodha/login-url → callback → generateSession()");
+        }
+        if (orderId == null || orderId.isBlank()) {
+            throw new IllegalArgumentException("orderId is required");
+        }
+
+        try {
+            return kiteSdk.getOrderHistory(orderId);
+        } catch (KiteException ex) {
+            String message = ex.getMessage();
+            if (message != null && message.contains("403")) {
+                throw new ZerodhaClientException(
+                        "Access denied fetching order history. The access token may have expired or is invalid. " +
                         "Fix: Re-login via /api/zerodha/login-url",
                         ex);
             }
