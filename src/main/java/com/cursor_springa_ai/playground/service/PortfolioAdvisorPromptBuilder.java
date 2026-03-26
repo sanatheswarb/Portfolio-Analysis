@@ -72,8 +72,15 @@ public class PortfolioAdvisorPromptBuilder {
                         reasoningContext.portfolioId(),
                         reasoningContext.ownerName(),
                         summaryJson,
-                        reasoningContext.portfolioMetrics() == null ? List.of() : reasoningContext.portfolioMetrics().portfolioRiskFlags()
+                        portfolioRiskFlags(reasoningContext)
                 );
+    }
+
+    private List<String> portfolioRiskFlags(PortfolioReasoningContext reasoningContext) {
+        if (reasoningContext.portfolioMetrics() == null) {
+            return List.of();
+        }
+        return reasoningContext.portfolioMetrics().portfolioRiskFlags();
     }
 
     public String buildEnrichedHoldingsJson(List<EnrichedHoldingData> enrichedHoldings) {
