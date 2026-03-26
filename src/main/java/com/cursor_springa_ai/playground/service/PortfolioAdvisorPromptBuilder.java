@@ -17,8 +17,8 @@ public class PortfolioAdvisorPromptBuilder {
     private static final Logger logger = Logger.getLogger(PortfolioAdvisorPromptBuilder.class.getName());
     private final ObjectMapper objectMapper;
 
-    public PortfolioAdvisorPromptBuilder(ObjectMapper objectMapper) {
-        this.objectMapper = objectMapper;
+    public PortfolioAdvisorPromptBuilder() {
+        this.objectMapper = new ObjectMapper();
     }
 
     public String buildSystemPrompt() {

@@ -1,16 +1,62 @@
 package com.cursor_springa_ai.playground.model;
 
-import java.math.BigDecimal;
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
+import jakarta.persistence.PrePersist;
+import jakarta.persistence.PreUpdate;
+import jakarta.persistence.Table;
+import jakarta.persistence.UniqueConstraint;
 
+import java.math.BigDecimal;
+import java.time.LocalDateTime;
+
+@Entity
+@Table(name = "holdings", uniqueConstraints = @UniqueConstraint(columnNames = {"portfolio_id", "symbol"}))
 public class Holding {
 
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "portfolio_id", nullable = false)
+    @JsonIgnore
+    private Portfolio portfolio;
+
+    @Column(nullable = false)
     private String symbol;
+
     private String exchange;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "asset_type")
     private AssetType assetType;
+
     private BigDecimal quantity;
+
+    @Column(name = "average_buy_price")
     private BigDecimal averageBuyPrice;
+
+    @Column(name = "current_price")
     private BigDecimal currentPrice;
+
+    @Column(name = "profit_loss")
     private BigDecimal profitLoss;
+
+    @Column(name = "created_at", nullable = false, updatable = false)
+    private LocalDateTime createdAt;
+
+    @Column(name = "updated_at", nullable = false)
+    private LocalDateTime updatedAt;
 
     public Holding() {
     }
@@ -23,6 +69,34 @@ public class Holding {
         this.averageBuyPrice = averageBuyPrice;
         this.currentPrice = currentPrice;
         this.profitLoss = profitLoss;
+    }
+
+    @PrePersist
+    protected void onCreate() {
+        LocalDateTime now = LocalDateTime.now();
+        this.createdAt = now;
+        this.updatedAt = now;
+    }
+
+    @PreUpdate
+    protected void onUpdate() {
+        this.updatedAt = LocalDateTime.now();
+    }
+
+    public Long getId() {
+        return id;
+    }
+
+    public void setId(Long id) {
+        this.id = id;
+    }
+
+    public Portfolio getPortfolio() {
+        return portfolio;
+    }
+
+    public void setPortfolio(Portfolio portfolio) {
+        this.portfolio = portfolio;
     }
 
     public String getSymbol() {
@@ -79,5 +153,13 @@ public class Holding {
 
     public void setProfitLoss(BigDecimal profitLoss) {
         this.profitLoss = profitLoss;
+    }
+
+    public LocalDateTime getCreatedAt() {
+        return createdAt;
+    }
+
+    public LocalDateTime getUpdatedAt() {
+        return updatedAt;
     }
 }
