@@ -3,12 +3,17 @@ package com.cursor_springa_ai.playground.integration.zerodha;
 import com.zerodhatech.kiteconnect.KiteConnect;
 import com.zerodhatech.kiteconnect.kitehttp.exceptions.KiteException;
 import com.zerodhatech.models.Holding;
+import com.zerodhatech.models.MFHolding;
+import com.zerodhatech.models.Margin;
+import com.zerodhatech.models.Position;
+import com.zerodhatech.models.Profile;
 import com.zerodhatech.models.User;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 import java.io.IOException;
 import java.util.List;
+import java.util.Map;
 
 /**
  * Wrapper around the official Zerodha KiteConnect SDK.
@@ -127,6 +132,58 @@ public class KiteConnectClient {
     }
 
     /**
+     * Fetch current day and overnight positions for the authenticated user.
+     * FREE API – requires only developer-console app registration and OAuth session.
+     *
+     * @return Map with keys "day" and "net", each containing a list of Position objects
+     * @throws KiteException If the API call fails
+     * @throws IOException   If a network error occurs
+     */
+    public Map<String, List<Position>> getPositions() throws KiteException, IOException {
+        requireActiveSession("positions");
+        return kiteSdk.getPositions();
+    }
+
+    /**
+     * Fetch the authenticated user's profile information.
+     * FREE API – requires only developer-console app registration and OAuth session.
+     *
+     * @return Profile containing name, email, exchanges, products and order types
+     * @throws KiteException If the API call fails
+     * @throws IOException   If a network error occurs
+     */
+    public Profile getProfile() throws KiteException, IOException {
+        requireActiveSession("profile");
+        return kiteSdk.getProfile();
+    }
+
+    /**
+     * Fetch equity and commodity margin/funds for the authenticated user.
+     * FREE API – requires only developer-console app registration and OAuth session.
+     *
+     * @return Map keyed by segment ("equity" / "commodity"), each holding a {@link Margin}
+     * @throws KiteException If the API call fails
+     * @throws IOException   If a network error occurs
+     */
+    public Map<String, Margin> getMargins() throws KiteException, IOException {
+        requireActiveSession("margins");
+        return kiteSdk.getMargins();
+    }
+
+    /**
+     * Fetch mutual-fund holdings for the authenticated user.
+     * FREE API – requires only developer-console app registration and OAuth session.
+     *
+     * @return List of mutual-fund holding objects
+     * @throws KiteException If the API call fails
+     * @throws IOException   If a network error occurs
+     */
+    public List<MFHolding> getMFHoldings() throws KiteException, IOException {
+        requireActiveSession("MF holdings");
+        return kiteSdk.getMFHoldings();
+    }
+
+    /**
      * Get the current access token (useful for storing/debugging).
      * 
      * @return Current access token or null if not authenticated
@@ -142,5 +199,17 @@ public class KiteConnectClient {
      */
     public String getPublicToken() {
         return publicToken;
+    }
+
+    // -----------------------------------------------------------------------
+    // Helpers
+    // -----------------------------------------------------------------------
+
+    private void requireActiveSession(String resource) {
+        if (!hasActiveSession()) {
+            throw new ZerodhaClientException(
+                    "No active session. Complete login first: GET /api/zerodha/login-url → callback → generateSession(). " +
+                    "Cannot fetch " + resource + " without a valid access token.");
+        }
     }
 }
