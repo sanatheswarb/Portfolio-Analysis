@@ -40,6 +40,7 @@ public class PortfolioAnalysisService {
 
     public PortfolioAnalysisResponse analyzePortfolio(String portfolioId) {
         Portfolio portfolio = portfolioService.getPortfolio(portfolioId);
+        long metricsStart = System.currentTimeMillis();
 
         BigDecimal totalInvested = BigDecimal.ZERO;
         BigDecimal totalCurrentValue = BigDecimal.ZERO;
@@ -97,13 +98,21 @@ public class PortfolioAnalysisService {
                 enrichedHoldings,
                 totalCurrentValue
         );
-        
-        PortfolioAdviceResponse aiInsights = aiPortfolioAdvisorService.generateInsightsWithMetrics(
-                portfolio,
-                enrichedHoldings,
+
+        long metricsTime = System.currentTimeMillis() - metricsStart;
+
+        PortfolioReasoningContext reasoningContext = new PortfolioReasoningContext(
+                portfolio.getId(),
+                portfolio.getOwnerName(),
+                portfolioSummary,
                 portfolioMetrics,
-                portfolioSummary
+                enrichedHoldings
         );
+
+        PortfolioAdviceResponse aiInsights = aiPortfolioAdvisorService.generateInsights(reasoningContext);
+
+        java.util.logging.Logger.getLogger(PortfolioAnalysisService.class.getName())
+                .info("Deterministic portfolio metrics time: " + metricsTime + " ms");
 
         return new PortfolioAnalysisResponse(
                 portfolio.getId(),

@@ -1,10 +1,6 @@
 package com.cursor_springa_ai.playground.service;
 
-import com.cursor_springa_ai.playground.dto.EnrichedHoldingData;
 import com.cursor_springa_ai.playground.dto.PortfolioAdviceResponse;
-import com.cursor_springa_ai.playground.dto.PortfolioMetrics;
-import com.cursor_springa_ai.playground.dto.PortfolioSummary;
-import com.cursor_springa_ai.playground.model.Portfolio;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.ollama.api.OllamaChatOptions;
@@ -31,6 +27,9 @@ public class AiPortfolioAdvisorService {
         @Value("${portfolio.advisor.num-predict:512}")
         private int numPredict;
 
+        @Value("${portfolio.advisor.keep-alive:10m}")
+        private String keepAlive;
+
         public AiPortfolioAdvisorService(ChatClient.Builder chatClientBuilder,
                         PortfolioAdvisorPromptBuilder promptBuilder) {
                 this.chatClient = chatClientBuilder.build();
@@ -38,14 +37,10 @@ public class AiPortfolioAdvisorService {
                 this.promptBuilder = promptBuilder;
         }
 
-        public PortfolioAdviceResponse generateInsightsWithMetrics(
-                        Portfolio portfolio,
-                        List<EnrichedHoldingData> enrichedHoldings,
-                        PortfolioMetrics portfolioMetrics,
-                        PortfolioSummary portfolioSummary) {
+        public PortfolioAdviceResponse generateInsights(PortfolioReasoningContext reasoningContext) {
                 String systemPrompt = promptBuilder.buildSystemPrompt();
-                String userPrompt = promptBuilder.buildPortfolioDataWithMetrics(portfolio, enrichedHoldings, portfolioMetrics,
-                                portfolioSummary);
+                String userPrompt = promptBuilder.buildReasoningRequest(reasoningContext);
+                PortfolioReasoningTools reasoningTools = new PortfolioReasoningTools(reasoningContext, objectMapper);
 
                 logger.info("System prompt length: " + systemPrompt.length());
                 logger.info("User prompt length: " + userPrompt.length());
@@ -54,6 +49,8 @@ public class AiPortfolioAdvisorService {
                                 .model(advisorModel)
                                 .temperature(temperature)
                                 .numPredict(numPredict)
+                                .keepAlive(keepAlive)
+                                .format("json")
                                 .topP(0.9)
                                 .build();
 
@@ -61,6 +58,7 @@ public class AiPortfolioAdvisorService {
                 String aiResponse = chatClient.prompt()
                                 .system(systemPrompt)
                                 .user(userPrompt)
+                                .tools(reasoningTools)
                                 .options(options)
                                 .call()
                                 .content();

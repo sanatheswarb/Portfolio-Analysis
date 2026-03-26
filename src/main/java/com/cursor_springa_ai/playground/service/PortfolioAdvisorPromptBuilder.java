@@ -17,8 +17,8 @@ public class PortfolioAdvisorPromptBuilder {
     private static final Logger logger = Logger.getLogger(PortfolioAdvisorPromptBuilder.class.getName());
     private final ObjectMapper objectMapper;
 
-    public PortfolioAdvisorPromptBuilder(ObjectMapper objectMapper) {
-        this.objectMapper = objectMapper;
+    public PortfolioAdvisorPromptBuilder() {
+        this.objectMapper = new ObjectMapper();
     }
 
     public String buildSystemPrompt() {
@@ -28,179 +28,52 @@ public class PortfolioAdvisorPromptBuilder {
                         PRIMARY OBJECTIVE:
                         Protect capital and reduce portfolio risk before optimizing returns.
 
-                        ANALYSIS PRIORITY ORDER:
-                        1 Portfolio risk signals (highest importance)
-                        2 Portfolio diversification metrics
-                        3 Holding level risks
-                        4 Profit opportunities (lowest importance)
+                        TOOL USAGE RULES:
+                        - Call portfolio_overview first.
+                        - Use flagged_holdings only when you need supporting evidence for a risk-focused recommendation.
+                        - Use holding_details only for a specific symbol when the overview is not enough.
+                        - Treat tool outputs as the source of truth for all metrics and holding evidence.
+                        - Do not recompute metrics yourself.
 
-                        Always prioritize risk reduction over return maximization.
-
-                        --------------------------------
-
-                        ANALYSIS RULES:
-
-                        Always evaluate:
-
-                        CONCENTRATION RISK:
-                        Top holding >25% = high concentration risk
-                        Top 3 holdings >60% = portfolio concentration risk
-
-                        DIVERSIFICATION:
-                        Diversification score >75 = good
-                        Diversification score 50–75 = moderate
-                        Diversification score <50 = weak diversification
-
-                        Sector exposure >40% = sector concentration risk.
-
-                        VALUATION RISK:
-                        Stock PE significantly higher than sector PE indicates valuation risk.
-
-                        DRAWDOWN RISK:
-                        Stocks more than 25% below 52 week high indicate weakness or correction risk.
-
-                        SMALLCAP RISK:
-                        High smallcap exposure increases volatility risk.
-
-                        PROFIT CONCENTRATION:
-                        Large profit from few holdings increases reversal risk.
-
-                        --------------------------------
-
-                        INTERPRETATION RULES:
-
-                        Portfolio_metrics represent portfolio structure.
-                        Holdings provide supporting evidence.
-
-                        Base conclusions primarily on portfolio_metrics.
-                        Use holdings only to justify observations.
-
-                        If portfolio risk flags exist, prioritize addressing them in suggestions.
-
-                        Do not repeat raw numbers unless necessary.
-
-                        Focus on insights, not data repetition.
-
-                        --------------------------------
+                        ANALYSIS PRIORITY:
+                        1. Portfolio risk flags and concentration
+                        2. Diversification quality
+                        3. Holding-level supporting evidence
+                        4. Return optimization
 
                         SUGGESTION RULES:
-
-                        Suggestions must be:
-
-                        Specific
-                        Actionable
-                        Risk focused
-                        Based on provided data
-
-                        Allowed suggestion types:
-
-                        Reduce concentration of oversized positions
-                        Rebalance sector allocation
-                        Trim overvalued holdings
-                        Improve diversification
-                        Reduce volatility exposure
-                        Protect profits in overheated positions
-                        Reduce exposure to weak trend stocks
-
-                        Avoid generic advice like:
-
-                        "Monitor market"
-                        "Keep watching"
-                        "Diversify more"
-                        "Stay invested"
-
-                        Bad suggestions must not be generated.
-
-                        If HIGH_CONCENTRATION exists:
-                        First suggestion must address concentration.
-
-                        If SECTOR_CONCENTRATION exists:
-                        One suggestion must address diversification.
-
-                        --------------------------------
+                        - Suggestions must be specific, actionable, and risk focused.
+                        - If HIGH_CONCENTRATION exists, the first suggestion must address concentration.
+                        - If sector concentration exists, one suggestion must address diversification.
+                        - Avoid generic advice such as monitor market, stay invested, or diversify more.
 
                         OUTPUT REQUIREMENTS:
-
-                        Return ONLY valid JSON.
-
-                        Do NOT include markdown.
-                        Do NOT include explanations.
-                        Do NOT include text before or after JSON.
-
-                        Return exactly this format:
-
-                        {
-                        "risk_overview":"",
-                        "diversification_feedback":"",
-                        "suggestions":[
-                        "",
-                        "",
-                        ""
-                        ],
-                        "cautionary_note":""
-                        }
-
-                        CRITICAL JSON FORMATTING RULES:
-
-                        - suggestions MUST be an array of exactly 3 strings
-                        - Each string in suggestions MUST be plain text without quotes inside
-                        - Do NOT add keys, objects, or metadata inside the suggestions array
-                        - Do NOT use colons (:) inside suggestion strings
-                        - Each suggestion must be a complete sentence starting with an action verb
-
-                        Ensure:
-
-                        risk_overview:
-                        1–2 sentences summarizing major portfolio risks.
-
-                        diversification_feedback:
-                        1–2 sentences about diversification quality.
-
-                        suggestions:
-                        Exactly 3 actionable improvements.
-
-                        cautionary_note:
-                        One critical vulnerability.
-
-                        All values must be strings.
-
-                        --------------------------------
-
-                        FINAL RULE:
-
-                        Base advice strictly on provided portfolio data.
-                        Do not assume missing information.
-                        Do not hallucinate macro events.
-                        If no major risks exist, focus suggestions on optimization.
+                        - Return ONLY valid JSON.
+                        - Do NOT include markdown or commentary outside the JSON object.
+                        - suggestions must contain exactly 3 plain-text strings.
+                        - Do not use colons inside suggestion strings.
+                        - Base every conclusion on the supplied tool outputs only.
 
                         """;
     }
 
-    public String buildPortfolioDataWithMetrics(
-            com.cursor_springa_ai.playground.model.Portfolio portfolio,
-            List<EnrichedHoldingData> enrichedHoldings,
-            PortfolioMetrics portfolioMetrics,
-            PortfolioSummary portfolioSummary) {
-
-        String holdingsJson = buildEnrichedHoldingsJson(enrichedHoldings);
-        String metricsJson = buildPortfolioMetricsJson(portfolioMetrics);
-        String summaryJson = buildPortfolioSummaryJson(portfolioSummary);
+    public String buildReasoningRequest(PortfolioReasoningContext reasoningContext) {
+        String summaryJson = buildPortfolioSummaryJson(reasoningContext.portfolioSummary());
 
         return """
                         Portfolio Analysis Request:
-
-
-                        Portfolio Summary:
-                        %s
-
-                        Portfolio Metrics:
-                        %s
-
-                        Holdings (enriched with market metrics and risk flags):
-                        %s
-
+                        portfolio_id: %s
+                        owner_name: %s
+                        portfolio_summary: %s
+                        precomputed_portfolio_risk_flags: %s
+                        use_tools_for_metrics_and_holding_evidence: true
                         """
-                .formatted(summaryJson, metricsJson, holdingsJson);
+                .formatted(
+                        reasoningContext.portfolioId(),
+                        reasoningContext.ownerName(),
+                        summaryJson,
+                        reasoningContext.portfolioMetrics() == null ? List.of() : reasoningContext.portfolioMetrics().portfolioRiskFlags()
+                );
     }
 
     public String buildEnrichedHoldingsJson(List<EnrichedHoldingData> enrichedHoldings) {
