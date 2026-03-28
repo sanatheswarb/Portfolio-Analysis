@@ -3,8 +3,6 @@ package com.cursor_springa_ai.playground.service;
 import com.cursor_springa_ai.playground.dto.EnrichedHoldingData;
 import com.cursor_springa_ai.playground.dto.PortfolioMetrics;
 import org.springframework.stereotype.Service;
-import org.springframework.ai.tool.annotation.Tool;
-import org.springframework.ai.tool.annotation.ToolParam;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -20,11 +18,8 @@ public class PortfolioMetricsService {
     /**
      * Calculate portfolio-level metrics from enriched holdings.
      */
-    @Tool(name = "getPortfolioMetrics", description = "Calculate portfolio-level metrics such as concentration, sector exposure, portfolio risk flags, and diversification score from enriched holdings and total current value.")
     public PortfolioMetrics calculatePortfolioMetrics(
-            @ToolParam(description = "List of enriched holdings including allocation percent, sector, and holding risk flags.", required = true)
             List<EnrichedHoldingData> enrichedHoldings,
-            @ToolParam(description = "Total current market value of the portfolio.", required = true)
             BigDecimal totalCurrentValue) {
         
         if (enrichedHoldings == null || enrichedHoldings.isEmpty()) {
