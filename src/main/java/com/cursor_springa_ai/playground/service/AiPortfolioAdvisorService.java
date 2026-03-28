@@ -69,7 +69,8 @@ public class AiPortfolioAdvisorService {
 
         private PortfolioAdviceResponse parseAdviceResponse(String aiResponse) {
                 try {
-                        return objectMapper.readValue(aiResponse, PortfolioAdviceResponse.class);
+                        PortfolioAdviceResponse parsed = objectMapper.readValue(aiResponse, PortfolioAdviceResponse.class);
+                        return normalizeAdviceResponse(parsed);
                 } catch (Exception e) {
                         logger.warning("Failed to parse AI response as JSON: " + e.getMessage());
                         logger.warning("Raw AI response: " + aiResponse);
@@ -78,7 +79,7 @@ public class AiPortfolioAdvisorService {
                         PortfolioAdviceResponse fallback = tryExtractSuggestionsFromMalformedJson(aiResponse);
                         if (fallback != null) {
                                 logger.info("Successfully extracted suggestions from malformed JSON");
-                                return fallback;
+                                return normalizeAdviceResponse(fallback);
                         }
 
                         // Return a fallback response with the raw text
@@ -88,6 +89,51 @@ public class AiPortfolioAdvisorService {
                                         List.of("Review portfolio manually", "Consult with financial advisor", "Monitor risk metrics closely"),
                                         "AI response parsing failed - manual review required");
                 }
+        }
+
+        private PortfolioAdviceResponse normalizeAdviceResponse(PortfolioAdviceResponse response) {
+                if (response == null) {
+                        return new PortfolioAdviceResponse(
+                                        "Risk overview is unavailable from AI output.",
+                                        "Diversification feedback is unavailable from AI output.",
+                                        List.of("Review portfolio concentration and rebalance", "Diversify across sectors and market-cap buckets", "Re-check flagged holdings before new entries"),
+                                        "Use this advice as guidance only and validate with deterministic metrics.");
+                }
+
+                String riskOverview = sanitizeText(
+                                response.riskOverview(),
+                                "Risk overview is unavailable from AI output.");
+                String diversificationFeedback = sanitizeText(
+                                response.diversificationFeedback(),
+                                "Diversification feedback is unavailable from AI output.");
+                String cautionaryNote = sanitizeText(
+                                response.cautionaryNote(),
+                                "Use this advice as guidance only and validate with deterministic metrics.");
+
+                List<String> suggestions = response.suggestions() == null
+                                ? List.of()
+                                : response.suggestions().stream()
+                                                .filter(s -> s != null && !s.isBlank())
+                                                .map(String::trim)
+                                                .toList();
+
+                if (suggestions.isEmpty()) {
+                        suggestions = List.of(
+                                        "Review portfolio concentration and rebalance",
+                                        "Diversify across sectors and market-cap buckets",
+                                        "Re-check flagged holdings before new entries");
+                } else if (suggestions.size() > 3) {
+                        suggestions = suggestions.subList(0, 3);
+                }
+
+                return new PortfolioAdviceResponse(riskOverview, diversificationFeedback, suggestions, cautionaryNote);
+        }
+
+        private String sanitizeText(String value, String fallback) {
+                if (value == null || value.isBlank() || "null".equalsIgnoreCase(value.trim())) {
+                        return fallback;
+                }
+                return value.trim();
         }
 
         private PortfolioAdviceResponse tryExtractSuggestionsFromMalformedJson(String aiResponse) {

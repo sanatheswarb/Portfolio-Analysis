@@ -50,6 +50,9 @@ public class PortfolioAdvisorPromptBuilder {
                         OUTPUT REQUIREMENTS:
                         - Return ONLY valid JSON.
                         - Do NOT include markdown or commentary outside the JSON object.
+                        - Include all keys: risk_overview, diversification_feedback, suggestions, cautionary_note.
+                        - risk_overview, diversification_feedback, and cautionary_note must be non-null strings.
+                        - risk_overview and diversification_feedback should each be at least one full sentence.
                         - suggestions must contain exactly 3 plain-text strings.
                         - Do not use colons inside suggestion strings.
                         - Base every conclusion on the supplied tool outputs only.
