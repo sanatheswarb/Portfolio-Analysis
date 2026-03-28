@@ -3,6 +3,7 @@ package com.cursor_springa_ai.playground.service;
 import com.cursor_springa_ai.playground.dto.EnrichedHoldingData;
 import com.cursor_springa_ai.playground.dto.PortfolioMetrics;
 import com.cursor_springa_ai.playground.dto.PortfolioSummary;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
 
 import java.math.BigDecimal;
@@ -13,7 +14,7 @@ import static org.junit.jupiter.api.Assertions.*;
 
 class PortfolioAdvisorPromptBuilderTest {
 
-    private final PortfolioAdvisorPromptBuilder builder = new PortfolioAdvisorPromptBuilder();
+    private final PortfolioAdvisorPromptBuilder builder = new PortfolioAdvisorPromptBuilder(new ObjectMapper());
 
     @Test
     void buildEnrichedHoldingsJson_excludesPeFromOutput() {
