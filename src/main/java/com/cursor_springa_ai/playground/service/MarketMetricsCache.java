@@ -8,7 +8,8 @@ import com.cursor_springa_ai.playground.repository.NseDataRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.ArrayList;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -32,7 +33,8 @@ public class MarketMetricsCache {
 
     /**
      * Batch fetch and cache metrics for multiple holdings.
-     * Fetches only symbols not already stored in the database.
+     * Skips symbols whose data was already fetched today (updatedAt >= start of today).
+     * Re-fetches symbols whose data is stale (updatedAt before today) or not yet stored.
      */
     public void batchFetchAndCache(List<ZerodhaHoldingItem> holdings) {
         if (holdings == null || holdings.isEmpty()) {
@@ -45,43 +47,83 @@ public class MarketMetricsCache {
                 .distinct()
                 .collect(Collectors.toList());
 
-        Set<String> existingSymbols = nseDataRepository.findBySymbolIn(allSymbols)
-                .stream()
+        LocalDateTime startOfToday = LocalDate.now().atStartOfDay();
+
+        // Query once: all stored records for the requested symbols
+        List<NseData> storedRecords = nseDataRepository.findBySymbolIn(allSymbols);
+
+        // Symbols already stored with fresh data (updated today) — skip these
+        Set<String> freshSymbols = storedRecords.stream()
+                .filter(d -> d.getUpdatedAt() != null && !d.getUpdatedAt().isBefore(startOfToday))
                 .map(NseData::getSymbol)
                 .collect(Collectors.toSet());
 
-        List<ZerodhaHoldingItem> uncachedHoldings = holdings.stream()
+        // Symbols that are stale (exist in DB but updated before today) — update their records
+        Map<String, NseData> staleRecords = storedRecords.stream()
+                .filter(d -> d.getUpdatedAt() == null || d.getUpdatedAt().isBefore(startOfToday))
+                .collect(Collectors.toMap(NseData::getSymbol, d -> d));
+
+        // Symbols with no DB record at all — need to insert
+        Set<String> allStoredSymbols = storedRecords.stream()
+                .map(NseData::getSymbol)
+                .collect(Collectors.toSet());
+        Set<String> missingSymbols = allSymbols.stream()
+                .filter(s -> !allStoredSymbols.contains(s))
+                .collect(Collectors.toSet());
+
+        // Holdings that need fetching: stale + missing
+        List<ZerodhaHoldingItem> holdingsToFetch = holdings.stream()
                 .filter(h -> h.getTradingSymbol() != null
-                        && !existingSymbols.contains(h.getTradingSymbol().toUpperCase()))
+                        && !freshSymbols.contains(h.getTradingSymbol().toUpperCase()))
                 .collect(Collectors.toList());
 
-        if (uncachedHoldings.isEmpty()) {
+        if (holdingsToFetch.isEmpty()) {
+            logger.info("All NSE data is fresh for today. Skipping API fetch. Total symbols: " + freshSymbols.size());
             return;
         }
 
-        Map<String, StockMetrics> fetchedMetrics = nseApiClient.fetchMetricsForHoldings(uncachedHoldings);
+        logger.info("Fetching NSE data for " + holdingsToFetch.size() + " symbol(s). "
+                + "Stale: " + staleRecords.size() + ", Missing: " + missingSymbols.size());
+
+        Map<String, StockMetrics> fetchedMetrics = nseApiClient.fetchMetricsForHoldings(holdingsToFetch);
 
         for (Map.Entry<String, StockMetrics> entry : fetchedMetrics.entrySet()) {
             String symbol = entry.getKey().toUpperCase();
-            NseData nseData = NseData.fromStockMetrics(symbol, entry.getValue());
+            StockMetrics metrics = entry.getValue();
+
+            NseData nseData = staleRecords.getOrDefault(symbol,
+                    NseData.fromStockMetrics(symbol, metrics)); // new record if not stale
+
+            applyMetrics(nseData, metrics);
+
             nseDataRepository.save(nseData);
-            logger.info("Stored NSE data for symbol: " + symbol + " | PE: " + entry.getValue().pe() +
-                    ", Sector: " + entry.getValue().sector());
+            logger.info("Saved NSE data for symbol: " + symbol + " | PE: " + metrics.pe()
+                    + ", Sector: " + metrics.sector());
         }
         logger.info("Batch NSE data update completed. Total stored: " + nseDataRepository.count());
     }
 
     /**
-     * Get metrics for a symbol, fetching from NSE if not stored in the database.
+     * Get metrics for a symbol.
+     * Returns the stored value if it was updated today; otherwise re-fetches from NSE API.
      */
     public StockMetrics getMetrics(String symbol) {
         String upperSymbol = symbol.toUpperCase();
+        LocalDateTime startOfToday = LocalDate.now().atStartOfDay();
+
         return nseDataRepository.findById(upperSymbol)
+                .filter(d -> d.getUpdatedAt() != null && !d.getUpdatedAt().isBefore(startOfToday))
                 .map(NseData::toStockMetrics)
                 .orElseGet(() -> {
                     StockMetrics fetched = nseApiClient.fetchMetricsForSymbol(upperSymbol);
                     if (fetched != null) {
-                        nseDataRepository.save(NseData.fromStockMetrics(upperSymbol, fetched));
+                        NseData nseData = nseDataRepository.findById(upperSymbol)
+                                .orElseGet(NseData::new);
+                        applyMetrics(nseData, fetched);
+                        if (nseData.getSymbol() == null) {
+                            nseData.setSymbol(upperSymbol);
+                        }
+                        nseDataRepository.save(nseData);
                         logger.info("Fetched and stored NSE data for symbol: " + upperSymbol);
                     }
                     return fetched;
@@ -89,25 +131,20 @@ public class MarketMetricsCache {
     }
 
     /**
-     * Store metrics in the database.
+     * Store metrics in the database (updates existing record if present, preserving created_at).
      */
     public void cacheMetrics(String symbol, StockMetrics metrics) {
         if (metrics != null) {
             String upperSymbol = symbol.toUpperCase();
             NseData nseData = nseDataRepository.findById(upperSymbol)
-                    .orElse(NseData.fromStockMetrics(upperSymbol, metrics));
-            nseData.setSector(metrics.sector());
-            nseData.setMarketCapType(metrics.marketCapType());
-            nseData.setPe(metrics.pe());
-            nseData.setBeta(metrics.beta());
-            nseData.setWeek52High(metrics.week52High());
-            nseData.setWeek52Low(metrics.week52Low());
-            nseData.setSectorPe(metrics.sectorPe());
-            nseData.setIssuedSize(metrics.issuedSize());
-            nseData.setDma200(metrics.dma200());
+                    .orElseGet(NseData::new);
+            if (nseData.getSymbol() == null) {
+                nseData.setSymbol(upperSymbol);
+            }
+            applyMetrics(nseData, metrics);
             nseDataRepository.save(nseData);
-            logger.info("Stored NSE data for symbol: " + upperSymbol + " | PE: " + metrics.pe() +
-                    ", Beta: " + metrics.beta() + ", Week52High: " + metrics.week52High());
+            logger.info("Stored NSE data for symbol: " + upperSymbol + " | PE: " + metrics.pe()
+                    + ", Beta: " + metrics.beta() + ", Week52High: " + metrics.week52High());
         }
     }
 
@@ -127,5 +164,17 @@ public class MarketMetricsCache {
         nseDataRepository.findAll()
                 .forEach(nseData -> result.put(nseData.getSymbol(), nseData.toStockMetrics()));
         return result;
+    }
+
+    private void applyMetrics(NseData nseData, StockMetrics metrics) {
+        nseData.setSector(metrics.sector());
+        nseData.setMarketCapType(metrics.marketCapType());
+        nseData.setPe(metrics.pe());
+        nseData.setBeta(metrics.beta());
+        nseData.setWeek52High(metrics.week52High());
+        nseData.setWeek52Low(metrics.week52Low());
+        nseData.setSectorPe(metrics.sectorPe());
+        nseData.setIssuedSize(metrics.issuedSize());
+        nseData.setDma200(metrics.dma200());
     }
 }
