@@ -31,9 +31,10 @@ public class AiPortfolioAdvisorService {
         private String keepAlive;
 
         public AiPortfolioAdvisorService(ChatClient.Builder chatClientBuilder,
+                        ObjectMapper objectMapper,
                         PortfolioAdvisorPromptBuilder promptBuilder) {
                 this.chatClient = chatClientBuilder.build();
-                this.objectMapper = new ObjectMapper();
+                this.objectMapper = objectMapper;
                 this.promptBuilder = promptBuilder;
         }
 

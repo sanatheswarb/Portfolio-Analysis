@@ -26,9 +26,9 @@ public class NseApiClient {
     private final RestTemplate restTemplate;
     private final ObjectMapper objectMapper;
 
-    public NseApiClient(RestTemplate restTemplate) {
+    public NseApiClient(RestTemplate restTemplate, ObjectMapper objectMapper) {
         this.restTemplate = restTemplate;
-        this.objectMapper = new ObjectMapper();
+        this.objectMapper = objectMapper;
     }
 
     /**
