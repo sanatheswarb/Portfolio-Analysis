@@ -39,7 +39,6 @@ public class PortfolioReasoningTools {
         }
         return toJson(context.portfolioMetrics());
     }
-
     @Tool(name = "flagged_holdings", description = "Returns only holdings that already have deterministic risk flags, sorted by allocation descending. Use this when you need evidence for recommendations.")
     public String flaggedHoldings() {
         List<Map<String, Object>> holdings = context.enrichedHoldings().stream()
