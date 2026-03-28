@@ -22,6 +22,7 @@ public class KiteConnectClient {
     private KiteConnect kiteSdk;
     private String accessToken;
     private String publicToken;
+    private String userId;
 
     public KiteConnectClient(
             @Value("${zerodha.api-key}") String apiKey,
