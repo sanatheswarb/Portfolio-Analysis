@@ -117,6 +117,7 @@ public class ZerodhaImportService {
                                    BigDecimal totalCurrentValue) {
         BigDecimal qty = item.getQuantity();
         BigDecimal avgPrice = nvl(item.getAveragePrice());
+        BigDecimal closePrice = nvl(item.getClosePrice());
         BigDecimal lastPrice = nvl(item.getLastPrice());
 
         BigDecimal investedValue = qty.multiply(avgPrice);
@@ -138,6 +139,7 @@ public class ZerodhaImportService {
                         existing -> {
                             existing.setQuantity(qty.intValue());
                             existing.setAvgPrice(avgPrice);
+                            existing.setClosePrice(closePrice);
                             existing.setLastPrice(lastPrice);
                             existing.setInvestedValue(investedValue);
                             existing.setCurrentValue(currentValue);
@@ -148,13 +150,17 @@ public class ZerodhaImportService {
                             existing.setWeightPercent(weightPercent);
                             userHoldingRepository.save(existing);
                         },
-                        () -> userHoldingRepository.save(new UserHolding(
-                                user, instrument, qty.intValue(),
-                                avgPrice, lastPrice,
-                                investedValue, currentValue,
-                                pnl, pnlPercent,
-                                dayChange, dayChangePct
-                        ))
+                        () -> {
+                            UserHolding newHolding = new UserHolding(
+                                    user, instrument, qty.intValue(),
+                                    avgPrice, closePrice, lastPrice,
+                                    investedValue, currentValue,
+                                    pnl, pnlPercent,
+                                    dayChange, dayChangePct
+                            );
+                            newHolding.setWeightPercent(weightPercent);
+                            userHoldingRepository.save(newHolding);
+                        }
                 );
     }
 

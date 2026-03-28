@@ -47,6 +47,9 @@ public class UserHolding {
     @Column(name = "avg_price", nullable = false, precision = 18, scale = 4)
     private BigDecimal avgPrice;
 
+    @Column(name = "close_price", precision = 18, scale = 4)
+    private BigDecimal closePrice;
+
     @Column(name = "last_price", nullable = false, precision = 18, scale = 4)
     private BigDecimal lastPrice;
 
@@ -79,7 +82,7 @@ public class UserHolding {
     }
 
     public UserHolding(User user, Instrument instrument, Integer quantity,
-                       BigDecimal avgPrice, BigDecimal lastPrice,
+                       BigDecimal avgPrice, BigDecimal closePrice, BigDecimal lastPrice,
                        BigDecimal investedValue, BigDecimal currentValue,
                        BigDecimal pnl, BigDecimal pnlPercent,
                        BigDecimal dayChange, BigDecimal dayChangePercent) {
@@ -87,6 +90,7 @@ public class UserHolding {
         this.instrument = instrument;
         this.quantity = quantity;
         this.avgPrice = avgPrice;
+        this.closePrice = closePrice;
         this.lastPrice = lastPrice;
         this.investedValue = investedValue;
         this.currentValue = currentValue;
@@ -122,6 +126,14 @@ public class UserHolding {
 
     public void setAvgPrice(BigDecimal avgPrice) {
         this.avgPrice = avgPrice;
+    }
+
+    public BigDecimal getClosePrice() {
+        return closePrice;
+    }
+
+    public void setClosePrice(BigDecimal closePrice) {
+        this.closePrice = closePrice;
     }
 
     public BigDecimal getLastPrice() {
