@@ -50,7 +50,6 @@ public class AiPortfolioAdvisorService {
                                 .temperature(temperature)
                                 .numPredict(numPredict)
                                 .keepAlive(keepAlive)
-                                .format("json")
                                 .topP(0.9)
                                 .build();
 
