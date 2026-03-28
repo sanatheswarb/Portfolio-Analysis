@@ -15,6 +15,7 @@ import java.math.BigDecimal;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.logging.Logger;
 
 @Service
@@ -146,5 +147,32 @@ public class NseApiClient {
         }
 
         return null;
+    }
+
+    /**
+     * Fetch the raw NSE quote response for a single symbol.
+     * Used for instrument enrichment to extract company name, sector, industry,
+     * and market-cap details that are not present in {@link com.cursor_springa_ai.playground.dto.StockMetrics}.
+     */
+    public Optional<NseQuoteResponse> fetchQuote(String symbol) {
+        try {
+            String url = NSE_API_URL + symbol;
+
+            HttpHeaders headers = new HttpHeaders();
+            headers.set("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36");
+            headers.set("Accept", "application/json");
+            headers.set("Referer", "https://www.nseindia.com/");
+
+            HttpEntity<String> entity = new HttpEntity<>(headers);
+
+            ResponseEntity<String> response = restTemplate.exchange(url, HttpMethod.GET, entity, String.class);
+
+            if (response.getStatusCode().is2xxSuccessful() && response.getBody() != null) {
+                return Optional.ofNullable(objectMapper.readValue(response.getBody(), NseQuoteResponse.class));
+            }
+        } catch (Exception e) {
+            logger.warning("Error fetching NSE quote for " + symbol + ": " + e.getMessage());
+        }
+        return Optional.empty();
     }
 }

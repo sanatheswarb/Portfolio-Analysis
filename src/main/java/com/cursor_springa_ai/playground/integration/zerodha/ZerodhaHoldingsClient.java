@@ -81,10 +81,15 @@ public class ZerodhaHoldingsClient {
         }
 
         ZerodhaHoldingItem item = new ZerodhaHoldingItem();
+        item.setInstrumentToken(holding.instrumentToken);
         item.setTradingSymbol(holding.tradingSymbol);
 
         if (holding.exchange != null) {
             item.setExchange(holding.exchange);
+        }
+
+        if (holding.isin != null) {
+            item.setIsin(holding.isin);
         }
 
         if (holding.quantity > 0) {
