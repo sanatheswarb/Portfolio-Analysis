@@ -5,7 +5,7 @@ A **Spring Boot + Spring AI + Ollama** application that analyses an Indian equit
 1. Importing holdings from **Zerodha** (via the official KiteConnect SDK).
 2. Enriching each holding with market metrics from the **NSE API** (sector, PE, 52-week high/low, sector PE).
 3. Calculating portfolio-level risk metrics (concentration, diversification score, sector exposure).
-4. Generating actionable, conservative investment advice using a **local Ollama LLM** (no data leaves your machine).
+4. Generating actionable, conservative investment advice using a **local Ollama LLM** with **Spring AI tool calling** so deterministic metrics stay separate from LLM reasoning (no data leaves your machine).
 
 ---
 
@@ -47,6 +47,8 @@ All sensitive values are read from **environment variables**. Never commit crede
 | `ZERODHA_REDIRECT_URI` | OAuth callback URI (default: `https://kite.trade/`) | No |
 | `OLLAMA_BASE_URL` | Ollama base URL (default: `http://localhost:11434`) | No |
 | `OLLAMA_MODEL` | Ollama model name (default: `qwen2.5:7b-instruct`) | No |
+| `PORTFOLIO_ADVISOR_NUM_PREDICT` | Max generated tokens for the advisor response (default: `256`) | No |
+| `PORTFOLIO_ADVISOR_KEEP_ALIVE` | Ollama model keep-alive window to reduce cold-start latency (default: `10m`) | No |
 
 ### Setting environment variables
 
@@ -117,7 +119,12 @@ The server starts on **http://localhost:8080**.
 The analysis response includes:
 - Per-holding performance (P&L, allocation %, risk flags)
 - Portfolio-level metrics (diversification score, sector exposure, concentration flags)
-- LLM-generated advice: risk overview, diversification feedback, 3 actionable suggestions, cautionary note
+- Tool-assisted LLM-generated advice: risk overview, diversification feedback, 3 actionable suggestions, cautionary note
+
+The advisor flow keeps **metrics deterministic** and uses the LLM only for reasoning:
+- `PortfolioMetricsService` computes portfolio concentration/diversification metrics
+- `PortfolioReasoningTools` exposes those metrics plus flagged holdings through Spring AI tool calling
+- `AiPortfolioAdvisorService` sends a compact prompt to Ollama and lets the model pull only the evidence it needs
 
 ---
 

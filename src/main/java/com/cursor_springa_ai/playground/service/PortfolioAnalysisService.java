@@ -4,6 +4,7 @@ import com.cursor_springa_ai.playground.dto.EnrichedHoldingData;
 import com.cursor_springa_ai.playground.dto.HoldingPerformance;
 import com.cursor_springa_ai.playground.dto.PortfolioAdviceResponse;
 import com.cursor_springa_ai.playground.dto.PortfolioAnalysisResponse;
+import com.cursor_springa_ai.playground.dto.PortfolioMetrics;
 import com.cursor_springa_ai.playground.dto.PortfolioSummary;
 import com.cursor_springa_ai.playground.model.Holding;
 import com.cursor_springa_ai.playground.model.Portfolio;
@@ -21,21 +22,25 @@ public class PortfolioAnalysisService {
     private final MarketPriceService marketPriceService;
     private final AiPortfolioAdvisorService aiPortfolioAdvisorService;
     private final EnrichedHoldingDataCache enrichedHoldingDataCache;
+    private final PortfolioMetricsService portfolioMetricsService;
 
     public PortfolioAnalysisService(
             PortfolioService portfolioService,
             MarketPriceService marketPriceService,
             AiPortfolioAdvisorService aiPortfolioAdvisorService,
-            EnrichedHoldingDataCache enrichedHoldingDataCache
+            EnrichedHoldingDataCache enrichedHoldingDataCache,
+            PortfolioMetricsService portfolioMetricsService
     ) {
         this.portfolioService = portfolioService;
         this.marketPriceService = marketPriceService;
         this.aiPortfolioAdvisorService = aiPortfolioAdvisorService;
         this.enrichedHoldingDataCache = enrichedHoldingDataCache;
+        this.portfolioMetricsService = portfolioMetricsService;
     }
 
     public PortfolioAnalysisResponse analyzePortfolio(String portfolioId) {
         Portfolio portfolio = portfolioService.getPortfolio(portfolioId);
+        long metricsStart = System.currentTimeMillis();
 
         BigDecimal totalInvested = BigDecimal.ZERO;
         BigDecimal totalCurrentValue = BigDecimal.ZERO;
@@ -62,24 +67,17 @@ public class PortfolioAnalysisService {
             ));
         }
 
-        // Fetch pre-enriched holdings from cache (built during import)
         List<EnrichedHoldingData> enrichedHoldings = enrichedHoldingDataCache.getEnrichedHoldings(portfolioId);
 
-        // Calculate allocation percent for each holding
         BigDecimal scaledTotalCurrentValue = scale(totalCurrentValue);
         enrichedHoldings = enrichedHoldingDataCache.calculateWithAllocationPercent(enrichedHoldings, scaledTotalCurrentValue);
-
-        // Calculate risk flags for each holding
         enrichedHoldings = enrichedHoldingDataCache.calculateRiskFlags(enrichedHoldings);
 
         BigDecimal totalProfitLoss = totalCurrentValue.subtract(totalInvested);
-        
-        // Calculate total P&L percent
-        BigDecimal totalPnLPercent = totalInvested.compareTo(BigDecimal.ZERO) != 0 
-                ? totalProfitLoss.divide(totalInvested, 4, RoundingMode.HALF_UP).multiply(BigDecimal.valueOf(100)) 
+        BigDecimal totalPnLPercent = totalInvested.compareTo(BigDecimal.ZERO) != 0
+                ? totalProfitLoss.divide(totalInvested, 4, RoundingMode.HALF_UP).multiply(BigDecimal.valueOf(100))
                 : BigDecimal.ZERO;
-        
-        // Create portfolio summary
+
         PortfolioSummary portfolioSummary = new PortfolioSummary(
                 scale(totalInvested),
                 scale(totalCurrentValue),
@@ -87,12 +85,26 @@ public class PortfolioAnalysisService {
                 scale(totalPnLPercent),
                 enrichedHoldings.size()
         );
-        
-        PortfolioAdviceResponse aiInsights = aiPortfolioAdvisorService.generateInsightsWithMetrics(
-                portfolio,
+
+        PortfolioMetrics portfolioMetrics = portfolioMetricsService.calculatePortfolioMetrics(
                 enrichedHoldings,
-                portfolioSummary
+                totalCurrentValue
         );
+
+        long metricsTime = System.currentTimeMillis() - metricsStart;
+
+        PortfolioReasoningContext reasoningContext = new PortfolioReasoningContext(
+                portfolio.getId(),
+                portfolio.getOwnerName(),
+                portfolioSummary,
+                portfolioMetrics,
+                enrichedHoldings
+        );
+
+        PortfolioAdviceResponse aiInsights = aiPortfolioAdvisorService.generateInsights(reasoningContext);
+
+        java.util.logging.Logger.getLogger(PortfolioAnalysisService.class.getName())
+                .info("Deterministic portfolio metrics time: " + metricsTime + " ms");
 
         return new PortfolioAnalysisResponse(
                 portfolio.getId(),

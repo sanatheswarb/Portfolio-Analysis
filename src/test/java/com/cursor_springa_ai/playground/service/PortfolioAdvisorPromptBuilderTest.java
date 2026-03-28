@@ -1,30 +1,22 @@
 package com.cursor_springa_ai.playground.service;
 
 import com.cursor_springa_ai.playground.dto.EnrichedHoldingData;
+import com.cursor_springa_ai.playground.dto.PortfolioMetrics;
 import com.cursor_springa_ai.playground.dto.PortfolioSummary;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
 
 import java.math.BigDecimal;
 import java.util.List;
+import java.util.Map;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class PortfolioAdvisorPromptBuilderTest {
 
     private final PortfolioAdvisorPromptBuilder builder = new PortfolioAdvisorPromptBuilder(new ObjectMapper());
-
-    @Test
-    void defaultConstructor_initializesObjectMapper() {
-        PortfolioAdvisorPromptBuilder defaultBuilder = new PortfolioAdvisorPromptBuilder();
-
-        String json = defaultBuilder.buildPortfolioSummaryJson(
-                new PortfolioSummary(BigDecimal.TEN, BigDecimal.ONE, BigDecimal.ZERO, BigDecimal.ZERO, 1)
-        );
-
-        assertNotNull(json);
-        assertTrue(json.contains("totalInvested"));
-    }
 
     @Test
     void buildEnrichedHoldingsJson_excludesPeFromOutput() {
@@ -64,20 +56,29 @@ class PortfolioAdvisorPromptBuilderTest {
 
         assertNotNull(prompt);
         assertTrue(prompt.contains("PRIMARY OBJECTIVE"));
+        assertTrue(prompt.contains("Call portfolio_overview first"));
         assertTrue(prompt.contains("OUTPUT REQUIREMENTS"));
-        assertTrue(prompt.contains("getPortfolioMetrics tool"));
     }
 
     @Test
-    void buildPortfolioDataWithMetrics_usesToolCallingInstructions() {
+    void buildReasoningRequest_containsCompactToolDrivenSections() {
         PortfolioSummary summary = new PortfolioSummary(BigDecimal.valueOf(10000), BigDecimal.valueOf(11000), BigDecimal.valueOf(1000), BigDecimal.valueOf(10), 2);
+        PortfolioMetrics metrics = new PortfolioMetrics(BigDecimal.valueOf(10000), BigDecimal.valueOf(11000), BigDecimal.valueOf(1000), BigDecimal.valueOf(10), 2,
+                BigDecimal.valueOf(30), BigDecimal.valueOf(60), Map.of("financial", BigDecimal.valueOf(45)), Map.of("financial", 2), List.of("HIGH_CONCENTRATION"), BigDecimal.valueOf(55));
+        PortfolioReasoningContext reasoningContext = new PortfolioReasoningContext(
+                "portfolio-1",
+                "Alice",
+                summary,
+                metrics,
+                List.of()
+        );
 
-        String data = builder.buildPortfolioDataWithMetrics(null, List.of(), summary);
+        String data = builder.buildReasoningRequest(reasoningContext);
 
         assertNotNull(data);
-        assertTrue(data.contains("Portfolio Summary"));
-        assertTrue(data.contains("getPortfolioMetrics tool"));
-        assertTrue(data.contains("Holdings (enriched with market metrics and risk flags)"));
-        assertFalse(data.contains("Portfolio Metrics:"));
+        assertTrue(data.contains("portfolio_id: portfolio-1"));
+        assertTrue(data.contains("owner_name: Alice"));
+        assertTrue(data.contains("use_tools_for_metrics_and_holding_evidence: true"));
+        assertTrue(data.contains("HIGH_CONCENTRATION"));
     }
 }

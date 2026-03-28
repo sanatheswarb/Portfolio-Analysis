@@ -3,8 +3,6 @@ package com.cursor_springa_ai.playground.service;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
-import java.util.Locale;
-
 /**
  * Fallback price service used when a holding's current price is unavailable.
  * For portfolios imported from Zerodha, the last traded price is always present,
