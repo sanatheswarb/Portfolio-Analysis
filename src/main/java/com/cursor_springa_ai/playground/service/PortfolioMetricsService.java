@@ -18,8 +18,9 @@ public class PortfolioMetricsService {
     /**
      * Calculate portfolio-level metrics from enriched holdings.
      */
-    public PortfolioMetrics calculatePortfolioMetrics(List<EnrichedHoldingData> enrichedHoldings, 
-                                                       BigDecimal totalCurrentValue) {
+    public PortfolioMetrics calculatePortfolioMetrics(
+            List<EnrichedHoldingData> enrichedHoldings,
+            BigDecimal totalCurrentValue) {
         
         if (enrichedHoldings == null || enrichedHoldings.isEmpty()) {
             logger.warning("Cannot calculate portfolio metrics: no holdings provided");

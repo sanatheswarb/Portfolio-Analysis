@@ -67,24 +67,17 @@ public class PortfolioAnalysisService {
             ));
         }
 
-        // Fetch pre-enriched holdings from cache (built during import)
         List<EnrichedHoldingData> enrichedHoldings = enrichedHoldingDataCache.getEnrichedHoldings(portfolioId);
 
-        // Calculate allocation percent for each holding
         BigDecimal scaledTotalCurrentValue = scale(totalCurrentValue);
         enrichedHoldings = enrichedHoldingDataCache.calculateWithAllocationPercent(enrichedHoldings, scaledTotalCurrentValue);
-
-        // Calculate risk flags for each holding
         enrichedHoldings = enrichedHoldingDataCache.calculateRiskFlags(enrichedHoldings);
 
         BigDecimal totalProfitLoss = totalCurrentValue.subtract(totalInvested);
-        
-        // Calculate total P&L percent
-        BigDecimal totalPnLPercent = totalInvested.compareTo(BigDecimal.ZERO) != 0 
-                ? totalProfitLoss.divide(totalInvested, 4, RoundingMode.HALF_UP).multiply(BigDecimal.valueOf(100)) 
+        BigDecimal totalPnLPercent = totalInvested.compareTo(BigDecimal.ZERO) != 0
+                ? totalProfitLoss.divide(totalInvested, 4, RoundingMode.HALF_UP).multiply(BigDecimal.valueOf(100))
                 : BigDecimal.ZERO;
-        
-        // Create portfolio summary
+
         PortfolioSummary portfolioSummary = new PortfolioSummary(
                 scale(totalInvested),
                 scale(totalCurrentValue),
@@ -92,8 +85,7 @@ public class PortfolioAnalysisService {
                 scale(totalPnLPercent),
                 enrichedHoldings.size()
         );
-        
-        // Calculate portfolio-level metrics
+
         PortfolioMetrics portfolioMetrics = portfolioMetricsService.calculatePortfolioMetrics(
                 enrichedHoldings,
                 totalCurrentValue

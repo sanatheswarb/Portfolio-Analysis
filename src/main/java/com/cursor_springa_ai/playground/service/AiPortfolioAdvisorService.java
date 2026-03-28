@@ -76,14 +76,12 @@ public class AiPortfolioAdvisorService {
                         logger.warning("Failed to parse AI response as JSON: " + e.getMessage());
                         logger.warning("Raw AI response: " + aiResponse);
 
-                        // Try to extract suggestions from malformed JSON
                         PortfolioAdviceResponse fallback = tryExtractSuggestionsFromMalformedJson(aiResponse);
                         if (fallback != null) {
                                 logger.info("Successfully extracted suggestions from malformed JSON");
                                 return normalizeAdviceResponse(fallback);
                         }
 
-                        // Return a fallback response with the raw text
                         return new PortfolioAdviceResponse(
                                         "Unable to parse AI response. Raw response: " + aiResponse.substring(0, Math.min(200, aiResponse.length())),
                                         "Unable to parse structured response",
@@ -139,7 +137,6 @@ public class AiPortfolioAdvisorService {
 
         private PortfolioAdviceResponse tryExtractSuggestionsFromMalformedJson(String aiResponse) {
                 try {
-                        // Look for suggestions array in the response
                         int suggestionsStart = aiResponse.indexOf("\"suggestions\":");
                         if (suggestionsStart == -1) {
                                 return null;
@@ -154,16 +151,14 @@ public class AiPortfolioAdvisorService {
 
                         String suggestionsArray = aiResponse.substring(arrayStart, arrayEnd + 1);
 
-                        // Try to parse just the suggestions array
-                        List<String> suggestions = objectMapper.readValue(suggestionsArray, objectMapper.getTypeFactory().constructCollectionType(List.class, String.class));
+                        List<String> suggestions = objectMapper.readValue(
+                                        suggestionsArray,
+                                        objectMapper.getTypeFactory().constructCollectionType(List.class, String.class));
 
-                        // Filter out any non-string entries that might have been parsed
                         suggestions = suggestions.stream()
-                                        .filter(s -> s instanceof String && !s.contains(":") && !s.trim().isEmpty())
-                                        .map(Object::toString)
+                                        .filter(s -> !s.contains(":") && !s.trim().isEmpty())
                                         .toList();
 
-                        // If we have at least one valid suggestion, create a response
                         if (!suggestions.isEmpty()) {
                                 return new PortfolioAdviceResponse(
                                                 extractFieldFromJson(aiResponse, "risk_overview"),
@@ -200,8 +195,4 @@ public class AiPortfolioAdvisorService {
                         return "Unable to extract " + fieldName;
                 }
         }
-
-        
-
-      
 }
