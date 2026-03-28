@@ -28,6 +28,8 @@ public class ZerodhaImportService {
     private final EnrichedHoldingDataCache enrichedHoldingDataCache;
     private final ZerodhaAuthService zerodhaAuthService;
     private final InstrumentEnrichmentService instrumentEnrichmentService;
+    private final StockFundamentalsService stockFundamentalsService;
+    private final StockMetricsCalculationService stockMetricsCalculationService;
     private final UserHoldingRepository userHoldingRepository;
 
     public ZerodhaImportService(
@@ -37,6 +39,8 @@ public class ZerodhaImportService {
             EnrichedHoldingDataCache enrichedHoldingDataCache,
             ZerodhaAuthService zerodhaAuthService,
             InstrumentEnrichmentService instrumentEnrichmentService,
+            StockFundamentalsService stockFundamentalsService,
+            StockMetricsCalculationService stockMetricsCalculationService,
             UserHoldingRepository userHoldingRepository
     ) {
         this.zerodhaHoldingsClient = zerodhaHoldingsClient;
@@ -45,6 +49,8 @@ public class ZerodhaImportService {
         this.enrichedHoldingDataCache = enrichedHoldingDataCache;
         this.zerodhaAuthService = zerodhaAuthService;
         this.instrumentEnrichmentService = instrumentEnrichmentService;
+        this.stockFundamentalsService = stockFundamentalsService;
+        this.stockMetricsCalculationService = stockMetricsCalculationService;
         this.userHoldingRepository = userHoldingRepository;
     }
 
@@ -79,6 +85,11 @@ public class ZerodhaImportService {
             // Upsert instruments catalogue (insert if new, enrich from NSE if not yet enriched)
             Instrument instrument = instrumentEnrichmentService.upsertAndEnrich(item);
 
+            // Upsert stock fundamentals (pe, market_cap, sector) — refreshed if stale
+            if (instrument != null) {
+                stockFundamentalsService.upsertIfStale(instrument);
+            }
+
             Holding holding = new Holding(
                     symbol,
                     exchange,
@@ -102,6 +113,11 @@ public class ZerodhaImportService {
         // Build and cache enriched holdings for the portfolio
         enrichedHoldingDataCache.buildAndCache(resolvedPortfolioId, holdingsToEnrich);
 
+        // Recalculate per-instrument metrics for the authenticated user
+        if (currentUser != null) {
+            stockMetricsCalculationService.calculateForUser(currentUser);
+        }
+
         return new ZerodhaImportResponse(
                 resolvedPortfolioId,
                 importedSymbols.size(),
@@ -116,6 +132,9 @@ public class ZerodhaImportService {
     private void upsertUserHolding(User user, Instrument instrument, ZerodhaHoldingItem item,
                                    BigDecimal totalCurrentValue) {
         BigDecimal qty = item.getQuantity();
+        // Indian equity markets do not support fractional shares; round to the nearest
+        // whole number defensively before storing as Integer.
+        int qtyInt = qty.setScale(0, RoundingMode.HALF_UP).intValue();
         BigDecimal avgPrice = nvl(item.getAveragePrice());
         BigDecimal closePrice = nvl(item.getClosePrice());
         BigDecimal lastPrice = nvl(item.getLastPrice());
@@ -137,7 +156,7 @@ public class ZerodhaImportService {
                 .findByUserIdAndInstrumentInstrumentToken(user.getId(), instrument.getInstrumentToken())
                 .ifPresentOrElse(
                         existing -> {
-                            existing.setQuantity(qty.intValue());
+                            existing.setQuantity(qtyInt);
                             existing.setAvgPrice(avgPrice);
                             existing.setClosePrice(closePrice);
                             existing.setLastPrice(lastPrice);
@@ -152,7 +171,7 @@ public class ZerodhaImportService {
                         },
                         () -> {
                             UserHolding newHolding = new UserHolding(
-                                    user, instrument, qty.intValue(),
+                                    user, instrument, qtyInt,
                                     avgPrice, closePrice, lastPrice,
                                     investedValue, currentValue,
                                     pnl, pnlPercent,

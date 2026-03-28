@@ -8,6 +8,7 @@ import com.cursor_springa_ai.playground.dto.PortfolioMetrics;
 import com.cursor_springa_ai.playground.dto.PortfolioSummary;
 import com.cursor_springa_ai.playground.model.Holding;
 import com.cursor_springa_ai.playground.model.Portfolio;
+import com.cursor_springa_ai.playground.model.User;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
@@ -23,19 +24,25 @@ public class PortfolioAnalysisService {
     private final AiPortfolioAdvisorService aiPortfolioAdvisorService;
     private final EnrichedHoldingDataCache enrichedHoldingDataCache;
     private final PortfolioMetricsService portfolioMetricsService;
+    private final ZerodhaAuthService zerodhaAuthService;
+    private final AiAnalysisService aiAnalysisService;
 
     public PortfolioAnalysisService(
             PortfolioService portfolioService,
             MarketPriceService marketPriceService,
             AiPortfolioAdvisorService aiPortfolioAdvisorService,
             EnrichedHoldingDataCache enrichedHoldingDataCache,
-            PortfolioMetricsService portfolioMetricsService
+            PortfolioMetricsService portfolioMetricsService,
+            ZerodhaAuthService zerodhaAuthService,
+            AiAnalysisService aiAnalysisService
     ) {
         this.portfolioService = portfolioService;
         this.marketPriceService = marketPriceService;
         this.aiPortfolioAdvisorService = aiPortfolioAdvisorService;
         this.enrichedHoldingDataCache = enrichedHoldingDataCache;
         this.portfolioMetricsService = portfolioMetricsService;
+        this.zerodhaAuthService = zerodhaAuthService;
+        this.aiAnalysisService = aiAnalysisService;
     }
 
     public PortfolioAnalysisResponse analyzePortfolio(String portfolioId) {
@@ -110,6 +117,10 @@ public class PortfolioAnalysisService {
         );
 
         PortfolioAdviceResponse aiInsights = aiPortfolioAdvisorService.generateInsights(reasoningContext);
+
+        // Persist the AI response to ai_analysis (append-only audit log)
+        User currentUser = zerodhaAuthService.getCurrentUser();
+        aiAnalysisService.savePortfolioAdvice(currentUser, aiInsights);
 
         java.util.logging.Logger.getLogger(PortfolioAnalysisService.class.getName())
                 .info("Deterministic portfolio metrics time: " + metricsTime + " ms");
