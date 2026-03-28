@@ -18,6 +18,7 @@ import java.util.List;
 @Service
 public class PortfolioAnalysisService {
 
+    private static final java.util.logging.Logger logger = java.util.logging.Logger.getLogger(PortfolioAnalysisService.class.getName());
     private final PortfolioService portfolioService;
     private final MarketPriceService marketPriceService;
     private final AiPortfolioAdvisorService aiPortfolioAdvisorService;
@@ -103,8 +104,7 @@ public class PortfolioAnalysisService {
 
         PortfolioAdviceResponse aiInsights = aiPortfolioAdvisorService.generateInsights(reasoningContext);
 
-        java.util.logging.Logger.getLogger(PortfolioAnalysisService.class.getName())
-                .info("Deterministic portfolio metrics time: " + metricsTime + " ms");
+        logger.info("Deterministic portfolio metrics time: " + metricsTime + " ms");
 
         return new PortfolioAnalysisResponse(
                 portfolio.getId(),

@@ -156,8 +156,7 @@ public class AiPortfolioAdvisorService {
                                         objectMapper.getTypeFactory().constructCollectionType(List.class, String.class));
 
                         suggestions = suggestions.stream()
-                                        .filter(s -> s instanceof String && !s.contains(":") && !s.trim().isEmpty())
-                                        .map(Object::toString)
+                                        .filter(s -> !s.contains(":") && !s.trim().isEmpty())
                                         .toList();
 
                         if (!suggestions.isEmpty()) {
