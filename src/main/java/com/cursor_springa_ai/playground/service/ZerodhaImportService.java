@@ -27,6 +27,7 @@ public class ZerodhaImportService {
     private final StockFundamentalsService stockFundamentalsService;
     private final StockMetricsCalculationService stockMetricsCalculationService;
     private final UserHoldingRepository userHoldingRepository;
+    private final PortfolioStatsBatchService portfolioStatsBatchService;
 
     public ZerodhaImportService(
             ZerodhaHoldingsClient zerodhaHoldingsClient,
@@ -34,7 +35,8 @@ public class ZerodhaImportService {
             InstrumentEnrichmentService instrumentEnrichmentService,
             StockFundamentalsService stockFundamentalsService,
             StockMetricsCalculationService stockMetricsCalculationService,
-            UserHoldingRepository userHoldingRepository
+            UserHoldingRepository userHoldingRepository,
+            PortfolioStatsBatchService portfolioStatsBatchService
     ) {
         this.zerodhaHoldingsClient = zerodhaHoldingsClient;
         this.zerodhaAuthService = zerodhaAuthService;
@@ -42,6 +44,7 @@ public class ZerodhaImportService {
         this.stockFundamentalsService = stockFundamentalsService;
         this.stockMetricsCalculationService = stockMetricsCalculationService;
         this.userHoldingRepository = userHoldingRepository;
+        this.portfolioStatsBatchService = portfolioStatsBatchService;
     }
 
     public ZerodhaImportResponse importHoldings() {
@@ -74,6 +77,8 @@ public class ZerodhaImportService {
         }
 
         stockMetricsCalculationService.calculateForUser(currentUser);
+
+        portfolioStatsBatchService.calculateForUserAsync(currentUser);
 
         return new ZerodhaImportResponse(
                 currentUser.getBrokerUserId(),

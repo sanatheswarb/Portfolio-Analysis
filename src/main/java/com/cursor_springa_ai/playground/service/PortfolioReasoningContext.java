@@ -8,7 +8,6 @@ import java.util.List;
 
 public record PortfolioReasoningContext(
         String portfolioId,
-        String ownerName,
         PortfolioSummary portfolioSummary,
         PortfolioMetrics portfolioMetrics,
         List<EnrichedHoldingData> enrichedHoldings

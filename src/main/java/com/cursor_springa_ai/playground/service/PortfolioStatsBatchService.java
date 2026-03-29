@@ -6,6 +6,7 @@ import com.cursor_springa_ai.playground.model.UserHolding;
 import com.cursor_springa_ai.playground.repository.PortfolioStatsRepository;
 import com.cursor_springa_ai.playground.repository.UserHoldingRepository;
 import com.cursor_springa_ai.playground.repository.UserRepository;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -81,6 +82,14 @@ public class PortfolioStatsBatchService {
         }
         logger.info("Portfolio stats batch complete: " + count + " user(s) processed.");
         return count;
+    }
+
+    /**
+     * Fire-and-forget variant — runs {@link #calculateForUser} on a separate thread.
+     */
+    @Async
+    public void calculateForUserAsync(User user) {
+        calculateForUser(user);
     }
 
     /**

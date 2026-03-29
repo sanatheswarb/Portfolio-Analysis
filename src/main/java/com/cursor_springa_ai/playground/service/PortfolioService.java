@@ -24,7 +24,6 @@ import java.util.logging.Logger;
 public class PortfolioService {
 
     private static final Logger logger = Logger.getLogger(PortfolioService.class.getName());
-    private static final String BROKER_LOCAL = "LOCAL_PORTFOLIO";
 
     private final UserRepository userRepository;
     private final UserHoldingRepository userHoldingRepository;
@@ -39,17 +38,9 @@ public class PortfolioService {
     }
 
     @Transactional
-    public Portfolio createPortfolio(String ownerName) {
-        String normalizedOwner = ownerName == null ? "" : ownerName.trim();
-        if (normalizedOwner.isEmpty()) {
-            throw new IllegalArgumentException("ownerName must not be blank");
-        }
-
-        User user = userRepository.findByBrokerAndBrokerUserId(BROKER_LOCAL, normalizedOwner)
-                .orElseGet(() -> userRepository.save(new User(BROKER_LOCAL, normalizedOwner)));
-
+    public Portfolio createPortfolio(User user) {
         Portfolio portfolio = toPortfolio(user, userHoldingRepository.findByUserId(user.getId()));
-        logger.info("Created/Reused portfolio | ID: " + portfolio.getId() + ", Owner: " + portfolio.getOwnerName());
+        logger.info("Created/Reused portfolio | ID: " + portfolio.getId());
         return portfolio;
     }
 
@@ -156,7 +147,7 @@ public class PortfolioService {
     }
 
     private Portfolio toPortfolio(User user, List<UserHolding> userHoldings) {
-        Portfolio portfolio = new Portfolio(user.getBrokerUserId(), user.getBrokerUserId());
+        Portfolio portfolio = new Portfolio(user.getBrokerUserId());
         LinkedHashMap<String, Holding> holdings = new LinkedHashMap<>();
         for (UserHolding userHolding : userHoldings) {
             Holding holding = new Holding(

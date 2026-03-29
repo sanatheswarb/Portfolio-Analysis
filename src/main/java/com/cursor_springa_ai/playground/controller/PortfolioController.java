@@ -1,7 +1,6 @@
 package com.cursor_springa_ai.playground.controller;
 
 import com.cursor_springa_ai.playground.dto.AddHoldingRequest;
-import com.cursor_springa_ai.playground.dto.CreatePortfolioRequest;
 import com.cursor_springa_ai.playground.dto.PortfolioAnalysisResponse;
 import com.cursor_springa_ai.playground.dto.ZerodhaImportResponse;
 import com.cursor_springa_ai.playground.model.Holding;
@@ -48,8 +47,8 @@ public class PortfolioController {
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
-    public Portfolio createPortfolio(@Valid @RequestBody CreatePortfolioRequest request) {
-        return portfolioService.createPortfolio(request.ownerName());
+    public Portfolio createPortfolio() {
+        return portfolioService.createPortfolio(requireAuthenticatedUser());
     }
 
     @GetMapping

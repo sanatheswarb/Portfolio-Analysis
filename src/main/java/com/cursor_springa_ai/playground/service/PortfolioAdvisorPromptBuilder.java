@@ -66,14 +66,12 @@ public class PortfolioAdvisorPromptBuilder {
         return """
                         Portfolio Analysis Request:
                         portfolio_id: %s
-                        owner_name: %s
                         portfolio_summary: %s
                         precomputed_portfolio_risk_flags: %s
                         use_tools_for_metrics_and_holding_evidence: true
                         """
                 .formatted(
                         reasoningContext.portfolioId(),
-                        reasoningContext.ownerName(),
                         summaryJson,
                         portfolioRiskFlags(reasoningContext)
                 );

@@ -64,7 +64,6 @@ class PortfolioAdvisorPromptBuilderTest {
                 BigDecimal.valueOf(30), BigDecimal.valueOf(60), Map.of("financial", BigDecimal.valueOf(45)), Map.of("financial", 2), List.of("HIGH_CONCENTRATION"), BigDecimal.valueOf(55));
         PortfolioReasoningContext reasoningContext = new PortfolioReasoningContext(
                 "portfolio-1",
-                "Alice",
                 summary,
                 metrics,
                 List.of()
@@ -74,7 +73,6 @@ class PortfolioAdvisorPromptBuilderTest {
 
         assertNotNull(data);
         assertTrue(data.contains("portfolio_id: portfolio-1"));
-        assertTrue(data.contains("owner_name: Alice"));
         assertTrue(data.contains("use_tools_for_metrics_and_holding_evidence: true"));
         assertTrue(data.contains("HIGH_CONCENTRATION"));
     }

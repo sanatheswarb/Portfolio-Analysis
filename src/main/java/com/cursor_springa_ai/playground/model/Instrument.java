@@ -1,8 +1,11 @@
 package com.cursor_springa_ai.playground.model;
 
+import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.FetchType;
 import jakarta.persistence.Id;
+import jakarta.persistence.OneToOne;
 import jakarta.persistence.Table;
 import org.hibernate.annotations.CreationTimestamp;
 
@@ -49,6 +52,9 @@ public class Instrument {
 
     @Column(name = "last_enriched")
     private LocalDateTime lastEnriched;
+
+    @OneToOne(mappedBy = "instrument", fetch = FetchType.LAZY, cascade = CascadeType.ALL)
+    private StockFundamentals stockFundamentals;
 
     protected Instrument() {
     }
@@ -130,5 +136,13 @@ public class Instrument {
 
     public void setLastEnriched(LocalDateTime lastEnriched) {
         this.lastEnriched = lastEnriched;
+    }
+
+    public StockFundamentals getStockFundamentals() {
+        return stockFundamentals;
+    }
+
+    public void setStockFundamentals(StockFundamentals stockFundamentals) {
+        this.stockFundamentals = stockFundamentals;
     }
 }

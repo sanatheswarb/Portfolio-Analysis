@@ -25,7 +25,6 @@ public class PortfolioReasoningTools {
     public String portfolioOverview() {
         Map<String, Object> payload = new LinkedHashMap<>();
         payload.put("portfolioId", context.portfolioId());
-        payload.put("ownerName", context.ownerName());
         payload.put("summary", context.portfolioSummary());
         payload.put("metrics", context.portfolioMetrics());
         payload.put("largestHoldings", largestHoldings());

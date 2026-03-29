@@ -6,15 +6,13 @@ import java.util.Map;
 public class Portfolio {
 
     private String id;
-    private String ownerName;
     private Map<String, Holding> holdings = new LinkedHashMap<>();
 
     public Portfolio() {
     }
 
-    public Portfolio(String id, String ownerName) {
+    public Portfolio(String id) {
         this.id = id;
-        this.ownerName = ownerName;
     }
 
     public String getId() {
@@ -23,14 +21,6 @@ public class Portfolio {
 
     public void setId(String id) {
         this.id = id;
-    }
-
-    public String getOwnerName() {
-        return ownerName;
-    }
-
-    public void setOwnerName(String ownerName) {
-        this.ownerName = ownerName;
     }
 
     public Map<String, Holding> getHoldings() {

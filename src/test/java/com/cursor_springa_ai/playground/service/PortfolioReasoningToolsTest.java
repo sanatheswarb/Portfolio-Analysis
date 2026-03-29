@@ -26,7 +26,6 @@ class PortfolioReasoningToolsTest {
         Map<?, ?> payload = objectMapper.readValue(json, Map.class);
 
         assertEquals("portfolio-1", payload.get("portfolioId"));
-        assertEquals("Alice", payload.get("ownerName"));
         assertTrue(json.contains("HIGH_CONCENTRATION"));
         assertTrue(json.contains("INFY"));
     }
@@ -144,6 +143,6 @@ class PortfolioReasoningToolsTest {
                 List.of()
         );
 
-        return new PortfolioReasoningContext("portfolio-1", "Alice", summary, metrics, List.of(infy, tcs, hdfcBank));
+        return new PortfolioReasoningContext("portfolio-1", summary, metrics, List.of(infy, tcs, hdfcBank));
     }
 }
