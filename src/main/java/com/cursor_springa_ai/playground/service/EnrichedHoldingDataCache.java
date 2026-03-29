@@ -8,17 +8,13 @@ import org.springframework.stereotype.Service;
 import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.logging.Logger;
 
 @Service
 public class EnrichedHoldingDataCache {
 
     private static final Logger logger = Logger.getLogger(EnrichedHoldingDataCache.class.getName());
-    
-    // Cache structure: portfolioId -> List<EnrichedHoldingData>
-    private final ConcurrentHashMap<String, List<EnrichedHoldingData>> cache = new ConcurrentHashMap<>();
-    
+
     private final MarketMetricsCache marketMetricsCache;
 
     public EnrichedHoldingDataCache(MarketMetricsCache marketMetricsCache) {
@@ -26,10 +22,9 @@ public class EnrichedHoldingDataCache {
     }
 
     /**
-     * Build and cache enriched holdings for a portfolio.
-     * Called during import to enrich holdings with market metrics.
+     * Build enriched holdings on demand from current holdings.
      */
-    public List<EnrichedHoldingData> buildAndCache(String portfolioId, List<Holding> holdings) {
+    public List<EnrichedHoldingData> buildEnrichedHoldings(List<Holding> holdings) {
         List<EnrichedHoldingData> enrichedList = new ArrayList<>();
 
         for (Holding holding : holdings) {
@@ -75,8 +70,7 @@ public class EnrichedHoldingDataCache {
             enrichedList.add(enriched);
         }
 
-        cache.put(portfolioId, enrichedList);
-        logger.info("Cached enriched holdings for portfolio: " + portfolioId + " | Count: " + enrichedList.size());
+        logger.info("Built enriched holdings | Count: " + enrichedList.size());
         return enrichedList;
     }
 
@@ -106,19 +100,6 @@ public class EnrichedHoldingDataCache {
                 .divide(metrics.week52High(), 4, java.math.RoundingMode.HALF_UP)
                 .multiply(BigDecimal.valueOf(100))
                 .setScale(2, java.math.RoundingMode.HALF_UP);
-    }
-
-    /**
-     * Get cached enriched holdings for a portfolio.
-     */
-    public List<EnrichedHoldingData> getEnrichedHoldings(String portfolioId) {
-        List<EnrichedHoldingData> cached = cache.get(portfolioId);
-        if (cached != null) {
-            logger.info("Retrieved " + cached.size() + " enriched holdings from cache for portfolio: " + portfolioId);
-            return new ArrayList<>(cached); // Return a copy
-        }
-        logger.warning("No cached enriched holdings found for portfolio: " + portfolioId);
-        return new ArrayList<>();
     }
 
     /**
@@ -245,22 +226,6 @@ public class EnrichedHoldingDataCache {
 
         logger.info("Risk flag calculation completed for " + result.size() + " holdings");
         return result;
-    }
-
-    /**
-     * Clear cache for a specific portfolio.
-     */
-    public void clearPortfolioCache(String portfolioId) {
-        cache.remove(portfolioId);
-        logger.info("Cleared enriched holdings cache for portfolio: " + portfolioId);
-    }
-
-    /**
-     * Clear entire cache (useful for testing or refresh).
-     */
-    public void clearAllCache() {
-        cache.clear();
-        logger.info("Cleared all enriched holdings cache");
     }
 
     /**

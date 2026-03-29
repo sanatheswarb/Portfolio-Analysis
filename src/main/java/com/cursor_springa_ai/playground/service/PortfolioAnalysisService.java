@@ -45,8 +45,13 @@ public class PortfolioAnalysisService {
         this.aiAnalysisService = aiAnalysisService;
     }
 
-    public PortfolioAnalysisResponse analyzePortfolio(String portfolioId) {
-        Portfolio portfolio = portfolioService.getPortfolio(portfolioId);
+        public PortfolioAnalysisResponse analyzeCurrentUserPortfolio() {
+                User currentUser = zerodhaAuthService.getCurrentUser();
+                if (currentUser == null) {
+                        throw new IllegalStateException("No authenticated Zerodha user found. Please complete login first.");
+                }
+
+                Portfolio portfolio = portfolioService.getPortfolio(currentUser);
         long metricsStart = System.currentTimeMillis();
 
         BigDecimal totalInvested = BigDecimal.ZERO;
@@ -74,8 +79,9 @@ public class PortfolioAnalysisService {
             ));
         }
 
-        // Fetch pre-enriched holdings from cache (built during import)
-        List<EnrichedHoldingData> enrichedHoldings = enrichedHoldingDataCache.getEnrichedHoldings(portfolioId);
+        // Build enriched holdings on demand from current portfolio data.
+        List<EnrichedHoldingData> enrichedHoldings =
+                enrichedHoldingDataCache.buildEnrichedHoldings(new ArrayList<>(portfolio.getHoldings().values()));
 
         // Calculate allocation percent for each holding
         BigDecimal scaledTotalCurrentValue = scale(totalCurrentValue);
@@ -119,7 +125,6 @@ public class PortfolioAnalysisService {
         PortfolioAdviceResponse aiInsights = aiPortfolioAdvisorService.generateInsights(reasoningContext);
 
         // Persist the AI response to ai_analysis (append-only audit log)
-        User currentUser = zerodhaAuthService.getCurrentUser();
         aiAnalysisService.savePortfolioAdvice(currentUser, aiInsights);
 
         java.util.logging.Logger.getLogger(PortfolioAnalysisService.class.getName())

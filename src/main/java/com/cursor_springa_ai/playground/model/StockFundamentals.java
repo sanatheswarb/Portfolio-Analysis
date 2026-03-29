@@ -58,6 +58,18 @@ public class StockFundamentals {
     @Column(length = 100)
     private String sector;
 
+    /** 52-week high price (NSE: priceInfo.weekHighLow.max). */
+    @Column(name = "week52_high", precision = 14, scale = 4)
+    private BigDecimal week52High;
+
+    /** 52-week low price (NSE: priceInfo.weekHighLow.min). */
+    @Column(name = "week52_low", precision = 14, scale = 4)
+    private BigDecimal week52Low;
+
+    /** Sector P/E ratio (NSE: metadata.pdSectorPe). */
+    @Column(name = "sector_pe", precision = 10, scale = 4)
+    private BigDecimal sectorPe;
+
     @Column(name = "last_updated", nullable = false)
     private LocalDateTime lastUpdated;
 
@@ -123,6 +135,30 @@ public class StockFundamentals {
 
     public void setSector(String sector) {
         this.sector = sector;
+    }
+
+    public BigDecimal getWeek52High() {
+        return week52High;
+    }
+
+    public void setWeek52High(BigDecimal week52High) {
+        this.week52High = week52High;
+    }
+
+    public BigDecimal getWeek52Low() {
+        return week52Low;
+    }
+
+    public void setWeek52Low(BigDecimal week52Low) {
+        this.week52Low = week52Low;
+    }
+
+    public BigDecimal getSectorPe() {
+        return sectorPe;
+    }
+
+    public void setSectorPe(BigDecimal sectorPe) {
+        this.sectorPe = sectorPe;
     }
 
     public LocalDateTime getLastUpdated() {

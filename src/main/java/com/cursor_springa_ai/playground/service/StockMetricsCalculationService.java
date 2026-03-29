@@ -1,10 +1,11 @@
 package com.cursor_springa_ai.playground.service;
 
-import com.cursor_springa_ai.playground.dto.StockMetrics;
 import com.cursor_springa_ai.playground.model.Instrument;
+import com.cursor_springa_ai.playground.model.StockFundamentals;
 import com.cursor_springa_ai.playground.model.User;
 import com.cursor_springa_ai.playground.model.UserHolding;
 import com.cursor_springa_ai.playground.model.UserStockMetrics;
+import com.cursor_springa_ai.playground.repository.StockFundamentalsRepository;
 import com.cursor_springa_ai.playground.repository.UserHoldingRepository;
 import com.cursor_springa_ai.playground.repository.UserStockMetricsRepository;
 import org.springframework.stereotype.Service;
@@ -38,14 +39,14 @@ public class StockMetricsCalculationService {
 
     private final UserHoldingRepository userHoldingRepository;
     private final UserStockMetricsRepository userStockMetricsRepository;
-    private final MarketMetricsCache marketMetricsCache;
+    private final StockFundamentalsRepository stockFundamentalsRepository;
 
     public StockMetricsCalculationService(UserHoldingRepository userHoldingRepository,
                                           UserStockMetricsRepository userStockMetricsRepository,
-                                          MarketMetricsCache marketMetricsCache) {
+                                          StockFundamentalsRepository stockFundamentalsRepository) {
         this.userHoldingRepository = userHoldingRepository;
         this.userStockMetricsRepository = userStockMetricsRepository;
-        this.marketMetricsCache = marketMetricsCache;
+        this.stockFundamentalsRepository = stockFundamentalsRepository;
     }
 
     /**
@@ -76,14 +77,15 @@ public class StockMetricsCalculationService {
             return;
         }
 
-        StockMetrics cached = marketMetricsCache.getMetrics(instrument.getSymbol());
+        StockFundamentals fundamentals = stockFundamentalsRepository
+                .findById(instrument.getInstrumentToken()).orElse(null);
 
-        BigDecimal week52High = cached != null ? cached.week52High() : null;
+        BigDecimal week52High = fundamentals != null ? fundamentals.getWeek52High() : null;
         BigDecimal volatility = holding.getDayChangePercent() != null
                 ? holding.getDayChangePercent().abs()
                 : BigDecimal.ZERO;
         BigDecimal momentumScore = computeMomentumScore(nvl(holding.getLastPrice()), week52High);
-        String valuationFlag = computeValuationFlag(cached);
+        String valuationFlag = computeValuationFlag(fundamentals);
         BigDecimal riskScore = computeRiskScore(volatility);
 
         userStockMetricsRepository
@@ -132,13 +134,13 @@ public class StockMetricsCalculationService {
      * Valuation flag based on stock PE vs sector PE (±20 % bands).
      * Returns null when PE data is unavailable.
      */
-    private String computeValuationFlag(StockMetrics cached) {
-        if (cached == null || cached.pe() == null || cached.sectorPe() == null
-                || cached.sectorPe().compareTo(BigDecimal.ZERO) == 0) {
+    private String computeValuationFlag(StockFundamentals fundamentals) {
+        if (fundamentals == null || fundamentals.getPe() == null || fundamentals.getSectorPe() == null
+                || fundamentals.getSectorPe().compareTo(BigDecimal.ZERO) == 0) {
             return null;
         }
-        BigDecimal pe = cached.pe();
-        BigDecimal sectorPe = cached.sectorPe();
+        BigDecimal pe = fundamentals.getPe();
+        BigDecimal sectorPe = fundamentals.getSectorPe();
         BigDecimal upper = sectorPe.multiply(BigDecimal.valueOf(1.2));
         BigDecimal lower = sectorPe.multiply(BigDecimal.valueOf(0.8));
         if (pe.compareTo(upper) > 0) {

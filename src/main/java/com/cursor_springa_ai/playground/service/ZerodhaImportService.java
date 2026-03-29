@@ -3,123 +3,91 @@ package com.cursor_springa_ai.playground.service;
 import com.cursor_springa_ai.playground.dto.ZerodhaImportResponse;
 import com.cursor_springa_ai.playground.integration.zerodha.ZerodhaHoldingsClient;
 import com.cursor_springa_ai.playground.integration.zerodha.dto.ZerodhaHoldingItem;
-import com.cursor_springa_ai.playground.model.AssetType;
-import com.cursor_springa_ai.playground.model.Holding;
 import com.cursor_springa_ai.playground.model.Instrument;
-import com.cursor_springa_ai.playground.model.Portfolio;
 import com.cursor_springa_ai.playground.model.User;
 import com.cursor_springa_ai.playground.model.UserHolding;
 import com.cursor_springa_ai.playground.repository.UserHoldingRepository;
 import org.springframework.stereotype.Service;
-import org.springframework.util.StringUtils;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
+import java.util.Objects;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.Executor;
+import java.util.logging.Logger;
+import java.util.stream.Collectors;
+
+import org.springframework.beans.factory.annotation.Qualifier;
 
 @Service
 public class ZerodhaImportService {
 
+    private static final Logger logger = Logger.getLogger(ZerodhaImportService.class.getName());
+
     private final ZerodhaHoldingsClient zerodhaHoldingsClient;
-    private final PortfolioService portfolioService;
-    private final MarketMetricsCache marketMetricsCache;
-    private final EnrichedHoldingDataCache enrichedHoldingDataCache;
     private final ZerodhaAuthService zerodhaAuthService;
     private final InstrumentEnrichmentService instrumentEnrichmentService;
     private final StockFundamentalsService stockFundamentalsService;
     private final StockMetricsCalculationService stockMetricsCalculationService;
     private final UserHoldingRepository userHoldingRepository;
+    private final Executor importExecutor;
 
     public ZerodhaImportService(
             ZerodhaHoldingsClient zerodhaHoldingsClient,
-            PortfolioService portfolioService,
-            MarketMetricsCache marketMetricsCache,
-            EnrichedHoldingDataCache enrichedHoldingDataCache,
             ZerodhaAuthService zerodhaAuthService,
             InstrumentEnrichmentService instrumentEnrichmentService,
             StockFundamentalsService stockFundamentalsService,
             StockMetricsCalculationService stockMetricsCalculationService,
-            UserHoldingRepository userHoldingRepository
+            UserHoldingRepository userHoldingRepository,
+            @Qualifier("importExecutor") Executor importExecutor
     ) {
         this.zerodhaHoldingsClient = zerodhaHoldingsClient;
-        this.portfolioService = portfolioService;
-        this.marketMetricsCache = marketMetricsCache;
-        this.enrichedHoldingDataCache = enrichedHoldingDataCache;
         this.zerodhaAuthService = zerodhaAuthService;
         this.instrumentEnrichmentService = instrumentEnrichmentService;
         this.stockFundamentalsService = stockFundamentalsService;
         this.stockMetricsCalculationService = stockMetricsCalculationService;
         this.userHoldingRepository = userHoldingRepository;
+        this.importExecutor = importExecutor;
     }
 
-    public ZerodhaImportResponse importHoldings(String portfolioId) {
-        return importHoldingsWithAutoCreate(portfolioId, null);
-    }
-
-    public ZerodhaImportResponse importHoldingsWithAutoCreate(String portfolioId, String ownerName) {
-        String resolvedPortfolioId = resolvePortfolioId(portfolioId, ownerName);
+    public ZerodhaImportResponse importHoldings() {
         User currentUser = zerodhaAuthService.getCurrentUser();
+        if (currentUser == null) {
+            throw new IllegalStateException("No authenticated Zerodha user found. Please complete login first.");
+        }
 
         List<ZerodhaHoldingItem> incoming = zerodhaHoldingsClient.fetchHoldings();
-        List<String> importedSymbols = new ArrayList<>();
-        List<Holding> holdingsToEnrich = new ArrayList<>();
 
-        // Batch fetch and cache market metrics for all holdings at once
-        marketMetricsCache.batchFetchAndCache(incoming);
-
-        // Compute total current value across all valid items for weight calculation
         BigDecimal totalCurrentValue = computeTotalCurrentValue(incoming);
 
-        for (ZerodhaHoldingItem item : incoming) {
-            if (item.getTradingSymbol() == null
-                    || item.getQuantity() == null
-                    || item.getQuantity().compareTo(BigDecimal.ZERO) <= 0) {
-                continue;
-            }
+        // Fan out: each holding is processed on its own virtual thread concurrently.
+        // Within each task: upsertAndEnrich (NSE) → upsertIfStale (NSE) → upsertUserHolding (DB).
+        // calculateForUser runs only after all per-holding tasks finish.
+        List<CompletableFuture<String>> futures = incoming.stream()
+                .filter(item -> item.getTradingSymbol() != null
+                        && item.getQuantity() != null
+                        && item.getQuantity().compareTo(BigDecimal.ZERO) > 0)
+                .map(item -> CompletableFuture
+                        .supplyAsync(() -> importSingleHolding(currentUser, item, totalCurrentValue),
+                                importExecutor)
+                        .exceptionally(ex -> {
+                            logger.warning("Failed to import holding "
+                                    + item.getTradingSymbol() + ": " + ex.getMessage());
+                            return null;
+                        }))
+                .toList();
 
-            String symbol = item.getTradingSymbol().toUpperCase(Locale.ROOT);
-            String exchange = item.getExchange() != null ? item.getExchange() : "NSE";
+        List<String> importedSymbols = futures.stream()
+                .map(CompletableFuture::join)   // waits for all
+                .filter(Objects::nonNull)
+                .collect(Collectors.toList());
 
-            // Upsert instruments catalogue (insert if new, enrich from NSE if not yet enriched)
-            Instrument instrument = instrumentEnrichmentService.upsertAndEnrich(item);
-
-            // Upsert stock fundamentals (pe, market_cap, sector) — refreshed if stale
-            if (instrument != null) {
-                stockFundamentalsService.upsertIfStale(instrument);
-            }
-
-            Holding holding = new Holding(
-                    symbol,
-                    exchange,
-                    resolveAssetType(item),
-                    item.getQuantity(),
-                    item.getAveragePrice() == null ? BigDecimal.ZERO : item.getAveragePrice(),
-                    item.getLastPrice() == null ? BigDecimal.ZERO : item.getLastPrice(),
-                    item.getPnl() == null ? BigDecimal.ZERO : item.getPnl()
-            );
-
-            portfolioService.addOrUpdateHolding(resolvedPortfolioId, holding);
-            importedSymbols.add(holding.getSymbol());
-            holdingsToEnrich.add(holding);
-
-            // Persist user_holdings snapshot if user is authenticated
-            if (currentUser != null && instrument != null) {
-                upsertUserHolding(currentUser, instrument, item, totalCurrentValue);
-            }
-        }
-
-        // Build and cache enriched holdings for the portfolio
-        enrichedHoldingDataCache.buildAndCache(resolvedPortfolioId, holdingsToEnrich);
-
-        // Recalculate per-instrument metrics for the authenticated user
-        if (currentUser != null) {
-            stockMetricsCalculationService.calculateForUser(currentUser);
-        }
+        stockMetricsCalculationService.calculateForUser(currentUser);
 
         return new ZerodhaImportResponse(
-                resolvedPortfolioId,
+                currentUser.getBrokerUserId(),
                 importedSymbols.size(),
                 importedSymbols
         );
@@ -128,6 +96,23 @@ public class ZerodhaImportService {
     // ------------------------------------------------------------------
     // private helpers
     // ------------------------------------------------------------------
+
+    /**
+     * Processes a single holding end-to-end: instrument upsert → fundamentals refresh
+     * → user holding snapshot. Runs on a virtual thread.
+     *
+     * @return the upper-cased trading symbol, or throws on fatal error
+     */
+    private String importSingleHolding(User currentUser, ZerodhaHoldingItem item,
+                                       BigDecimal totalCurrentValue) {
+        String symbol = item.getTradingSymbol().toUpperCase(Locale.ROOT);
+        Instrument instrument = instrumentEnrichmentService.upsertAndEnrich(item);
+        if (instrument != null) {
+            stockFundamentalsService.upsertIfStale(instrument);
+            upsertUserHolding(currentUser, instrument, item, totalCurrentValue);
+        }
+        return symbol;
+    }
 
     private void upsertUserHolding(User user, Instrument instrument, ZerodhaHoldingItem item,
                                    BigDecimal totalCurrentValue) {
@@ -198,22 +183,4 @@ public class ZerodhaImportService {
         return value != null ? value : BigDecimal.ZERO;
     }
 
-    private String resolvePortfolioId(String portfolioId, String ownerName) {
-        if (StringUtils.hasText(portfolioId)) {
-            return portfolioId;
-        }
-        if (!StringUtils.hasText(ownerName)) {
-            throw new IllegalArgumentException("ownerName is required when portfolioId is not provided");
-        }
-        Portfolio created = portfolioService.createPortfolio(ownerName.trim());
-        return created.getId();
-    }
-
-    private AssetType resolveAssetType(ZerodhaHoldingItem item) {
-        String symbol = item.getTradingSymbol() == null ? "" : item.getTradingSymbol().toUpperCase(Locale.ROOT);
-        if (symbol.endsWith("ETF")) {
-            return AssetType.ETF;
-        }
-        return AssetType.STOCK;
-    }
 }

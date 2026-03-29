@@ -9,6 +9,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.Optional;
 import java.util.logging.Logger;
@@ -27,7 +28,6 @@ import java.util.logging.Logger;
 public class StockFundamentalsService {
 
     private static final Logger logger = Logger.getLogger(StockFundamentalsService.class.getName());
-    private static final int REFRESH_THRESHOLD_HOURS = 24;
 
     private final StockFundamentalsRepository fundamentalsRepository;
     private final NseApiClient nseApiClient;
@@ -55,7 +55,7 @@ public class StockFundamentalsService {
         if (existing.isPresent()) {
             StockFundamentals row = existing.get();
             if (row.getLastUpdated() != null
-                    && row.getLastUpdated().isAfter(LocalDateTime.now().minusHours(REFRESH_THRESHOLD_HOURS))) {
+                    && row.getLastUpdated().toLocalDate().isEqual(LocalDate.now())) {
                 return; // still fresh — skip
             }
             refreshFromNse(row, symbol);
@@ -97,10 +97,28 @@ public class StockFundamentalsService {
             row.setMarketCap(marketCap);
         }
 
+        // 52-week high / low
+        if (quote.priceInfo() != null && quote.priceInfo().weekHighLow() != null) {
+            if (quote.priceInfo().weekHighLow().max() != null) {
+                row.setWeek52High(BigDecimal.valueOf(quote.priceInfo().weekHighLow().max()));
+            }
+            if (quote.priceInfo().weekHighLow().min() != null) {
+                row.setWeek52Low(BigDecimal.valueOf(quote.priceInfo().weekHighLow().min()));
+            }
+        }
+
+        // Sector PE
+        if (quote.metadata() != null && quote.metadata().pdSectorPe() != null) {
+            row.setSectorPe(BigDecimal.valueOf(quote.metadata().pdSectorPe()));
+        }
+
         row.setLastUpdated(LocalDateTime.now());
         fundamentalsRepository.save(row);
         logger.info("StockFundamentals updated: symbol=" + symbol
                 + " pe=" + row.getPe()
+                + " sectorPe=" + row.getSectorPe()
+                + " week52High=" + row.getWeek52High()
+                + " week52Low=" + row.getWeek52Low()
                 + " marketCap=" + row.getMarketCap()
                 + " sector=" + row.getSector());
     }

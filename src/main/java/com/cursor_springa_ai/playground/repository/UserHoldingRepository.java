@@ -12,5 +12,7 @@ public interface UserHoldingRepository extends JpaRepository<UserHolding, Long> 
 
     Optional<UserHolding> findByUserIdAndInstrumentInstrumentToken(Long userId, Long instrumentToken);
 
+    Optional<UserHolding> findByUserIdAndInstrumentSymbolIgnoreCase(Long userId, String symbol);
+
     List<UserHolding> findByUserId(Long userId);
 }
