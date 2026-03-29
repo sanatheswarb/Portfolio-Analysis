@@ -12,6 +12,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 
 import java.math.BigDecimal;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -22,7 +24,7 @@ import java.util.logging.Logger;
 public class NseApiClient {
 
     private static final Logger logger = Logger.getLogger(NseApiClient.class.getName());
-    private static final String NSE_API_URL = "https://www.nseindia.com/api/quote-equity?symbol=";
+    private static final String NSE_API_BASE_URL = "https://www.nseindia.com/api/quote-equity";
 
     private final RestTemplate restTemplate;
     private final ObjectMapper objectMapper;
@@ -63,12 +65,15 @@ public class NseApiClient {
     /**
      * Fetch metrics for a single symbol from NSE API.
      * API: https://www.nseindia.com/api/quote-equity?symbol=INFY
+     * Handles special characters like & in symbols (e.g., M&M) via proper URL encoding.
      */
     public StockMetrics fetchMetricsForSymbol(String symbol) {
         try {
             logger.info("Fetching NSE metrics for symbol: " + symbol);
 
-            String url = NSE_API_URL + symbol;
+            String encodedSymbol = URLEncoder.encode(symbol, StandardCharsets.UTF_8);
+            String url = NSE_API_BASE_URL + "?symbol=" + encodedSymbol;
+            logger.info("NSE metrics request URL: " + url);
 
             HttpHeaders headers = new HttpHeaders();
             headers.set("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36");
@@ -85,7 +90,8 @@ public class NseApiClient {
             );
 
             if (response.getStatusCode().is2xxSuccessful() && response.getBody() != null) {
-                NseQuoteResponse nseResponse = objectMapper.readValue(response.getBody(), NseQuoteResponse.class);
+                String responseBody = response.getBody();
+                NseQuoteResponse nseResponse = objectMapper.readValue(responseBody, NseQuoteResponse.class);
 
                 if (nseResponse != null) {
                     BigDecimal pe = null;
@@ -119,6 +125,17 @@ public class NseApiClient {
                         issuedSize = nseResponse.securityInfo().issuedSize();
                     }
 
+                    BigDecimal lastPrice = null;
+                    if (nseResponse.priceInfo() != null && nseResponse.priceInfo().lastPrice() != null) {
+                        lastPrice = BigDecimal.valueOf(nseResponse.priceInfo().lastPrice());
+                    }
+
+                    if (pe == null && week52High == null && week52Low == null
+                            && sectorPe == null && issuedSize == null && lastPrice == null
+                            && "N/A".equals(sector)) {
+                        logger.info("NSE raw response for " + symbol + ": " + responseBody);
+                    }
+
                     // Market cap type is not directly provided by NSE API.
                     // It can be approximated from the company's market cap (issuedSize * price),
                     // but SEBI thresholds change periodically. Left as N/A for now.
@@ -132,12 +149,13 @@ public class NseApiClient {
                             week52Low,
                             sectorPe,
                             issuedSize,
-                            null  // NSE API doesn't provide 200DMA directly
+                            null,  // NSE API doesn't provide 200DMA directly
+                            lastPrice
                     );
 
                     logger.info("Fetched NSE metrics for " + symbol + " | Sector: " + sector +
                             ", PE: " + pe + ", 52WeekHigh: " + week52High + ", 52WeekLow: " + week52Low +
-                            ", SectorPE: " + sectorPe + ", IssuedSize: " + issuedSize);
+                            ", SectorPE: " + sectorPe + ", IssuedSize: " + issuedSize + ", LastPrice: " + lastPrice);
 
                     return metrics;
                 }
@@ -156,7 +174,9 @@ public class NseApiClient {
      */
     public Optional<NseQuoteResponse> fetchQuote(String symbol) {
         try {
-            String url = NSE_API_URL + symbol;
+            String encodedSymbol = URLEncoder.encode(symbol, StandardCharsets.UTF_8);
+            String url = NSE_API_BASE_URL + "?symbol=" + encodedSymbol;
+            logger.info("NSE quote request URL: " + url);
 
             HttpHeaders headers = new HttpHeaders();
             headers.set("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36");

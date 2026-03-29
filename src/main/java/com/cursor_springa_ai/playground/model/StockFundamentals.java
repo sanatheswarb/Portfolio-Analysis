@@ -5,7 +5,6 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
-import jakarta.persistence.MapsId;
 import jakarta.persistence.OneToOne;
 import jakarta.persistence.Table;
 
@@ -14,7 +13,7 @@ import java.time.LocalDateTime;
 
 /**
  * Fundamental financial ratios for a single instrument.
- * Shares the instrument_token PK with {@link Instrument} (one-to-one).
+ * Uses instrument_token as both PK and FK to {@link Instrument}.
  *
  * <p>pe, market_cap, and sector are populated from the NSE quote API.
  * pb, roe, and debt_to_equity require financial-statement data not available from
@@ -26,13 +25,16 @@ import java.time.LocalDateTime;
 public class StockFundamentals {
 
     @Id
-    @Column(name = "instrument_token")
+    @Column(name = "instrument_token", nullable = false)
     private Long instrumentToken;
 
     @OneToOne(fetch = FetchType.LAZY, optional = false)
-    @MapsId
-    @JoinColumn(name = "instrument_token", nullable = false)
+    @JoinColumn(name = "instrument_token", nullable = false, insertable = false, updatable = false)
     private Instrument instrument;
+
+    /** Trading symbol for readability (denormalized from instrument). */
+    @Column(length = 50)
+    private String symbol;
 
     /** Price-to-Earnings ratio (NSE: metadata.pdSymbolPe). */
     @Column(precision = 10, scale = 4)
@@ -76,9 +78,8 @@ public class StockFundamentals {
     protected StockFundamentals() {
     }
 
-    public StockFundamentals(Instrument instrument) {
-        this.instrument = instrument;
-        this.instrumentToken = instrument.getInstrumentToken();
+    public StockFundamentals(Long instrumentToken) {
+        this.instrumentToken = instrumentToken;
     }
 
     public Long getInstrumentToken() {
@@ -87,6 +88,14 @@ public class StockFundamentals {
 
     public Instrument getInstrument() {
         return instrument;
+    }
+
+    public String getSymbol() {
+        return symbol;
+    }
+
+    public void setSymbol(String symbol) {
+        this.symbol = symbol;
     }
 
     public BigDecimal getPe() {

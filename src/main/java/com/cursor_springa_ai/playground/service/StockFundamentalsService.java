@@ -1,7 +1,7 @@
 package com.cursor_springa_ai.playground.service;
 
 import com.cursor_springa_ai.playground.integration.market.NseApiClient;
-import com.cursor_springa_ai.playground.integration.market.dto.NseQuoteResponse;
+import com.cursor_springa_ai.playground.dto.StockMetrics;
 import com.cursor_springa_ai.playground.model.Instrument;
 import com.cursor_springa_ai.playground.model.StockFundamentals;
 import com.cursor_springa_ai.playground.repository.StockFundamentalsRepository;
@@ -48,19 +48,25 @@ public class StockFundamentalsService {
             return;
         }
         Long token = instrument.getInstrumentToken();
+        if (token == null) {
+            logger.warning("Skipping fundamentals upsert: instrument token is null");
+            return;
+        }
         String symbol = instrument.getSymbol();
 
         Optional<StockFundamentals> existing = fundamentalsRepository.findById(token);
 
         if (existing.isPresent()) {
             StockFundamentals row = existing.get();
+            row.setSymbol(symbol);
             if (row.getLastUpdated() != null
                     && row.getLastUpdated().toLocalDate().isEqual(LocalDate.now())) {
                 return; // still fresh — skip
             }
             refreshFromNse(row, symbol);
         } else {
-            StockFundamentals row = new StockFundamentals(instrument);
+            StockFundamentals row = new StockFundamentals(token);
+            row.setSymbol(symbol);
             refreshFromNse(row, symbol);
         }
     }
@@ -70,46 +76,46 @@ public class StockFundamentalsService {
     // ------------------------------------------------------------------
 
     private void refreshFromNse(StockFundamentals row, String symbol) {
+        if (row.getInstrumentToken() == null) {
+            logger.warning("Skipping fundamentals save: null instrument token for symbol=" + symbol);
+            return;
+        }
+
         if (symbol == null || symbol.isBlank()) {
             return;
         }
-        Optional<NseQuoteResponse> quoteOpt = nseApiClient.fetchQuote(symbol);
-        if (quoteOpt.isEmpty()) {
+        StockMetrics metrics = nseApiClient.fetchMetricsForSymbol(symbol);
+        if (metrics == null) {
             return;
         }
-        NseQuoteResponse quote = quoteOpt.get();
 
         // PE ratio
-        if (quote.metadata() != null && quote.metadata().pdSymbolPe() != null) {
-            row.setPe(BigDecimal.valueOf(quote.metadata().pdSymbolPe()));
+        if (metrics.pe() != null) {
+            row.setPe(metrics.pe());
         }
 
-        // Macro sector
-        if (quote.industryInfo() != null && quote.industryInfo().sector() != null) {
-            row.setSector(quote.industryInfo().sector());
-        }
-
-        // Market cap = issuedSize × lastPrice (in INR)
-        if (quote.securityInfo() != null && quote.securityInfo().issuedSize() != null
-                && quote.priceInfo() != null && quote.priceInfo().lastPrice() != null) {
-            long marketCap = Math.round(
-                    quote.securityInfo().issuedSize() * quote.priceInfo().lastPrice());
-            row.setMarketCap(marketCap);
+        // Sector name returned by metrics endpoint
+        if (metrics.sector() != null && !metrics.sector().isBlank()) {
+            row.setSector(metrics.sector());
         }
 
         // 52-week high / low
-        if (quote.priceInfo() != null && quote.priceInfo().weekHighLow() != null) {
-            if (quote.priceInfo().weekHighLow().max() != null) {
-                row.setWeek52High(BigDecimal.valueOf(quote.priceInfo().weekHighLow().max()));
-            }
-            if (quote.priceInfo().weekHighLow().min() != null) {
-                row.setWeek52Low(BigDecimal.valueOf(quote.priceInfo().weekHighLow().min()));
-            }
+        if (metrics.week52High() != null) {
+            row.setWeek52High(metrics.week52High());
+        }
+        if (metrics.week52Low() != null) {
+            row.setWeek52Low(metrics.week52Low());
         }
 
         // Sector PE
-        if (quote.metadata() != null && quote.metadata().pdSectorPe() != null) {
-            row.setSectorPe(BigDecimal.valueOf(quote.metadata().pdSectorPe()));
+        if (metrics.sectorPe() != null) {
+            row.setSectorPe(metrics.sectorPe());
+        }
+
+        // Market cap = issuedSize × lastPrice (in INR)
+        if (metrics.issuedSize() != null && metrics.lastPrice() != null
+                && metrics.lastPrice().compareTo(BigDecimal.ZERO) > 0) {
+            row.setMarketCap(metrics.issuedSize() * metrics.lastPrice().longValue());
         }
 
         row.setLastUpdated(LocalDateTime.now());

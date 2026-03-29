@@ -13,5 +13,8 @@ services:
       POSTGRES_DB: portfolio
       POSTGRES_USER: portfolio
       POSTGRES_PASSWORD: portfolio
+      POSTGRES_INITDB_ARGS: "--encoding=UTF8"
+      TZ: Asia/Kolkata
+      PGTZ: Asia/Kolkata
     ports:
       - '5432:5432'

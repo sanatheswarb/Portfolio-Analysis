@@ -11,15 +11,10 @@ import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
-import java.util.Objects;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.Executor;
 import java.util.logging.Logger;
-import java.util.stream.Collectors;
-
-import org.springframework.beans.factory.annotation.Qualifier;
 
 @Service
 public class ZerodhaImportService {
@@ -32,7 +27,6 @@ public class ZerodhaImportService {
     private final StockFundamentalsService stockFundamentalsService;
     private final StockMetricsCalculationService stockMetricsCalculationService;
     private final UserHoldingRepository userHoldingRepository;
-    private final Executor importExecutor;
 
     public ZerodhaImportService(
             ZerodhaHoldingsClient zerodhaHoldingsClient,
@@ -40,8 +34,7 @@ public class ZerodhaImportService {
             InstrumentEnrichmentService instrumentEnrichmentService,
             StockFundamentalsService stockFundamentalsService,
             StockMetricsCalculationService stockMetricsCalculationService,
-            UserHoldingRepository userHoldingRepository,
-            @Qualifier("importExecutor") Executor importExecutor
+            UserHoldingRepository userHoldingRepository
     ) {
         this.zerodhaHoldingsClient = zerodhaHoldingsClient;
         this.zerodhaAuthService = zerodhaAuthService;
@@ -49,7 +42,6 @@ public class ZerodhaImportService {
         this.stockFundamentalsService = stockFundamentalsService;
         this.stockMetricsCalculationService = stockMetricsCalculationService;
         this.userHoldingRepository = userHoldingRepository;
-        this.importExecutor = importExecutor;
     }
 
     public ZerodhaImportResponse importHoldings() {
@@ -62,27 +54,24 @@ public class ZerodhaImportService {
 
         BigDecimal totalCurrentValue = computeTotalCurrentValue(incoming);
 
-        // Fan out: each holding is processed on its own virtual thread concurrently.
-        // Within each task: upsertAndEnrich (NSE) → upsertIfStale (NSE) → upsertUserHolding (DB).
-        // calculateForUser runs only after all per-holding tasks finish.
-        List<CompletableFuture<String>> futures = incoming.stream()
-                .filter(item -> item.getTradingSymbol() != null
-                        && item.getQuantity() != null
-                        && item.getQuantity().compareTo(BigDecimal.ZERO) > 0)
-                .map(item -> CompletableFuture
-                        .supplyAsync(() -> importSingleHolding(currentUser, item, totalCurrentValue),
-                                importExecutor)
-                        .exceptionally(ex -> {
-                            logger.warning("Failed to import holding "
-                                    + item.getTradingSymbol() + ": " + ex.getMessage());
-                            return null;
-                        }))
-                .toList();
+        List<String> importedSymbols = new ArrayList<>();
+        for (ZerodhaHoldingItem item : incoming) {
+            if (item.getTradingSymbol() == null
+                    || item.getQuantity() == null
+                    || item.getQuantity().compareTo(BigDecimal.ZERO) <= 0) {
+                continue;
+            }
 
-        List<String> importedSymbols = futures.stream()
-                .map(CompletableFuture::join)   // waits for all
-                .filter(Objects::nonNull)
-                .collect(Collectors.toList());
+            try {
+                String symbol = importSingleHolding(currentUser, item, totalCurrentValue);
+                if (symbol != null) {
+                    importedSymbols.add(symbol);
+                }
+            } catch (RuntimeException ex) {
+                logger.warning("Failed to import holding "
+                        + item.getTradingSymbol() + ": " + ex.getMessage());
+            }
+        }
 
         stockMetricsCalculationService.calculateForUser(currentUser);
 
@@ -99,7 +88,7 @@ public class ZerodhaImportService {
 
     /**
      * Processes a single holding end-to-end: instrument upsert → fundamentals refresh
-     * → user holding snapshot. Runs on a virtual thread.
+     * → user holding snapshot.
      *
      * @return the upper-cased trading symbol, or throws on fatal error
      */
@@ -123,7 +112,7 @@ public class ZerodhaImportService {
         BigDecimal avgPrice = nvl(item.getAveragePrice());
         BigDecimal closePrice = nvl(item.getClosePrice());
         BigDecimal lastPrice = nvl(item.getLastPrice());
-
+        String symbol = item.getTradingSymbol().toUpperCase(Locale.ROOT);
         BigDecimal investedValue = qty.multiply(avgPrice);
         BigDecimal currentValue = qty.multiply(lastPrice);
         BigDecimal pnl = nvl(item.getPnl());
@@ -152,6 +141,7 @@ public class ZerodhaImportService {
                             existing.setDayChange(dayChange);
                             existing.setDayChangePercent(dayChangePct);
                             existing.setWeightPercent(weightPercent);
+                            existing.setSymbol(symbol);
                             userHoldingRepository.save(existing);
                         },
                         () -> {
@@ -163,6 +153,7 @@ public class ZerodhaImportService {
                                     dayChange, dayChangePct
                             );
                             newHolding.setWeightPercent(weightPercent);
+                            newHolding.setSymbol(symbol);
                             userHoldingRepository.save(newHolding);
                         }
                 );

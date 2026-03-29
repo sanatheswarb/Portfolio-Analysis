@@ -41,6 +41,10 @@ public class UserHolding {
     @JoinColumn(name = "instrument_token", nullable = false)
     private Instrument instrument;
 
+    /** Trading symbol for readability (denormalized from instrument). */
+    @Column(length = 50)
+    private String symbol;
+
     @Column(nullable = false)
     private Integer quantity;
 
@@ -110,6 +114,14 @@ public class UserHolding {
 
     public Instrument getInstrument() {
         return instrument;
+    }
+
+    public String getSymbol() {
+        return symbol;
+    }
+
+    public void setSymbol(String symbol) {
+        this.symbol = symbol;
     }
 
     public Integer getQuantity() {
