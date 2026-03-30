@@ -1,14 +1,14 @@
 package com.cursor_springa_ai.playground.controller;
 
 import com.cursor_springa_ai.playground.dto.AddHoldingRequest;
-import com.cursor_springa_ai.playground.dto.CreatePortfolioRequest;
 import com.cursor_springa_ai.playground.dto.PortfolioAnalysisResponse;
-import com.cursor_springa_ai.playground.dto.ZerodhaImportRequest;
 import com.cursor_springa_ai.playground.dto.ZerodhaImportResponse;
 import com.cursor_springa_ai.playground.model.Holding;
 import com.cursor_springa_ai.playground.model.Portfolio;
+import com.cursor_springa_ai.playground.model.User;
 import com.cursor_springa_ai.playground.service.PortfolioAnalysisService;
 import com.cursor_springa_ai.playground.service.PortfolioService;
+import com.cursor_springa_ai.playground.service.ZerodhaAuthService;
 import com.cursor_springa_ai.playground.service.ZerodhaImportService;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
@@ -31,21 +31,24 @@ public class PortfolioController {
     private final PortfolioService portfolioService;
     private final PortfolioAnalysisService portfolioAnalysisService;
     private final ZerodhaImportService zerodhaImportService;
+    private final ZerodhaAuthService zerodhaAuthService;
 
     public PortfolioController(
             PortfolioService portfolioService,
             PortfolioAnalysisService portfolioAnalysisService,
-            ZerodhaImportService zerodhaImportService
+            ZerodhaImportService zerodhaImportService,
+            ZerodhaAuthService zerodhaAuthService
     ) {
         this.portfolioService = portfolioService;
         this.portfolioAnalysisService = portfolioAnalysisService;
         this.zerodhaImportService = zerodhaImportService;
+        this.zerodhaAuthService = zerodhaAuthService;
     }
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
-    public Portfolio createPortfolio(@Valid @RequestBody CreatePortfolioRequest request) {
-        return portfolioService.createPortfolio(request.ownerName());
+    public Portfolio createPortfolio() {
+        return portfolioService.createPortfolio(requireAuthenticatedUser());
     }
 
     @GetMapping
@@ -53,14 +56,13 @@ public class PortfolioController {
         return portfolioService.getAllPortfolios();
     }
 
-    @GetMapping("/{portfolioId}")
-    public Portfolio getPortfolio(@PathVariable String portfolioId) {
-        return portfolioService.getPortfolio(portfolioId);
+    @GetMapping("/me")
+    public Portfolio getPortfolio() {
+        return portfolioService.getPortfolio(requireAuthenticatedUser());
     }
 
-    @PutMapping("/{portfolioId}/holdings")
+    @PutMapping("/holdings")
     public Holding addOrUpdateHolding(
-            @PathVariable String portfolioId,
             @Valid @RequestBody AddHoldingRequest request
     ) {
         Holding holding = new Holding(
@@ -72,33 +74,32 @@ public class PortfolioController {
                 null,
                 null
         );
-        return portfolioService.addOrUpdateHolding(portfolioId, holding);
+        return portfolioService.addOrUpdateHolding(requireAuthenticatedUser(), holding);
     }
 
-    @DeleteMapping("/{portfolioId}/holdings/{symbol}")
+    @DeleteMapping("/holdings/{symbol}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void removeHolding(
-            @PathVariable String portfolioId,
             @PathVariable String symbol
     ) {
-        portfolioService.removeHolding(portfolioId, symbol);
+        portfolioService.removeHolding(requireAuthenticatedUser(), symbol);
     }
 
-    @GetMapping("/{portfolioId}/analysis")
-    public PortfolioAnalysisResponse analyzePortfolio(@PathVariable String portfolioId) {
-        return portfolioAnalysisService.analyzePortfolio(portfolioId);
-    }
-
-    @PostMapping("/{portfolioId}/holdings/import/zerodha")
-    public ZerodhaImportResponse importFromZerodha(@PathVariable String portfolioId) {
-        return zerodhaImportService.importHoldings(portfolioId);
+    @GetMapping("/analysis")
+    public PortfolioAnalysisResponse analyzePortfolio() {
+        return portfolioAnalysisService.analyzeCurrentUserPortfolio();
     }
 
     @PostMapping("/holdings/import/zerodha")
-    public ZerodhaImportResponse importFromZerodhaFirstTime(@RequestBody ZerodhaImportRequest request) {
-        return zerodhaImportService.importHoldingsWithAutoCreate(
-                request.portfolioId(),
-                request.ownerName()
-        );
+    public ZerodhaImportResponse importFromZerodha() {
+        return zerodhaImportService.importHoldings();
+    }
+
+    private User requireAuthenticatedUser() {
+        User currentUser = zerodhaAuthService.getCurrentUser();
+        if (currentUser == null) {
+            throw new IllegalStateException("No authenticated Zerodha user found. Please complete login first.");
+        }
+        return currentUser;
     }
 }

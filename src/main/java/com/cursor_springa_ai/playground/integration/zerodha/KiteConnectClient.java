@@ -22,6 +22,7 @@ public class KiteConnectClient {
     private KiteConnect kiteSdk;
     private String accessToken;
     private String publicToken;
+    private String userId;
 
     public KiteConnectClient(
             @Value("${zerodha.api-key}") String apiKey,
@@ -77,7 +78,8 @@ public class KiteConnectClient {
             // Store tokens for future API calls
             this.accessToken = user.accessToken;
             this.publicToken = user.publicToken;
-            
+            this.userId = user.userId;
+
             // Set tokens in the SDK for all future calls
             kiteSdk.setAccessToken(user.accessToken);
             kiteSdk.setPublicToken(user.publicToken);
@@ -142,5 +144,14 @@ public class KiteConnectClient {
      */
     public String getPublicToken() {
         return publicToken;
+    }
+
+    /**
+     * Get the Zerodha client ID (userId) obtained after session generation.
+     *
+     * @return Zerodha client ID or null if not authenticated
+     */
+    public String getUserId() {
+        return userId;
     }
 }

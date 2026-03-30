@@ -76,6 +76,30 @@ Alternatively, create a local `.env` file (excluded from git via `.gitignore`) a
 
 The server starts on **http://localhost:8080**.
 
+### Local run with PostgreSQL + Ollama (Docker)
+
+1. Install and start Docker Desktop.
+2. Start PostgreSQL and Ollama:
+
+```bash
+docker compose --profile db --profile ai up -d
+```
+
+3. Run the app (PowerShell):
+
+```powershell
+$env:SPRING_PROFILES_ACTIVE="local"
+./mvnw spring-boot:run
+```
+
+4. Stop containers when done:
+
+```bash
+docker compose --profile db --profile ai down
+```
+
+The datasource already points to `jdbc:postgresql://localhost:5432/portfolio` with user/password `portfolio`.
+
 ---
 
 ## API Reference
