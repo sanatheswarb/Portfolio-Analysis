@@ -52,15 +52,6 @@ class PortfolioReasoningToolsTest {
         assertFalse(json.contains("HDFCBANK"));
     }
 
-    @Test
-    void portfolioMetrics_returnsContextMetrics() {
-        PortfolioReasoningTools tools = new PortfolioReasoningTools(sampleContext(), objectMapper);
-
-        String json = tools.portfolioMetrics();
-
-        assertTrue(json.contains("HIGH_CONCENTRATION"));
-        assertTrue(json.contains("diversification_score"));
-    }
     private PortfolioReasoningContext sampleContext() {
         PortfolioSummary summary = new PortfolioSummary(
                 BigDecimal.valueOf(100000),

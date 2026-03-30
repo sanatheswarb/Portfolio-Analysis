@@ -32,13 +32,6 @@ public class PortfolioReasoningTools {
         return toJson(payload);
     }
 
-    @Tool(name = "portfolio_metrics", description = "Returns deterministic precomputed portfolio-level metrics such as concentration, sector exposure, portfolio risk flags, and diversification score for the active analysis context.")
-    public String portfolioMetrics() {
-        if (context.portfolioMetrics() == null) {
-            return "{\"error\":\"portfolio metrics are unavailable\"}";
-        }
-        return toJson(context.portfolioMetrics());
-    }
     @Tool(name = "flagged_holdings", description = "Returns only holdings that already have deterministic risk flags, sorted by allocation descending. Use this when you need evidence for recommendations.")
     public String flaggedHoldings() {
         List<Map<String, Object>> holdings = context.enrichedHoldings().stream()
