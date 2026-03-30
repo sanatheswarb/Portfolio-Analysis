@@ -3,22 +3,22 @@ package com.cursor_springa_ai.playground.service;
 import com.cursor_springa_ai.playground.dto.EnrichedHoldingData;
 import com.cursor_springa_ai.playground.dto.StockMetrics;
 import com.cursor_springa_ai.playground.model.Holding;
+import com.cursor_springa_ai.playground.model.Instrument;
+import com.cursor_springa_ai.playground.model.StockFundamentals;
+import com.cursor_springa_ai.playground.model.UserHolding;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.ConcurrentHashMap;
+import java.util.Locale;
 import java.util.logging.Logger;
 
 @Service
 public class EnrichedHoldingDataCache {
 
     private static final Logger logger = Logger.getLogger(EnrichedHoldingDataCache.class.getName());
-    
-    // Cache structure: portfolioId -> List<EnrichedHoldingData>
-    private final ConcurrentHashMap<String, List<EnrichedHoldingData>> cache = new ConcurrentHashMap<>();
-    
+
     private final MarketMetricsCache marketMetricsCache;
 
     public EnrichedHoldingDataCache(MarketMetricsCache marketMetricsCache) {
@@ -26,10 +26,9 @@ public class EnrichedHoldingDataCache {
     }
 
     /**
-     * Build and cache enriched holdings for a portfolio.
-     * Called during import to enrich holdings with market metrics.
+     * Build enriched holdings on demand from current holdings.
      */
-    public List<EnrichedHoldingData> buildAndCache(String portfolioId, List<Holding> holdings) {
+    public List<EnrichedHoldingData> buildEnrichedHoldings(List<Holding> holdings) {
         List<EnrichedHoldingData> enrichedList = new ArrayList<>();
 
         for (Holding holding : holdings) {
@@ -75,9 +74,143 @@ public class EnrichedHoldingDataCache {
             enrichedList.add(enriched);
         }
 
-        cache.put(portfolioId, enrichedList);
-        logger.info("Cached enriched holdings for portfolio: " + portfolioId + " | Count: " + enrichedList.size());
+        logger.info("Built enriched holdings | Count: " + enrichedList.size());
         return enrichedList;
+    }
+
+    /**
+     * Build enriched holdings from persisted user holding snapshots.
+     */
+    public List<EnrichedHoldingData> buildEnrichedHoldingsFromUserHoldings(List<UserHolding> userHoldings) {
+        List<EnrichedHoldingData> enrichedList = new ArrayList<>();
+
+        for (UserHolding userHolding : userHoldings) {
+            String symbol = userHolding.getSymbol();
+            if (symbol == null || symbol.isBlank()) {
+                symbol = userHolding.getInstrument() != null ? userHolding.getInstrument().getSymbol() : null;
+            }
+
+            StockMetrics metrics = marketMetricsCache.getMetrics(symbol);
+            BigDecimal quantity = userHolding.getQuantity() != null
+                    ? BigDecimal.valueOf(userHolding.getQuantity())
+                    : BigDecimal.ZERO;
+            BigDecimal averageBuyPrice = scale(userHolding.getAvgPrice());
+            BigDecimal currentPrice = scale(userHolding.getLastPrice());
+            BigDecimal invested = scale(userHolding.getInvestedValue());
+            BigDecimal currentValue = scale(userHolding.getCurrentValue());
+            BigDecimal pnl = scale(userHolding.getPnl());
+
+            BigDecimal profitPercent = calculateProfitPercent(pnl, invested);
+            BigDecimal distanceFromHigh = calculateDistanceFromHigh(currentPrice, metrics);
+            BigDecimal allocationPercent = null;
+            java.util.List<String> riskFlags = new ArrayList<>();
+
+            EnrichedHoldingData enriched = new EnrichedHoldingData(
+                    symbol,
+                    inferAssetType(symbol),
+                    scale(quantity),
+                    averageBuyPrice,
+                    currentPrice,
+                    invested,
+                    currentValue,
+                    pnl,
+                    metrics != null ? metrics.sector() : "N/A",
+                    metrics != null ? metrics.pe() : null,
+                    metrics != null ? metrics.beta() : null,
+                    metrics != null ? metrics.sectorPe() : null,
+                    metrics != null ? metrics.week52High() : null,
+                    metrics != null ? metrics.week52Low() : null,
+                    metrics != null ? metrics.marketCapType() : "N/A",
+                    metrics != null ? metrics.dma200() : null,
+                    allocationPercent,
+                    profitPercent,
+                    distanceFromHigh,
+                    riskFlags
+            );
+            enrichedList.add(enriched);
+        }
+
+        logger.info("Built enriched holdings from user_holdings | Count: " + enrichedList.size());
+        return enrichedList;
+    }
+
+    /**
+     * Build enriched holdings entirely from the eagerly-fetched JPA graph — no extra DB or API calls.
+     * Expects UserHolding → Instrument → StockFundamentals to be JOIN FETCHed.
+     */
+    public List<EnrichedHoldingData> buildEnrichedHoldingsFromDB(List<UserHolding> userHoldings) {
+
+        List<EnrichedHoldingData> enrichedList = new ArrayList<>();
+
+        for (UserHolding uh : userHoldings) {
+            String symbol = uh.getSymbol();
+            Instrument instrument = uh.getInstrument();
+            if (symbol == null || symbol.isBlank()) {
+                symbol = instrument != null ? instrument.getSymbol() : null;
+            }
+
+            StockFundamentals sf = instrument != null ? instrument.getStockFundamentals() : null;
+
+            BigDecimal quantity = uh.getQuantity() != null
+                    ? BigDecimal.valueOf(uh.getQuantity())
+                    : BigDecimal.ZERO;
+            BigDecimal currentPrice = scale(uh.getLastPrice());
+
+            // distanceFromHigh from StockFundamentals.week52High
+            BigDecimal week52High = sf != null ? sf.getWeek52High() : null;
+            BigDecimal distanceFromHigh = calculateDistanceFromHighValue(currentPrice, week52High);
+
+            // Sector & marketCapType: prefer StockFundamentals, fall back to Instrument
+            String sector = "N/A";
+            if (sf != null && sf.getSector() != null && !sf.getSector().isBlank()) {
+                sector = sf.getSector();
+            } else if (instrument != null && instrument.getSector() != null && !instrument.getSector().isBlank()) {
+                sector = instrument.getSector();
+            }
+
+            String marketCapType = "N/A";
+            if (instrument != null && instrument.getMarketCapCategory() != null && !instrument.getMarketCapCategory().isBlank()) {
+                marketCapType = instrument.getMarketCapCategory();
+            }
+
+            EnrichedHoldingData enriched = new EnrichedHoldingData(
+                    symbol,
+                    inferAssetType(symbol),
+                    scale(quantity),
+                    scale(uh.getAvgPrice()),
+                    currentPrice,
+                    scale(uh.getInvestedValue()),
+                    scale(uh.getCurrentValue()),
+                    scale(uh.getPnl()),
+                    sector,
+                    sf != null ? sf.getPe() : null,
+                    null,  // beta — not available in any DB table
+                    sf != null ? sf.getSectorPe() : null,
+                    week52High,
+                    sf != null ? sf.getWeek52Low() : null,
+                    marketCapType,
+                    null,  // dma200 — not available in any DB table
+                    scale(uh.getWeightPercent()),   // allocationPercent from user_holdings
+                    scale(uh.getPnlPercent()),       // profitPercent from user_holdings
+                    distanceFromHigh,
+                    new ArrayList<>()
+            );
+            enrichedList.add(enriched);
+        }
+
+        logger.info("Built enriched holdings from DB | Count: " + enrichedList.size());
+        return enrichedList;
+    }
+
+    private BigDecimal calculateDistanceFromHighValue(BigDecimal currentPrice, BigDecimal week52High) {
+        if (week52High == null || currentPrice == null
+                || week52High.compareTo(BigDecimal.ZERO) == 0) {
+            return null;
+        }
+        return currentPrice.subtract(week52High)
+                .divide(week52High, 4, java.math.RoundingMode.HALF_UP)
+                .multiply(BigDecimal.valueOf(100))
+                .setScale(2, java.math.RoundingMode.HALF_UP);
     }
 
     /**
@@ -106,19 +239,6 @@ public class EnrichedHoldingDataCache {
                 .divide(metrics.week52High(), 4, java.math.RoundingMode.HALF_UP)
                 .multiply(BigDecimal.valueOf(100))
                 .setScale(2, java.math.RoundingMode.HALF_UP);
-    }
-
-    /**
-     * Get cached enriched holdings for a portfolio.
-     */
-    public List<EnrichedHoldingData> getEnrichedHoldings(String portfolioId) {
-        List<EnrichedHoldingData> cached = cache.get(portfolioId);
-        if (cached != null) {
-            logger.info("Retrieved " + cached.size() + " enriched holdings from cache for portfolio: " + portfolioId);
-            return new ArrayList<>(cached); // Return a copy
-        }
-        logger.warning("No cached enriched holdings found for portfolio: " + portfolioId);
-        return new ArrayList<>();
     }
 
     /**
@@ -248,22 +368,6 @@ public class EnrichedHoldingDataCache {
     }
 
     /**
-     * Clear cache for a specific portfolio.
-     */
-    public void clearPortfolioCache(String portfolioId) {
-        cache.remove(portfolioId);
-        logger.info("Cleared enriched holdings cache for portfolio: " + portfolioId);
-    }
-
-    /**
-     * Clear entire cache (useful for testing or refresh).
-     */
-    public void clearAllCache() {
-        cache.clear();
-        logger.info("Cleared all enriched holdings cache");
-    }
-
-    /**
      * Scale BigDecimal to 2 decimal places.
      */
     private BigDecimal scale(BigDecimal value) {
@@ -271,5 +375,11 @@ public class EnrichedHoldingDataCache {
             return BigDecimal.ZERO;
         }
         return value.setScale(2, java.math.RoundingMode.HALF_UP);
+    }
+
+    private String inferAssetType(String symbol) {
+        return symbol != null && symbol.toUpperCase(Locale.ROOT).endsWith("ETF")
+                ? "ETF"
+                : "STOCK";
     }
 }

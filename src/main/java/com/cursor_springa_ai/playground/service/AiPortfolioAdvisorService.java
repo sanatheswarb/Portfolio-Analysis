@@ -40,8 +40,13 @@ public class AiPortfolioAdvisorService {
 
         public PortfolioAdviceResponse generateInsights(PortfolioReasoningContext reasoningContext) {
                 String systemPrompt = promptBuilder.buildSystemPrompt();
-                String userPrompt = promptBuilder.buildReasoningRequest(reasoningContext);
                 PortfolioReasoningTools reasoningTools = new PortfolioReasoningTools(reasoningContext, objectMapper);
+                String portfolioOverviewJson = reasoningTools.portfolioOverview();
+                String flaggedHoldingsJson = reasoningTools.flaggedHoldings();
+                String userPrompt = promptBuilder.buildReasoningRequest(
+                                reasoningContext,
+                                portfolioOverviewJson,
+                                flaggedHoldingsJson);
 
                 logger.info("System prompt length: " + systemPrompt.length());
                 logger.info("User prompt length: " + userPrompt.length());
@@ -58,7 +63,6 @@ public class AiPortfolioAdvisorService {
                 String aiResponse = chatClient.prompt()
                                 .system(systemPrompt)
                                 .user(userPrompt)
-                                .tools(reasoningTools)
                                 .options(options)
                                 .call()
                                 .content();

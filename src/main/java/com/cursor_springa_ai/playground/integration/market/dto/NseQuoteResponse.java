@@ -49,6 +49,14 @@ public record NseQuoteResponse(
             @JsonDeserialize(using = NaToNullDoubleDeserializer.class)
             Double lastPrice,
 
+            @JsonProperty("close")
+            @JsonDeserialize(using = NaToNullDoubleDeserializer.class)
+            Double close,
+
+            @JsonProperty("previousClose")
+            @JsonDeserialize(using = NaToNullDoubleDeserializer.class)
+            Double previousClose,
+
             @JsonProperty("pChange")
             @JsonDeserialize(using = NaToNullDoubleDeserializer.class)
             Double pChange,

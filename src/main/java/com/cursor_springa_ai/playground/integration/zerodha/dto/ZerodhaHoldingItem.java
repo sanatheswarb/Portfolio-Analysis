@@ -8,10 +8,15 @@ import java.math.BigDecimal;
 @JsonIgnoreProperties(ignoreUnknown = true)
 public class ZerodhaHoldingItem {
 
+    @JsonProperty("instrument_token")
+    private Long instrumentToken;
+
     @JsonProperty("tradingsymbol")
     private String tradingSymbol;
 
     private String exchange;
+
+    private String isin;
     /** Kite may return integer or decimal depending on instrument */
     private BigDecimal quantity;
 
@@ -113,5 +118,21 @@ public class ZerodhaHoldingItem {
 
     public void setDayChangePercentage(BigDecimal dayChangePercentage) {
         this.dayChangePercentage = dayChangePercentage;
+    }
+
+    public Long getInstrumentToken() {
+        return instrumentToken;
+    }
+
+    public void setInstrumentToken(Long instrumentToken) {
+        this.instrumentToken = instrumentToken;
+    }
+
+    public String getIsin() {
+        return isin;
+    }
+
+    public void setIsin(String isin) {
+        this.isin = isin;
     }
 }

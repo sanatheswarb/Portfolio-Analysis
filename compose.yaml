@@ -1,5 +1,20 @@
 services:
   ollama:
     image: 'ollama/ollama:latest'
+    profiles:
+      - ai
     ports:
       - '11434:11434'
+  postgres:
+    image: 'postgres:17'
+    profiles:
+      - db
+    environment:
+      POSTGRES_DB: portfolio
+      POSTGRES_USER: portfolio
+      POSTGRES_PASSWORD: portfolio
+      POSTGRES_INITDB_ARGS: "--encoding=UTF8"
+      TZ: Asia/Kolkata
+      PGTZ: Asia/Kolkata
+    ports:
+      - '5432:5432'

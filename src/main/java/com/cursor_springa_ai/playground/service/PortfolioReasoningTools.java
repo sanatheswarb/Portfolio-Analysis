@@ -24,10 +24,10 @@ public class PortfolioReasoningTools {
     @Tool(name = "portfolio_overview", description = "Returns deterministic portfolio summary, diversification metrics, sector exposure, portfolio risk flags, and the largest holdings. Call this first.")
     public String portfolioOverview() {
         Map<String, Object> payload = new LinkedHashMap<>();
-        payload.put("portfolioId", context.portfolioId());
-        payload.put("ownerName", context.ownerName());
+        payload.put("portfolioUserId", context.portfolioUserId());
         payload.put("summary", context.portfolioSummary());
-        payload.put("metrics", context.portfolioMetrics());
+        payload.put("metrics", portfolioStatsPayload());
+        payload.put("portfolioRiskFlags", context.portfolioRiskFlags());
         payload.put("largestHoldings", largestHoldings());
         return toJson(payload);
     }
@@ -84,6 +84,28 @@ public class PortfolioReasoningTools {
         payload.put("distanceFromHigh", holding.distanceFromHigh());
         payload.put("marketCapType", holding.marketCapType());
         payload.put("riskFlags", holding.riskFlags());
+        return payload;
+    }
+
+    private Map<String, Object> portfolioStatsPayload() {
+        Map<String, Object> payload = new LinkedHashMap<>();
+        if (context.portfolioStats() == null) {
+            return payload;
+        }
+
+        payload.put("totalInvested", context.portfolioStats().getTotalInvested());
+        payload.put("totalValue", context.portfolioStats().getTotalValue());
+        payload.put("totalPnl", context.portfolioStats().getTotalPnl());
+        payload.put("pnlPercent", context.portfolioStats().getPnlPercent());
+        payload.put("largestWeight", context.portfolioStats().getLargestWeight());
+        payload.put("stockCount", context.portfolioStats().getStockCount());
+        payload.put("dayChange", context.portfolioStats().getDayChange());
+        payload.put("dayChangePercent", context.portfolioStats().getDayChangePercent());
+        payload.put("top3HoldingPercent", context.portfolioStats().getTop3HoldingPercent());
+        payload.put("diversificationScore", context.portfolioStats().getDiversificationScore());
+        payload.put("calculatedAt", context.portfolioStats().getCalculatedAt() != null
+                ? context.portfolioStats().getCalculatedAt().toString()
+                : null);
         return payload;
     }
 

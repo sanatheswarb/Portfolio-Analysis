@@ -1,14 +1,12 @@
 package com.cursor_springa_ai.playground.service;
 
 import com.cursor_springa_ai.playground.dto.EnrichedHoldingData;
-import com.cursor_springa_ai.playground.dto.PortfolioMetrics;
 import com.cursor_springa_ai.playground.dto.PortfolioSummary;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
 
 import java.math.BigDecimal;
 import java.util.List;
-import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -56,29 +54,27 @@ class PortfolioAdvisorPromptBuilderTest {
 
         assertNotNull(prompt);
         assertTrue(prompt.contains("PRIMARY OBJECTIVE"));
-        assertTrue(prompt.contains("Call portfolio_overview first"));
+        assertTrue(prompt.contains("portfolio_overview_json"));
         assertTrue(prompt.contains("OUTPUT REQUIREMENTS"));
     }
 
     @Test
     void buildReasoningRequest_containsCompactToolDrivenSections() {
         PortfolioSummary summary = new PortfolioSummary(BigDecimal.valueOf(10000), BigDecimal.valueOf(11000), BigDecimal.valueOf(1000), BigDecimal.valueOf(10), 2);
-        PortfolioMetrics metrics = new PortfolioMetrics(BigDecimal.valueOf(10000), BigDecimal.valueOf(11000), BigDecimal.valueOf(1000), BigDecimal.valueOf(10), 2,
-                BigDecimal.valueOf(30), BigDecimal.valueOf(60), Map.of("financial", BigDecimal.valueOf(45)), Map.of("financial", 2), List.of("HIGH_CONCENTRATION"), BigDecimal.valueOf(55));
         PortfolioReasoningContext reasoningContext = new PortfolioReasoningContext(
                 "portfolio-1",
-                "Alice",
                 summary,
-                metrics,
+                null,
+                List.of("HIGH_CONCENTRATION"),
                 List.of()
         );
 
-        String data = builder.buildReasoningRequest(reasoningContext);
+        String data = builder.buildReasoningRequest(reasoningContext, "{\"portfolioUserId\":\"portfolio-1\"}", "[]");
 
         assertNotNull(data);
-        assertTrue(data.contains("portfolio_id: portfolio-1"));
-        assertTrue(data.contains("owner_name: Alice"));
-        assertTrue(data.contains("use_tools_for_metrics_and_holding_evidence: true"));
+        assertTrue(data.contains("portfolio_userId: portfolio-1"));
+        assertTrue(data.contains("use_deterministic_evidence_for_metrics_and_holding_support: true"));
+        assertTrue(data.contains("portfolio_overview_json: {\"portfolioUserId\":\"portfolio-1\"}"));
         assertTrue(data.contains("HIGH_CONCENTRATION"));
     }
 }
