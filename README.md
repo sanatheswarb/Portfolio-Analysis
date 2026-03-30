@@ -47,8 +47,10 @@ All sensitive values are read from **environment variables**. Never commit crede
 | `ZERODHA_REDIRECT_URI` | OAuth callback URI (default: `https://kite.trade/`) | No |
 | `OLLAMA_BASE_URL` | Ollama base URL (default: `http://localhost:11434`) | No |
 | `OLLAMA_MODEL` | Ollama model name (default: `qwen2.5:7b-instruct`) | No |
-| `PORTFOLIO_ADVISOR_NUM_PREDICT` | Max generated tokens for the advisor response (default: `256`) | No |
+| `PORTFOLIO_ADVISOR_NUM_PREDICT` | Max generated tokens for the advisor response (default: `192`) | No |
 | `PORTFOLIO_ADVISOR_KEEP_ALIVE` | Ollama model keep-alive window to reduce cold-start latency (default: `10m`) | No |
+| `PORTFOLIO_ADVISOR_INTERNAL_TOOL_EXECUTION` | Enables Spring AI/Ollama internal tool execution for the advisor flow (default: `true`) | No |
+| `PORTFOLIO_ADVISOR_THINKING_ENABLED` | Enables model thinking mode for the advisor flow. Keep `false` for lower latency. | No |
 
 ### Setting environment variables
 
@@ -148,7 +150,7 @@ The analysis response includes:
 The advisor flow keeps **metrics deterministic** and uses the LLM only for reasoning:
 - `PortfolioMetricsService` computes portfolio concentration/diversification metrics
 - `PortfolioReasoningTools` exposes those metrics plus flagged holdings through Spring AI tool calling
-- `AiPortfolioAdvisorService` sends a compact prompt to Ollama and lets the model pull only the evidence it needs
+- `AiPortfolioAdvisorService` sends a compact routing prompt to Ollama, enables internal tool execution, and lets the model pull only the evidence it needs
 
 ---
 

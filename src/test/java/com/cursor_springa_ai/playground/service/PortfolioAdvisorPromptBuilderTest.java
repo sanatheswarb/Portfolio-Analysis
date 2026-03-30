@@ -54,12 +54,14 @@ class PortfolioAdvisorPromptBuilderTest {
 
         assertNotNull(prompt);
         assertTrue(prompt.contains("PRIMARY OBJECTIVE"));
-        assertTrue(prompt.contains("portfolio_overview_json"));
-        assertTrue(prompt.contains("OUTPUT REQUIREMENTS"));
+        assertTrue(prompt.contains("MUST call portfolio_overview"));
+        assertTrue(prompt.contains("RESPONSE RULES"));
+        assertTrue(prompt.contains("TOOL RULES"));
+        assertFalse(prompt.contains("RESPONSE FORMAT"));
     }
 
     @Test
-    void buildReasoningRequest_containsCompactToolDrivenSections() {
+    void buildReasoningRequest_containsCompactToolCallingInstructions() {
         PortfolioSummary summary = new PortfolioSummary(BigDecimal.valueOf(10000), BigDecimal.valueOf(11000), BigDecimal.valueOf(1000), BigDecimal.valueOf(10), 2);
         PortfolioReasoningContext reasoningContext = new PortfolioReasoningContext(
                 "portfolio-1",
@@ -69,12 +71,15 @@ class PortfolioAdvisorPromptBuilderTest {
                 List.of()
         );
 
-        String data = builder.buildReasoningRequest(reasoningContext, "{\"portfolioUserId\":\"portfolio-1\"}", "[]");
+        String data = builder.buildReasoningRequest(reasoningContext);
 
         assertNotNull(data);
         assertTrue(data.contains("portfolio_userId: portfolio-1"));
-        assertTrue(data.contains("use_deterministic_evidence_for_metrics_and_holding_support: true"));
-        assertTrue(data.contains("portfolio_overview_json: {\"portfolioUserId\":\"portfolio-1\"}"));
+        assertTrue(data.contains("First action: call portfolio_overview"));
+        assertTrue(data.contains("portfolio_stock_count: 2"));
+        assertTrue(data.contains("total_invested: 10000"));
         assertTrue(data.contains("HIGH_CONCENTRATION"));
+        assertFalse(data.contains("portfolio_overview_json"));
+        assertFalse(data.contains("Use the smallest number of tool calls required to produce the final advice."));
     }
 }

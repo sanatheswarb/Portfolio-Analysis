@@ -89,10 +89,11 @@ public class InstrumentEnrichmentService {
         if (quote.info() != null && quote.info().companyName() != null) {
             instrument.setCompanyName(quote.info().companyName());
         }
+        String sector = nseApiClient.resolveSector(quote);
+        if (!sector.isBlank() && !"N/A".equals(sector)) {
+            instrument.setSector(sector);
+        }
         if (quote.industryInfo() != null) {
-            if (quote.industryInfo().sector() != null) {
-                instrument.setSector(quote.industryInfo().sector());
-            }
             if (quote.industryInfo().industry() != null) {
                 instrument.setIndustry(quote.industryInfo().industry());
             }

@@ -98,12 +98,14 @@ public class StockFundamentalsService {
             row.setPe(metrics.pe());
         }
 
-        // Sector name returned by metrics endpoint
+        // Sector name returned by metrics endpoint, with ETF override applied from NSE quote data.
         if (metrics != null && metrics.sector() != null && !metrics.sector().isBlank()) {
             row.setSector(metrics.sector());
-        } else if (quote.industryInfo() != null && quote.industryInfo().sector() != null
-                && !quote.industryInfo().sector().isBlank()) {
-            row.setSector(quote.industryInfo().sector());
+        } else {
+            String sector = nseApiClient.resolveSector(quote);
+            if (!sector.isBlank() && !"N/A".equals(sector)) {
+                row.setSector(sector);
+            }
         }
 
         // 52-week high / low
