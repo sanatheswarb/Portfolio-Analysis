@@ -110,10 +110,7 @@ public class NseApiClient {
                         }
                     }
 
-                    String sector = "N/A";
-                    if (nseResponse.industryInfo() != null && nseResponse.industryInfo().industry() != null) {
-                        sector = nseResponse.industryInfo().industry();
-                    }
+                    String sector = resolveSector(nseResponse);
 
                     BigDecimal sectorPe = null;
                     if (nseResponse.metadata() != null && nseResponse.metadata().pdSectorPe() != null) {
@@ -194,5 +191,19 @@ public class NseApiClient {
             logger.warning("Error fetching NSE quote for " + symbol + ": " + e.getMessage());
         }
         return Optional.empty();
+    }
+
+    public String resolveSector(NseQuoteResponse quote) {
+        if (quote == null) {
+            return "N/A";
+        }
+        if (quote.info() != null && Boolean.TRUE.equals(quote.info().isETFSec())) {
+            return "ETF";
+        }
+        if (quote.industryInfo() != null && quote.industryInfo().sector() != null
+                && !quote.industryInfo().sector().isBlank()) {
+            return quote.industryInfo().sector();
+        }
+        return "N/A";
     }
 }

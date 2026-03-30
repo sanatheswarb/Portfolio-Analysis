@@ -6,24 +6,25 @@ import com.cursor_springa_ai.playground.dto.PortfolioSummary;
 import com.cursor_springa_ai.playground.model.PortfolioStats;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
-import org.mockito.ArgumentCaptor;
 import org.springframework.ai.chat.client.ChatClient;
 
 import java.math.BigDecimal;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 class AiPortfolioAdvisorServiceTest {
 
     @Test
-        void generateInsights_buildsPromptWithDeterministicPortfolioData() {
+        void generateInsights_usesToolCallingWithCompactPrompt() {
         ChatClient.Builder builder = mock(ChatClient.Builder.class);
         ChatClient chatClient = mock(ChatClient.class);
         ChatClient.ChatClientRequestSpec requestSpec = mock(ChatClient.ChatClientRequestSpec.class);
@@ -36,31 +37,104 @@ class AiPortfolioAdvisorServiceTest {
         when(chatClient.prompt()).thenReturn(requestSpec);
         when(requestSpec.system(any(String.class))).thenReturn(requestSpec);
         when(requestSpec.user(any(String.class))).thenReturn(requestSpec);
+                when(requestSpec.tools(any(Object[].class))).thenAnswer(invocation -> {
+                        PortfolioReasoningTools tools = invocation.getArgument(0, PortfolioReasoningTools.class);
+                        tools.portfolioOverview();
+                        return requestSpec;
+                });
         when(requestSpec.options(any())).thenReturn(requestSpec);
         when(requestSpec.call()).thenReturn(responseSpec);
         when(responseSpec.content()).thenReturn("""
                 {"risk_overview":"Risk overview","diversification_feedback":"Diversification feedback","suggestions":["Reduce concentration","Rebalance sectors","Trim weak positions"],"cautionary_note":"Caution"}
                 """);
         when(promptBuilder.buildSystemPrompt()).thenReturn("system");
-        when(promptBuilder.buildReasoningRequest(eq(reasoningContext), any(String.class), any(String.class)))
+        when(promptBuilder.buildReasoningRequest(eq(reasoningContext)))
                 .thenReturn("user");
 
         AiPortfolioAdvisorService service = new AiPortfolioAdvisorService(builder, objectMapper, promptBuilder);
         PortfolioAdviceResponse response = service.generateInsights(reasoningContext);
 
-        ArgumentCaptor<String> portfolioOverviewCaptor = ArgumentCaptor.forClass(String.class);
-        ArgumentCaptor<String> flaggedHoldingsCaptor = ArgumentCaptor.forClass(String.class);
-
-        verify(promptBuilder).buildReasoningRequest(
-                eq(reasoningContext),
-                portfolioOverviewCaptor.capture(),
-                flaggedHoldingsCaptor.capture());
+        verify(promptBuilder).buildSystemPrompt();
+        verify(promptBuilder).buildReasoningRequest(eq(reasoningContext));
+        verify(requestSpec).tools(any(Object[].class));
         assertEquals("Risk overview", response.riskOverview());
         assertEquals(List.of("Reduce concentration", "Rebalance sectors", "Trim weak positions"), response.suggestions());
-        assertTrue(portfolioOverviewCaptor.getValue().contains("\"portfolioUserId\":\"portfolio-1\""));
-        assertTrue(portfolioOverviewCaptor.getValue().contains("HIGH_CONCENTRATION"));
-        assertTrue(flaggedHoldingsCaptor.getValue().contains("INFY"));
     }
+
+        @Test
+        void generateInsights_retriesOnceWhenInitialJsonResponseIsTruncated() {
+                ChatClient.Builder builder = mock(ChatClient.Builder.class);
+                ChatClient chatClient = mock(ChatClient.class);
+                ChatClient.ChatClientRequestSpec requestSpec = mock(ChatClient.ChatClientRequestSpec.class);
+                ChatClient.CallResponseSpec responseSpec = mock(ChatClient.CallResponseSpec.class);
+                PortfolioAdvisorPromptBuilder promptBuilder = mock(PortfolioAdvisorPromptBuilder.class);
+                ObjectMapper objectMapper = new ObjectMapper();
+                PortfolioReasoningContext reasoningContext = reasoningContext();
+
+                when(builder.build()).thenReturn(chatClient);
+                when(chatClient.prompt()).thenReturn(requestSpec);
+                when(requestSpec.system(any(String.class))).thenReturn(requestSpec);
+                when(requestSpec.user(any(String.class))).thenReturn(requestSpec);
+                when(requestSpec.tools(any(Object[].class))).thenAnswer(invocation -> {
+                        PortfolioReasoningTools tools = invocation.getArgument(0, PortfolioReasoningTools.class);
+                        tools.portfolioOverview();
+                        return requestSpec;
+                });
+                when(requestSpec.options(any())).thenReturn(requestSpec);
+                when(requestSpec.call()).thenReturn(responseSpec);
+                when(responseSpec.content()).thenReturn(
+                                """
+                                {"risk_overview":"Risk overview","diversification_feedback":"Diversification feedback","suggestions":["Reduce concentration","Rebalance sectors","Trim weak positions"],"cautionary_note":"Caut
+                                """,
+                                """
+                                {"risk_overview":"Risk overview","diversification_feedback":"Diversification feedback","suggestions":["Reduce concentration","Rebalance sectors","Trim weak positions"],"cautionary_note":"Caution"}
+                                """);
+                when(promptBuilder.buildSystemPrompt()).thenReturn("system");
+                when(promptBuilder.buildReasoningRequest(eq(reasoningContext))).thenReturn("user");
+                when(promptBuilder.buildRetryReasoningRequest(anyString())).thenReturn("retry-user");
+
+                AiPortfolioAdvisorService service = new AiPortfolioAdvisorService(builder, objectMapper, promptBuilder);
+                PortfolioAdviceResponse response = service.generateInsights(reasoningContext);
+
+                verify(chatClient, times(2)).prompt();
+                assertEquals("Risk overview", response.riskOverview());
+                assertEquals("Caution", response.cautionaryNote());
+        }
+
+        @Test
+        void generateInsights_failsWhenPortfolioOverviewToolIsNotCalledFirst() {
+                ChatClient.Builder builder = mock(ChatClient.Builder.class);
+                ChatClient chatClient = mock(ChatClient.class);
+                ChatClient.ChatClientRequestSpec requestSpec = mock(ChatClient.ChatClientRequestSpec.class);
+                ChatClient.CallResponseSpec responseSpec = mock(ChatClient.CallResponseSpec.class);
+                PortfolioAdvisorPromptBuilder promptBuilder = mock(PortfolioAdvisorPromptBuilder.class);
+                ObjectMapper objectMapper = new ObjectMapper();
+                PortfolioReasoningContext reasoningContext = reasoningContext();
+
+                when(builder.build()).thenReturn(chatClient);
+                when(chatClient.prompt()).thenReturn(requestSpec);
+                when(requestSpec.system(any(String.class))).thenReturn(requestSpec);
+                when(requestSpec.user(any(String.class))).thenReturn(requestSpec);
+                when(requestSpec.tools(any(Object[].class))).thenAnswer(invocation -> {
+                        PortfolioReasoningTools tools = invocation.getArgument(0, PortfolioReasoningTools.class);
+                        tools.holdingDetails("INFY");
+                        return requestSpec;
+                });
+                when(requestSpec.options(any())).thenReturn(requestSpec);
+                when(requestSpec.call()).thenReturn(responseSpec);
+                when(responseSpec.content()).thenReturn("""
+                                {"risk_overview":"Risk overview","diversification_feedback":"Diversification feedback","suggestions":["Reduce concentration","Rebalance sectors","Trim weak positions"],"cautionary_note":"Caution"}
+                                """);
+                when(promptBuilder.buildSystemPrompt()).thenReturn("system");
+                when(promptBuilder.buildReasoningRequest(eq(reasoningContext))).thenReturn("user");
+
+                AiPortfolioAdvisorService service = new AiPortfolioAdvisorService(builder, objectMapper, promptBuilder);
+
+                IllegalStateException exception = assertThrows(IllegalStateException.class,
+                                () -> service.generateInsights(reasoningContext));
+
+                assertEquals("Advisor response rejected because no portfolio_overview tool call was made.", exception.getMessage());
+        }
 
     private PortfolioReasoningContext reasoningContext() {
         PortfolioSummary summary = new PortfolioSummary(

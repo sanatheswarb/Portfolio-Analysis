@@ -9,12 +9,9 @@ import org.springframework.stereotype.Component;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.logging.Logger;
 
 @Component
 public class PortfolioAdvisorPromptBuilder {
-
-    private static final Logger logger = Logger.getLogger(PortfolioAdvisorPromptBuilder.class.getName());
     private final ObjectMapper objectMapper;
 
     public PortfolioAdvisorPromptBuilder(ObjectMapper objectMapper) {
@@ -23,61 +20,88 @@ public class PortfolioAdvisorPromptBuilder {
 
     public String buildSystemPrompt() {
         return """
-                        You are a conservative Indian equity portfolio advisor.
+                You are a conservative Indian equity portfolio advisor.
 
-                        PRIMARY OBJECTIVE:
-                        Protect capital and reduce portfolio risk before optimizing returns.
+                PRIMARY OBJECTIVE:
+                Protect capital and reduce portfolio risk before optimizing returns.
 
-                        DETERMINISTIC EVIDENCE RULES:
-                        - Treat the provided portfolio_overview_json and flagged_holdings_json as the source of truth.
-                        - Do not recompute metrics yourself.
+                TOOL RULES:
+                - You MUST call portfolio_overview exactly once before producing any final answer.
+                - Use tool outputs as the only source of portfolio facts.
+                - Do not recompute metrics yourself.
+                - Do not invent holding-level details.
+                - Do not call portfolio_overview again after its first result.
+                - Do not call the same tool repeatedly if you already have its result.
+                - Call flagged_holdings only when you need risk evidence for recommendations.
+                - Call holding_details only for the few symbols that materially affect the advice.
 
-                        ANALYSIS PRIORITY:
-                        1. Portfolio risk flags and concentration
-                        2. Diversification quality
-                        3. Holding-level supporting evidence
-                        4. Return optimization
+                PRIORITY:
+                1. Concentration and portfolio risk flags
+                2. Diversification quality
+                3. Holding-level supporting evidence
+                4. Return optimization
 
-                        SUGGESTION RULES:
-                        - Suggestions must be specific, actionable, and risk focused.
-                        - If HIGH_CONCENTRATION exists, the first suggestion must address concentration.
-                        - If sector concentration exists, one suggestion must address diversification.
-                        - Avoid generic advice such as monitor market, stay invested, or diversify more.
-
-                        OUTPUT REQUIREMENTS:
-                        - Return ONLY valid JSON.
-                        - Do NOT include markdown or commentary outside the JSON object.
-                        - Include all keys: risk_overview, diversification_feedback, suggestions, cautionary_note.
-                        - risk_overview, diversification_feedback, and cautionary_note must be non-null strings.
-                        - risk_overview and diversification_feedback should each be at least one full sentence.
-                        - suggestions must contain exactly 3 plain-text strings.
-                        - Do not use colons inside suggestion strings.
-                        - Base every conclusion on the supplied tool outputs only.
-
-                        """;
+                RESPONSE RULES:
+                - Suggestions must be specific, actionable, and risk focused.
+                - If HIGH_CONCENTRATION exists, the first suggestion must address concentration.
+                - If sector concentration exists, one suggestion must address diversification.
+                - Avoid generic advice such as monitor market, stay invested, or diversify more.
+                - Return ONLY valid JSON.
+                - Do NOT include markdown or commentary outside the JSON object.
+                - Include all keys: risk_overview, diversification_feedback, suggestions, cautionary_note.
+                - risk_overview, diversification_feedback, and cautionary_note must be non-null strings.
+                - risk_overview and diversification_feedback should each be at least one full sentence.
+                - suggestions must contain exactly 3 plain-text strings.
+                - Do not use colons inside suggestion strings.
+                """
+                ;
     }
 
-    public String buildReasoningRequest(PortfolioReasoningContext reasoningContext,
-                    String portfolioOverviewJson,
-                    String flaggedHoldingsJson) {
-        String summaryJson = buildPortfolioSummaryJson(reasoningContext.portfolioSummary());
-
+    public String buildReasoningRequest(PortfolioReasoningContext reasoningContext) {
         return """
                         Portfolio Analysis Request:
                         portfolio_userId: %s
-                        portfolio_summary: %s
+                portfolio_summary:
+                - total_invested: %s
+                - total_current_value: %s
+                - total_pnl: %s
+                - total_pnl_percent: %s
                         precomputed_portfolio_risk_flags: %s
-            portfolio_overview_json: %s
-            flagged_holdings_json: %s
-            use_deterministic_evidence_for_metrics_and_holding_support: true
+                        portfolio_stock_count: %s
+                First action: call portfolio_overview.
+                Do not call portfolio_overview again after the first result.
+                Then pull additional tool data only if needed.
                         """
                 .formatted(
                         reasoningContext.portfolioUserId(),
-                        summaryJson,
-            portfolioRiskFlags(reasoningContext),
-            portfolioOverviewJson,
-            flaggedHoldingsJson
-                );
+                        reasoningContext.portfolioSummary() != null
+                                ? reasoningContext.portfolioSummary().totalInvested()
+                                : null,
+                        reasoningContext.portfolioSummary() != null
+                                ? reasoningContext.portfolioSummary().totalCurrentValue()
+                                : null,
+                        reasoningContext.portfolioSummary() != null
+                                ? reasoningContext.portfolioSummary().totalPnL()
+                                : null,
+                        reasoningContext.portfolioSummary() != null
+                                ? reasoningContext.portfolioSummary().totalPnLPercent()
+                                : null,
+                        portfolioRiskFlags(reasoningContext),
+                        reasoningContext.portfolioSummary() != null
+                                ? reasoningContext.portfolioSummary().totalHoldings()
+                                : 0);
+    }
+
+    public String buildRetryReasoningRequest(String baseUserPrompt) {
+        return baseUserPrompt + """
+
+                Previous response was truncated.
+                Reuse tool facts already obtained in this attempt.
+                Return a shorter JSON response.
+                Keep risk_overview and diversification_feedback to one concise sentence each.
+                Keep each suggestion short and plain text.
+                Keep cautionary_note to one short sentence.
+                """;
     }
 
     private List<String> portfolioRiskFlags(PortfolioReasoningContext reasoningContext) {
@@ -100,9 +124,7 @@ public class PortfolioAdvisorPromptBuilder {
                     })
                     .toList();
 
-            String json = objectMapper.writeValueAsString(simplifiedHoldings);
-            logger.info("Built enriched holdings JSON length=" + json.length());
-            return json;
+            return objectMapper.writeValueAsString(simplifiedHoldings);
         } catch (Exception e) {
             throw new RuntimeException("Failed to serialize enriched holdings", e);
         }
@@ -110,9 +132,7 @@ public class PortfolioAdvisorPromptBuilder {
 
     public String buildPortfolioSummaryJson(PortfolioSummary portfolioSummary) {
         try {
-            String json = objectMapper.writeValueAsString(portfolioSummary);
-            logger.info("Built portfolio summary JSON length=" + json.length());
-            return json;
+            return objectMapper.writeValueAsString(portfolioSummary);
         } catch (Exception e) {
             throw new RuntimeException("Failed to serialize portfolio summary", e);
         }
@@ -120,9 +140,7 @@ public class PortfolioAdvisorPromptBuilder {
 
     public String buildPortfolioMetricsJson(PortfolioMetrics portfolioMetrics) {
         try {
-            String json = objectMapper.writeValueAsString(portfolioMetrics);
-            logger.info("Built portfolio metrics JSON length=" + json.length());
-            return json;
+            return objectMapper.writeValueAsString(portfolioMetrics);
         } catch (Exception e) {
             throw new RuntimeException("Failed to serialize portfolio metrics", e);
         }

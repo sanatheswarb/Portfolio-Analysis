@@ -27,7 +27,10 @@ public record NseQuoteResponse(
             String symbol,
 
             @JsonProperty("companyName")
-            String companyName
+            String companyName,
+
+            @JsonProperty("isETFSec")
+            Boolean isETFSec
     ) {
     }
 

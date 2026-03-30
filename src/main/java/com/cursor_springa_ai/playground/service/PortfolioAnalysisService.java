@@ -52,8 +52,6 @@ public class PortfolioAnalysisService {
                                 .findByUserIdWithStatsAndFundamentals(currentUser.getId());
                 String portfolioUserId = currentUser.getBrokerUserId();
 
-                long metricsStart = System.currentTimeMillis();
-
                 // PortfolioStats is already fetched via JOIN FETCH on user
                 PortfolioStats portfolioStats = !userHoldings.isEmpty()
                                 ? userHoldings.getFirst().getUser().getPortfolioStats()
@@ -82,8 +80,6 @@ public class PortfolioAnalysisService {
                                 scale(totalPnLPercent),
                                 stockCount);
 
-                long metricsTime = System.currentTimeMillis() - metricsStart;
-
                 PortfolioReasoningContext reasoningContext = new PortfolioReasoningContext(
                                 portfolioUserId,
                                 portfolioSummary,
@@ -95,9 +91,6 @@ public class PortfolioAnalysisService {
 
                 // Persist the AI response to ai_analysis (append-only audit log)
                 aiAnalysisService.savePortfolioAdvice(currentUser, aiInsights);
-
-                java.util.logging.Logger.getLogger(PortfolioAnalysisService.class.getName())
-                                .info("Deterministic portfolio metrics time: " + metricsTime + " ms");
 
                 return new PortfolioAnalysisResponse(
                                 portfolioUserId,

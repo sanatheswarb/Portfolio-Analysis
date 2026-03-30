@@ -7,14 +7,24 @@ import org.springframework.ai.tool.annotation.Tool;
 import org.springframework.ai.tool.annotation.ToolParam;
 
 import java.util.LinkedHashMap;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Objects;
+import java.util.logging.Logger;
 
 public class PortfolioReasoningTools {
 
+    private static final Logger logger = Logger.getLogger(PortfolioReasoningTools.class.getName());
+
     private final PortfolioReasoningContext context;
     private final ObjectMapper objectMapper;
+    private final List<String> toolInvocationOrder = new ArrayList<>();
+    private final Map<String, Integer> toolInvocationCounts = new LinkedHashMap<>();
+    private String portfolioOverviewCache;
+    private String flaggedHoldingsCache;
+    private final Map<String, String> holdingDetailsCache = new LinkedHashMap<>();
 
     public PortfolioReasoningTools(PortfolioReasoningContext context, ObjectMapper objectMapper) {
         this.context = context;
@@ -23,23 +33,34 @@ public class PortfolioReasoningTools {
 
     @Tool(name = "portfolio_overview", description = "Returns deterministic portfolio summary, diversification metrics, sector exposure, portfolio risk flags, and the largest holdings. Call this first.")
     public String portfolioOverview() {
+        recordToolInvocation("portfolio_overview");
+        if (portfolioOverviewCache != null) {
+            return portfolioOverviewCache;
+        }
         Map<String, Object> payload = new LinkedHashMap<>();
         payload.put("portfolioUserId", context.portfolioUserId());
         payload.put("summary", context.portfolioSummary());
         payload.put("metrics", portfolioStatsPayload());
         payload.put("portfolioRiskFlags", context.portfolioRiskFlags());
         payload.put("largestHoldings", largestHoldings());
-        return toJson(payload);
+        portfolioOverviewCache = toJson(payload);
+        return portfolioOverviewCache;
     }
 
     @Tool(name = "flagged_holdings", description = "Returns only holdings that already have deterministic risk flags, sorted by allocation descending. Use this when you need evidence for recommendations.")
     public String flaggedHoldings() {
+        recordToolInvocation("flagged_holdings");
+        if (flaggedHoldingsCache != null) {
+            return flaggedHoldingsCache;
+        }
         List<Map<String, Object>> holdings = context.enrichedHoldings().stream()
                 .filter(holding -> holding.riskFlags() != null && !holding.riskFlags().isEmpty())
                 .sorted((left, right) -> compareByAllocation(right, left))
+            .limit(8)
                 .map(this::toHoldingSummary)
                 .toList();
-        return toJson(holdings);
+        flaggedHoldingsCache = toJson(holdings);
+        return flaggedHoldingsCache;
     }
 
     @Tool(name = "holding_details", description = "Returns deterministic metrics and risk flags for a single holding symbol when you need supporting evidence for advice.")
@@ -47,23 +68,48 @@ public class PortfolioReasoningTools {
             @ToolParam(description = "Stock symbol to inspect, for example INFY or TCS", required = true)
             String symbol
     ) {
+        recordToolInvocation("holding_details");
+        logger.info("Advisor tool invoked: holding_details symbol=" + symbol);
         if (symbol == null || symbol.isBlank()) {
             return "{\"error\":\"symbol is required\"}";
         }
 
-        return context.enrichedHoldings().stream()
+        String normalizedSymbol = symbol.trim().toUpperCase(Locale.ROOT);
+        if (holdingDetailsCache.containsKey(normalizedSymbol)) {
+            return holdingDetailsCache.get(normalizedSymbol);
+        }
+
+        String payload = context.enrichedHoldings().stream()
                 .filter(holding -> holding.symbol() != null)
-                .filter(holding -> holding.symbol().equalsIgnoreCase(symbol.trim()))
+                .filter(holding -> holding.symbol().equalsIgnoreCase(normalizedSymbol))
                 .findFirst()
                 .map(this::toHoldingSummary)
                 .map(this::toJson)
-                .orElse("{\"error\":\"holding not found for symbol " + symbol.trim().toUpperCase(Locale.ROOT) + "\"}");
+                .orElse("{\"error\":\"holding not found for symbol " + normalizedSymbol + "\"}");
+        holdingDetailsCache.put(normalizedSymbol, payload);
+        return payload;
+    }
+
+    public int invocationCount() {
+        return toolInvocationOrder.size();
+    }
+
+    public Map<String, Integer> invocationCounts() {
+        return Map.copyOf(toolInvocationCounts);
+    }
+
+    public String firstInvokedTool() {
+        return toolInvocationOrder.isEmpty() ? null : toolInvocationOrder.getFirst();
+    }
+
+    public boolean hasInvokedTool(String toolName) {
+        return toolInvocationCounts.containsKey(toolName);
     }
 
     private List<Map<String, Object>> largestHoldings() {
         return context.enrichedHoldings().stream()
                 .sorted((left, right) -> compareByAllocation(right, left))
-                .limit(5)
+                .limit(3)
                 .map(this::toHoldingSummary)
                 .toList();
     }
@@ -86,19 +132,10 @@ public class PortfolioReasoningTools {
             return payload;
         }
 
-        payload.put("totalInvested", context.portfolioStats().getTotalInvested());
-        payload.put("totalValue", context.portfolioStats().getTotalValue());
-        payload.put("totalPnl", context.portfolioStats().getTotalPnl());
-        payload.put("pnlPercent", context.portfolioStats().getPnlPercent());
         payload.put("largestWeight", context.portfolioStats().getLargestWeight());
-        payload.put("stockCount", context.portfolioStats().getStockCount());
-        payload.put("dayChange", context.portfolioStats().getDayChange());
         payload.put("dayChangePercent", context.portfolioStats().getDayChangePercent());
         payload.put("top3HoldingPercent", context.portfolioStats().getTop3HoldingPercent());
         payload.put("diversificationScore", context.portfolioStats().getDiversificationScore());
-        payload.put("calculatedAt", context.portfolioStats().getCalculatedAt() != null
-                ? context.portfolioStats().getCalculatedAt().toString()
-                : null);
         return payload;
     }
 
@@ -122,4 +159,18 @@ public class PortfolioReasoningTools {
             throw new IllegalStateException("Failed to serialize reasoning tool payload", exception);
         }
     }
+
+    private void recordToolInvocation(String toolName) {
+        String safeToolName = Objects.requireNonNull(toolName, "toolName must not be null");
+        toolInvocationOrder.add(safeToolName);
+        logger.info("Advisor tool invoked: " + safeToolName);
+
+        Integer currentCount = toolInvocationCounts.get(safeToolName);
+        if (currentCount == null) {
+            toolInvocationCounts.put(safeToolName, 1);
+            return;
+        }
+        toolInvocationCounts.put(safeToolName, currentCount + 1);
+    }
+
 }

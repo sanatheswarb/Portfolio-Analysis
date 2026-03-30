@@ -358,9 +358,6 @@ public class EnrichedHoldingDataCache {
             );
             result.add(updated);
 
-            if (!riskFlags.isEmpty()) {
-                logger.info("Risk flags for " + enriched.symbol() + ": " + String.join(", ", riskFlags));
-            }
         }
 
         logger.info("Risk flag calculation completed for " + result.size() + " holdings");
