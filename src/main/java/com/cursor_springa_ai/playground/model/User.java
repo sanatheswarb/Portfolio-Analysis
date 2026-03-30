@@ -1,6 +1,5 @@
 package com.cursor_springa_ai.playground.model;
 
-import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
@@ -43,7 +42,7 @@ public class User {
     @Column(name = "updated_at", nullable = false)
     private LocalDateTime updatedAt;
 
-    @OneToOne(mappedBy = "user", fetch = FetchType.LAZY, cascade = CascadeType.ALL)
+    @OneToOne(mappedBy = "user", fetch = FetchType.LAZY)
     private PortfolioStats portfolioStats;
 
     protected User() {
@@ -85,4 +84,5 @@ public class User {
     public PortfolioStats getPortfolioStats() {
         return portfolioStats;
     }
+
 }

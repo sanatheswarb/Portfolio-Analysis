@@ -3,7 +3,6 @@ package com.cursor_springa_ai.playground.service;
 import com.cursor_springa_ai.playground.dto.EnrichedHoldingData;
 import com.cursor_springa_ai.playground.dto.PortfolioAdviceResponse;
 import com.cursor_springa_ai.playground.dto.PortfolioAnalysisResponse;
-import com.cursor_springa_ai.playground.dto.PortfolioMetrics;
 import com.cursor_springa_ai.playground.dto.PortfolioSummary;
 import com.cursor_springa_ai.playground.model.PortfolioStats;
 import com.cursor_springa_ai.playground.model.User;
@@ -13,7 +12,10 @@ import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 @Service
 public class PortfolioAnalysisService {
@@ -21,7 +23,6 @@ public class PortfolioAnalysisService {
         private final UserHoldingRepository userHoldingRepository;
         private final AiPortfolioAdvisorService aiPortfolioAdvisorService;
         private final EnrichedHoldingDataCache enrichedHoldingDataCache;
-        private final PortfolioMetricsService portfolioMetricsService;
         private final ZerodhaAuthService zerodhaAuthService;
         private final AiAnalysisService aiAnalysisService;
 
@@ -35,7 +36,6 @@ public class PortfolioAnalysisService {
                 this.userHoldingRepository = userHoldingRepository;
                 this.aiPortfolioAdvisorService = aiPortfolioAdvisorService;
                 this.enrichedHoldingDataCache = enrichedHoldingDataCache;
-                this.portfolioMetricsService = portfolioMetricsService;
                 this.zerodhaAuthService = zerodhaAuthService;
                 this.aiAnalysisService = aiAnalysisService;
         }
@@ -50,21 +50,21 @@ public class PortfolioAnalysisService {
                 // Single DB query: user_holdings + instrument + stock_fundamentals + portfolio_stats
                 List<UserHolding> userHoldings = userHoldingRepository
                                 .findByUserIdWithStatsAndFundamentals(currentUser.getId());
-                String portfolioId = currentUser.getBrokerUserId();
+                String portfolioUserId = currentUser.getBrokerUserId();
 
                 long metricsStart = System.currentTimeMillis();
 
                 // PortfolioStats is already fetched via JOIN FETCH on user
-                PortfolioStats stats = !userHoldings.isEmpty()
+                PortfolioStats portfolioStats = !userHoldings.isEmpty()
                                 ? userHoldings.getFirst().getUser().getPortfolioStats()
                                 : null;
-                BigDecimal totalInvested = stats != null ? stats.getTotalInvested() : BigDecimal.ZERO;
-                BigDecimal totalCurrentValue = stats != null ? stats.getTotalValue() : BigDecimal.ZERO;
-                BigDecimal totalProfitLoss = stats != null ? stats.getTotalPnl() : BigDecimal.ZERO;
-                BigDecimal totalPnLPercent = stats != null && stats.getPnlPercent() != null
-                                ? stats.getPnlPercent() : BigDecimal.ZERO;
-                int stockCount = stats != null && stats.getStockCount() != null
-                                ? stats.getStockCount() : userHoldings.size();
+                BigDecimal totalInvested = portfolioStats != null ? portfolioStats.getTotalInvested() : BigDecimal.ZERO;
+                BigDecimal totalCurrentValue = portfolioStats != null ? portfolioStats.getTotalValue() : BigDecimal.ZERO;
+                BigDecimal totalProfitLoss = portfolioStats != null ? portfolioStats.getTotalPnl() : BigDecimal.ZERO;
+                BigDecimal totalPnLPercent = portfolioStats != null && portfolioStats.getPnlPercent() != null
+                                ? portfolioStats.getPnlPercent() : BigDecimal.ZERO;
+                int stockCount = portfolioStats != null && portfolioStats.getStockCount() != null
+                                ? portfolioStats.getStockCount() : userHoldings.size();
 
                 // StockFundamentals already loaded via JOIN FETCH on instrument
                 // Build enriched holdings entirely from the eagerly-fetched graph
@@ -82,17 +82,13 @@ public class PortfolioAnalysisService {
                                 scale(totalPnLPercent),
                                 stockCount);
 
-                // Calculate portfolio-level metrics
-                PortfolioMetrics portfolioMetrics = portfolioMetricsService.calculatePortfolioMetrics(
-                                enrichedHoldings,
-                                totalCurrentValue);
-
                 long metricsTime = System.currentTimeMillis() - metricsStart;
 
                 PortfolioReasoningContext reasoningContext = new PortfolioReasoningContext(
-                                portfolioId,
+                                portfolioUserId,
                                 portfolioSummary,
-                                portfolioMetrics,
+                                portfolioStats,
+                                calculatePortfolioRiskFlags(portfolioStats, userHoldings),
                                 enrichedHoldings);
 
                 PortfolioAdviceResponse aiInsights = aiPortfolioAdvisorService.generateInsights(reasoningContext);
@@ -104,7 +100,7 @@ public class PortfolioAnalysisService {
                                 .info("Deterministic portfolio metrics time: " + metricsTime + " ms");
 
                 return new PortfolioAnalysisResponse(
-                                portfolioId,
+                                portfolioUserId,
                                 scale(totalInvested),
                                 scale(totalCurrentValue),
                                 scale(totalProfitLoss),
@@ -116,5 +112,44 @@ public class PortfolioAnalysisService {
                         return BigDecimal.ZERO;
                 }
                 return value.setScale(2, RoundingMode.HALF_UP);
+        }
+
+        private List<String> calculatePortfolioRiskFlags(PortfolioStats stats, List<UserHolding> holdings) {
+                if (stats == null || holdings.isEmpty()) {
+                        return List.of();
+                }
+                List<String> flags = new ArrayList<>();
+
+                BigDecimal largestWeight = stats.getLargestWeight() != null ? stats.getLargestWeight() : BigDecimal.ZERO;
+                BigDecimal top3 = stats.getTop3HoldingPercent() != null ? stats.getTop3HoldingPercent() : BigDecimal.ZERO;
+                int stockCount = stats.getStockCount() != null ? stats.getStockCount() : holdings.size();
+
+                if (largestWeight.compareTo(BigDecimal.valueOf(25)) > 0) {
+                        flags.add("HIGH_CONCENTRATION");
+                }
+                if (top3.compareTo(BigDecimal.valueOf(60)) > 0) {
+                        flags.add("TOP_HEAVY_PORTFOLIO");
+                }
+
+                Map<String, BigDecimal> sectorExposure = new HashMap<>();
+                for (UserHolding h : holdings) {
+                        String sector = h.getInstrument() != null ? h.getInstrument().getSector() : null;
+                        if (sector == null || sector.isBlank()) {
+                                sector = "UNKNOWN";
+                        }
+                        BigDecimal w = h.getWeightPercent() != null ? h.getWeightPercent() : BigDecimal.ZERO;
+                        sectorExposure.merge(sector, w, BigDecimal::add);
+                }
+                sectorExposure.forEach((sector, exposure) -> {
+                        if (exposure.compareTo(BigDecimal.valueOf(40)) > 0) {
+                                flags.add("SECTOR_CONCENTRATION_" + sector.toUpperCase().replace(" ", "_"));
+                        }
+                });
+
+                if (stockCount < 5) {
+                        flags.add("UNDER_DIVERSIFIED");
+                }
+
+                return flags;
         }
 }

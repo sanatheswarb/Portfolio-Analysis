@@ -39,18 +39,18 @@ public class StockFundamentalsService {
     }
 
     /**
-     * Upsert fundamentals for the given instrument.
-     * Skips the NSE API call when the row was refreshed within the last 24 hours.
+     * Upsert fundamentals for the given instrument and return the current NSE previous close.
+     * Fundamentals persistence remains stale-aware, but previous close is fetched on-demand and not stored.
      */
     @Transactional
-    public void upsertIfStale(Instrument instrument) {
+    public BigDecimal upsertIfStale(Instrument instrument) {
         if (instrument == null) {
-            return;
+            return null;
         }
         Long token = instrument.getInstrumentToken();
         if (token == null) {
             logger.warning("Skipping fundamentals upsert: instrument token is null");
-            return;
+            return null;
         }
         String symbol = instrument.getSymbol();
 
@@ -61,13 +61,13 @@ public class StockFundamentalsService {
             row.setSymbol(symbol);
             if (row.getLastUpdated() != null
                     && row.getLastUpdated().toLocalDate().isEqual(LocalDate.now())) {
-                return; // still fresh — skip
+                return fetchPreviousClose(symbol);
             }
-            refreshFromNse(row, symbol);
+            return refreshFromNse(row, symbol);
         } else {
             StockFundamentals row = new StockFundamentals(token);
             row.setSymbol(symbol);
-            refreshFromNse(row, symbol);
+            return refreshFromNse(row, symbol);
         }
     }
 
@@ -75,45 +75,52 @@ public class StockFundamentalsService {
     // private helpers
     // ------------------------------------------------------------------
 
-    private void refreshFromNse(StockFundamentals row, String symbol) {
+    private BigDecimal refreshFromNse(StockFundamentals row, String symbol) {
         if (row.getInstrumentToken() == null) {
             logger.warning("Skipping fundamentals save: null instrument token for symbol=" + symbol);
-            return;
+            return null;
         }
 
         if (symbol == null || symbol.isBlank()) {
-            return;
+            return null;
         }
+        Optional<com.cursor_springa_ai.playground.integration.market.dto.NseQuoteResponse> quoteOpt = nseApiClient.fetchQuote(symbol);
+        if (quoteOpt.isEmpty()) {
+            return null;
+        }
+        com.cursor_springa_ai.playground.integration.market.dto.NseQuoteResponse quote = quoteOpt.get();
+        BigDecimal previousClose = extractPreviousClose(quote);
+
         StockMetrics metrics = nseApiClient.fetchMetricsForSymbol(symbol);
-        if (metrics == null) {
-            return;
-        }
 
         // PE ratio
-        if (metrics.pe() != null) {
+        if (metrics != null && metrics.pe() != null) {
             row.setPe(metrics.pe());
         }
 
         // Sector name returned by metrics endpoint
-        if (metrics.sector() != null && !metrics.sector().isBlank()) {
+        if (metrics != null && metrics.sector() != null && !metrics.sector().isBlank()) {
             row.setSector(metrics.sector());
+        } else if (quote.industryInfo() != null && quote.industryInfo().sector() != null
+                && !quote.industryInfo().sector().isBlank()) {
+            row.setSector(quote.industryInfo().sector());
         }
 
         // 52-week high / low
-        if (metrics.week52High() != null) {
+        if (metrics != null && metrics.week52High() != null) {
             row.setWeek52High(metrics.week52High());
         }
-        if (metrics.week52Low() != null) {
+        if (metrics != null && metrics.week52Low() != null) {
             row.setWeek52Low(metrics.week52Low());
         }
 
         // Sector PE
-        if (metrics.sectorPe() != null) {
+        if (metrics != null && metrics.sectorPe() != null) {
             row.setSectorPe(metrics.sectorPe());
         }
 
         // Market cap = issuedSize × lastPrice (in INR)
-        if (metrics.issuedSize() != null && metrics.lastPrice() != null
+        if (metrics != null && metrics.issuedSize() != null && metrics.lastPrice() != null
                 && metrics.lastPrice().compareTo(BigDecimal.ZERO) > 0) {
             row.setMarketCap(metrics.issuedSize() * metrics.lastPrice().longValue());
         }
@@ -127,5 +134,27 @@ public class StockFundamentalsService {
                 + " week52Low=" + row.getWeek52Low()
                 + " marketCap=" + row.getMarketCap()
                 + " sector=" + row.getSector());
+        return previousClose;
+    }
+
+    private BigDecimal extractPreviousClose(com.cursor_springa_ai.playground.integration.market.dto.NseQuoteResponse quote) {
+        if (quote == null || quote.priceInfo() == null) {
+            return null;
+        }
+        if (quote.priceInfo().previousClose() != null) {
+            return BigDecimal.valueOf(quote.priceInfo().previousClose());
+        }
+        if (quote.priceInfo().close() != null) {
+            return BigDecimal.valueOf(quote.priceInfo().close());
+        }
+        return null;
+    }
+
+    private BigDecimal fetchPreviousClose(String symbol) {
+        if (symbol == null || symbol.isBlank()) {
+            return null;
+        }
+        Optional<com.cursor_springa_ai.playground.integration.market.dto.NseQuoteResponse> quoteOpt = nseApiClient.fetchQuote(symbol);
+        return quoteOpt.map(this::extractPreviousClose).orElse(null);
     }
 }

@@ -5,7 +5,6 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
-import jakarta.persistence.MapsId;
 import jakarta.persistence.OneToOne;
 import jakarta.persistence.Table;
 
@@ -28,8 +27,7 @@ public class PortfolioStats {
     private Long userId;
 
     @OneToOne(fetch = FetchType.LAZY, optional = false)
-    @MapsId
-    @JoinColumn(name = "user_id", nullable = false)
+    @JoinColumn(name = "user_id", referencedColumnName = "id", insertable = false, updatable = false)
     private User user;
 
     @Column(name = "total_invested", nullable = false, precision = 18, scale = 4)
@@ -52,24 +50,45 @@ public class PortfolioStats {
     @Column(name = "stock_count", nullable = false)
     private Integer stockCount;
 
+    /** Sum of day_change across all user holdings. */
+    @Column(name = "day_change", precision = 18, scale = 4)
+    private BigDecimal dayChange;
+
+    /** day_change / (total_value − day_change) × 100. */
+    @Column(name = "day_change_percent", precision = 10, scale = 4)
+    private BigDecimal dayChangePercent;
+
+    /** Sum of weight_percent for the top 3 holdings — concentration indicator. */
+    @Column(name = "top3_holding_percent", precision = 10, scale = 4)
+    private BigDecimal top3HoldingPercent;
+
+    /** 1 − Σ(weight_i²) — Herfindahl-based diversification score (0 = concentrated, 1 = diversified). */
+    @Column(name = "diversification_score", precision = 10, scale = 4)
+    private BigDecimal diversificationScore;
+
     @Column(name = "calculated_at", nullable = false)
     private LocalDateTime calculatedAt;
 
     protected PortfolioStats() {
     }
 
-    public PortfolioStats(User user, BigDecimal totalInvested, BigDecimal totalValue,
+    public PortfolioStats(Long userId, BigDecimal totalInvested, BigDecimal totalValue,
                           BigDecimal totalPnl, BigDecimal pnlPercent,
                           BigDecimal largestWeight, Integer stockCount,
+                          BigDecimal dayChange, BigDecimal dayChangePercent,
+                          BigDecimal top3HoldingPercent, BigDecimal diversificationScore,
                           LocalDateTime calculatedAt) {
-        this.user = user;
-        this.userId = user.getId();
+        this.userId = userId;
         this.totalInvested = totalInvested;
         this.totalValue = totalValue;
         this.totalPnl = totalPnl;
         this.pnlPercent = pnlPercent;
         this.largestWeight = largestWeight;
         this.stockCount = stockCount;
+        this.dayChange = dayChange;
+        this.dayChangePercent = dayChangePercent;
+        this.top3HoldingPercent = top3HoldingPercent;
+        this.diversificationScore = diversificationScore;
         this.calculatedAt = calculatedAt;
     }
 
@@ -136,4 +155,37 @@ public class PortfolioStats {
     public void setCalculatedAt(LocalDateTime calculatedAt) {
         this.calculatedAt = calculatedAt;
     }
+
+    public BigDecimal getDayChange() {
+        return dayChange;
+    }
+
+    public void setDayChange(BigDecimal dayChange) {
+        this.dayChange = dayChange;
+    }
+
+    public BigDecimal getDayChangePercent() {
+        return dayChangePercent;
+    }
+
+    public void setDayChangePercent(BigDecimal dayChangePercent) {
+        this.dayChangePercent = dayChangePercent;
+    }
+
+    public BigDecimal getTop3HoldingPercent() {
+        return top3HoldingPercent;
+    }
+
+    public void setTop3HoldingPercent(BigDecimal top3HoldingPercent) {
+        this.top3HoldingPercent = top3HoldingPercent;
+    }
+
+    public BigDecimal getDiversificationScore() {
+        return diversificationScore;
+    }
+
+    public void setDiversificationScore(BigDecimal diversificationScore) {
+        this.diversificationScore = diversificationScore;
+    }
+
 }

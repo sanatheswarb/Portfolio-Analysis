@@ -78,7 +78,7 @@ public class ZerodhaImportService {
 
         stockMetricsCalculationService.calculateForUser(currentUser);
 
-        portfolioStatsBatchService.calculateForUserAsync(currentUser);
+        portfolioStatsBatchService.calculateForUserAsync(currentUser.getId());
 
         return new ZerodhaImportResponse(
                 currentUser.getBrokerUserId(),
@@ -102,21 +102,22 @@ public class ZerodhaImportService {
         String symbol = item.getTradingSymbol().toUpperCase(Locale.ROOT);
         Instrument instrument = instrumentEnrichmentService.upsertAndEnrich(item);
         if (instrument != null) {
-            stockFundamentalsService.upsertIfStale(instrument);
-            upsertUserHolding(currentUser, instrument, item, totalCurrentValue);
+            BigDecimal previousClose = stockFundamentalsService.upsertIfStale(instrument);
+            upsertUserHolding(currentUser, instrument, item, totalCurrentValue, previousClose);
         }
         return symbol;
     }
 
     private void upsertUserHolding(User user, Instrument instrument, ZerodhaHoldingItem item,
-                                   BigDecimal totalCurrentValue) {
+                       BigDecimal totalCurrentValue,
+                       BigDecimal nsePreviousClose) {
         BigDecimal qty = item.getQuantity();
         // Indian equity markets do not support fractional shares; round to the nearest
         // whole number defensively before storing as Integer.
         int qtyInt = qty.setScale(0, RoundingMode.HALF_UP).intValue();
         BigDecimal avgPrice = nvl(item.getAveragePrice());
-        BigDecimal closePrice = nvl(item.getClosePrice());
         BigDecimal lastPrice = nvl(item.getLastPrice());
+        BigDecimal closePrice = resolveClosePrice(item.getClosePrice(), nsePreviousClose);
         String symbol = item.getTradingSymbol().toUpperCase(Locale.ROOT);
         BigDecimal investedValue = qty.multiply(avgPrice);
         BigDecimal currentValue = qty.multiply(lastPrice);
@@ -124,8 +125,8 @@ public class ZerodhaImportService {
         BigDecimal pnlPercent = investedValue.compareTo(BigDecimal.ZERO) != 0
                 ? pnl.divide(investedValue, 6, RoundingMode.HALF_UP).multiply(BigDecimal.valueOf(100))
                 : BigDecimal.ZERO;
-        BigDecimal dayChange = nvl(item.getDayChange());
-        BigDecimal dayChangePct = nvl(item.getDayChangePercentage());
+        BigDecimal dayChange = calculateDayChange(lastPrice, closePrice, item.getDayChange());
+        BigDecimal dayChangePct = calculateDayChangePct(dayChange, closePrice, item.getDayChangePercentage());
         BigDecimal weightPercent = totalCurrentValue.compareTo(BigDecimal.ZERO) != 0
                 ? currentValue.divide(totalCurrentValue, 6, RoundingMode.HALF_UP)
                         .multiply(BigDecimal.valueOf(100))
@@ -173,6 +174,28 @@ public class ZerodhaImportService {
             }
         }
         return total;
+    }
+
+    private BigDecimal resolveClosePrice(BigDecimal kiteClosePrice, BigDecimal nsePreviousClose) {
+        if (nsePreviousClose != null && nsePreviousClose.compareTo(BigDecimal.ZERO) > 0) {
+            return nsePreviousClose;
+        }
+        return nvl(kiteClosePrice);
+    }
+
+    private BigDecimal calculateDayChange(BigDecimal lastPrice, BigDecimal closePrice, BigDecimal fallbackDayChange) {
+        if (closePrice != null && closePrice.compareTo(BigDecimal.ZERO) > 0) {
+            return nvl(lastPrice).subtract(closePrice);
+        }
+        return nvl(fallbackDayChange);
+    }
+
+    private BigDecimal calculateDayChangePct(BigDecimal dayChange, BigDecimal closePrice, BigDecimal fallbackPct) {
+        if (closePrice != null && closePrice.compareTo(BigDecimal.ZERO) > 0) {
+            return dayChange.divide(closePrice, 6, RoundingMode.HALF_UP)
+                    .multiply(BigDecimal.valueOf(100));
+        }
+        return nvl(fallbackPct);
     }
 
     private BigDecimal nvl(BigDecimal value) {

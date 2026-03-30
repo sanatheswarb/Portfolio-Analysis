@@ -1,8 +1,8 @@
 package com.cursor_springa_ai.playground.service;
 
 import com.cursor_springa_ai.playground.dto.EnrichedHoldingData;
-import com.cursor_springa_ai.playground.dto.PortfolioMetrics;
 import com.cursor_springa_ai.playground.dto.PortfolioSummary;
+import com.cursor_springa_ai.playground.model.PortfolioStats;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
 
@@ -25,7 +25,7 @@ class PortfolioReasoningToolsTest {
         String json = tools.portfolioOverview();
         Map<?, ?> payload = objectMapper.readValue(json, Map.class);
 
-        assertEquals("portfolio-1", payload.get("portfolioId"));
+        assertEquals("portfolio-1", payload.get("portfolioUserId"));
         assertTrue(json.contains("HIGH_CONCENTRATION"));
         assertTrue(json.contains("INFY"));
     }
@@ -60,19 +60,13 @@ class PortfolioReasoningToolsTest {
                 BigDecimal.valueOf(12.5),
                 3
         );
-        PortfolioMetrics metrics = new PortfolioMetrics(
-                BigDecimal.valueOf(100000),
-                BigDecimal.valueOf(112500),
-                BigDecimal.valueOf(12500),
-                BigDecimal.valueOf(12.5),
-                3,
-                BigDecimal.valueOf(35),
-                BigDecimal.valueOf(65),
-                Map.of("technology", BigDecimal.valueOf(80), "financials", BigDecimal.valueOf(20)),
-                Map.of("technology", 2, "financials", 1),
-                List.of("HIGH_CONCENTRATION"),
-                BigDecimal.valueOf(48)
-        );
+        PortfolioStats stats = new PortfolioStats(1L,
+                BigDecimal.valueOf(100000), BigDecimal.valueOf(112500),
+                BigDecimal.valueOf(12500), BigDecimal.valueOf(12.5),
+                BigDecimal.valueOf(35), 3,
+                BigDecimal.ZERO, BigDecimal.ZERO,
+                BigDecimal.valueOf(65), BigDecimal.valueOf(48),
+                null);
 
         EnrichedHoldingData infy = new EnrichedHoldingData(
                 "INFY",
@@ -143,6 +137,6 @@ class PortfolioReasoningToolsTest {
                 List.of()
         );
 
-        return new PortfolioReasoningContext("portfolio-1", summary, metrics, List.of(infy, tcs, hdfcBank));
+        return new PortfolioReasoningContext("portfolio-1", summary, stats, List.of("HIGH_CONCENTRATION"), List.of(infy, tcs, hdfcBank));
     }
 }

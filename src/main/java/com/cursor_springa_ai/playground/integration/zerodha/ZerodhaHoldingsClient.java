@@ -11,6 +11,7 @@ import java.math.RoundingMode;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.logging.Logger;
 
 /**
  * Zerodha holdings client using the official KiteConnect SDK.
@@ -18,6 +19,8 @@ import java.util.List;
  */
 @Component
 public class ZerodhaHoldingsClient {
+
+    private static final Logger logger = Logger.getLogger(ZerodhaHoldingsClient.class.getName());
 
     private final KiteConnectClient kiteConnectClient;
 
@@ -42,6 +45,7 @@ public class ZerodhaHoldingsClient {
             if (sdkHoldings == null) {
                 return Collections.emptyList();
             }
+            logger.info("Raw Zerodha sdkHoldings: " + summarizeSdkHoldings(sdkHoldings));
 
             // Convert SDK Holding objects to ZerodhaHoldingItem DTOs
             List<ZerodhaHoldingItem> items = new ArrayList<>();
@@ -137,6 +141,23 @@ public class ZerodhaHoldingsClient {
         }
 
         return item;
+    }
+
+    private String summarizeSdkHoldings(List<Holding> sdkHoldings) {
+        List<String> summaries = new ArrayList<>();
+        for (Holding holding : sdkHoldings) {
+            summaries.add("{symbol=" + holding.tradingSymbol
+                    + ", token=" + holding.instrumentToken
+                    + ", exchange=" + holding.exchange
+                    + ", isin=" + holding.isin
+                    + ", qty=" + holding.quantity
+                    + ", avgPrice=" + holding.averagePrice
+                    + ", lastPrice=" + holding.lastPrice
+                    + ", pnl=" + holding.pnl
+                    + ", closePrice=" + holding.price
+                    + "}");
+        }
+        return summaries.toString();
     }
 }
 

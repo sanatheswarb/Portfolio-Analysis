@@ -28,11 +28,8 @@ public class PortfolioAdvisorPromptBuilder {
                         PRIMARY OBJECTIVE:
                         Protect capital and reduce portfolio risk before optimizing returns.
 
-                        TOOL USAGE RULES:
-                        - Call portfolio_overview first.
-                        - Use flagged_holdings only when you need supporting evidence for a risk-focused recommendation.
-                        - Use holding_details only for a specific symbol when the overview is not enough.
-                        - Treat tool outputs as the source of truth for all metrics and holding evidence.
+                        DETERMINISTIC EVIDENCE RULES:
+                        - Treat the provided portfolio_overview_json and flagged_holdings_json as the source of truth.
                         - Do not recompute metrics yourself.
 
                         ANALYSIS PRIORITY:
@@ -60,28 +57,31 @@ public class PortfolioAdvisorPromptBuilder {
                         """;
     }
 
-    public String buildReasoningRequest(PortfolioReasoningContext reasoningContext) {
+    public String buildReasoningRequest(PortfolioReasoningContext reasoningContext,
+                    String portfolioOverviewJson,
+                    String flaggedHoldingsJson) {
         String summaryJson = buildPortfolioSummaryJson(reasoningContext.portfolioSummary());
 
         return """
                         Portfolio Analysis Request:
-                        portfolio_id: %s
+                        portfolio_userId: %s
                         portfolio_summary: %s
                         precomputed_portfolio_risk_flags: %s
-                        use_tools_for_metrics_and_holding_evidence: true
+            portfolio_overview_json: %s
+            flagged_holdings_json: %s
+            use_deterministic_evidence_for_metrics_and_holding_support: true
                         """
                 .formatted(
-                        reasoningContext.portfolioId(),
+                        reasoningContext.portfolioUserId(),
                         summaryJson,
-                        portfolioRiskFlags(reasoningContext)
+            portfolioRiskFlags(reasoningContext),
+            portfolioOverviewJson,
+            flaggedHoldingsJson
                 );
     }
 
     private List<String> portfolioRiskFlags(PortfolioReasoningContext reasoningContext) {
-        if (reasoningContext.portfolioMetrics() == null) {
-            return List.of();
-        }
-        return reasoningContext.portfolioMetrics().portfolioRiskFlags();
+        return reasoningContext.portfolioRiskFlags();
     }
 
     public String buildEnrichedHoldingsJson(List<EnrichedHoldingData> enrichedHoldings) {

@@ -14,6 +14,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDateTime;
+import java.util.Comparator;
 import java.util.List;
 import java.util.logging.Logger;
 
@@ -86,17 +87,20 @@ public class PortfolioStatsBatchService {
 
     /**
      * Fire-and-forget variant — runs {@link #calculateForUser} on a separate thread.
+     * Accepts a plain user ID to avoid passing a detached Hibernate entity across threads.
      */
     @Async
-    public void calculateForUserAsync(User user) {
+    @Transactional
+    public void calculateForUserAsync(Long userId) {
+        User user = userRepository.findById(userId).orElse(null);
+        if (user == null) {
+            logger.warning("User not found for async stats calculation: userId=" + userId);
+            return;
+        }
         calculateForUser(user);
     }
 
-    /**
-     * Recalculate and persist portfolio statistics for a single user.
-     * The existing row is overwritten if present.
-     */
-    @Transactional
+   
     public void calculateForUser(User user) {
         List<UserHolding> holdings = userHoldingRepository.findByUserId(user.getId());
 
@@ -108,14 +112,20 @@ public class PortfolioStatsBatchService {
         BigDecimal totalInvested = BigDecimal.ZERO;
         BigDecimal totalValue = BigDecimal.ZERO;
         BigDecimal largestWeight = BigDecimal.ZERO;
+        BigDecimal dayChange = BigDecimal.ZERO;
+        BigDecimal sumWeightSquared = BigDecimal.ZERO;
 
         for (UserHolding h : holdings) {
             totalInvested = totalInvested.add(nvl(h.getInvestedValue()));
             totalValue = totalValue.add(nvl(h.getCurrentValue()));
+            dayChange = dayChange.add(nvl(h.getDayChange()));
             BigDecimal w = nvl(h.getWeightPercent());
             if (w.compareTo(largestWeight) > 0) {
                 largestWeight = w;
             }
+            // weight as fraction (e.g. 0.25 for 25%)
+            BigDecimal wFraction = w.divide(BigDecimal.valueOf(100), 6, RoundingMode.HALF_UP);
+            sumWeightSquared = sumWeightSquared.add(wFraction.multiply(wFraction));
         }
 
         BigDecimal totalPnl = totalValue.subtract(totalInvested);
@@ -123,38 +133,51 @@ public class PortfolioStatsBatchService {
                 ? totalPnl.divide(totalInvested, 6, RoundingMode.HALF_UP)
                         .multiply(BigDecimal.valueOf(100))
                 : BigDecimal.ZERO;
+
+        // day_change_percent = day_change / (portfolio_value - day_change) * 100
+        BigDecimal previousValue = totalValue.subtract(dayChange);
+        BigDecimal dayChangePercent = previousValue.compareTo(BigDecimal.ZERO) != 0
+                ? dayChange.divide(previousValue, 6, RoundingMode.HALF_UP)
+                        .multiply(BigDecimal.valueOf(100))
+                : BigDecimal.ZERO;
+
+        // Top 3 holdings by weight
+        BigDecimal top3HoldingPercent = holdings.stream()
+                .map(h -> nvl(h.getWeightPercent()))
+                .sorted(Comparator.reverseOrder())
+                .limit(3)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+        // Diversification score = 1 - HHI (Herfindahl index)
+        BigDecimal diversificationScore = BigDecimal.ONE.subtract(sumWeightSquared)
+                .setScale(4, RoundingMode.HALF_UP);
+
         int stockCount = holdings.size();
+
         LocalDateTime now = LocalDateTime.now();
 
-        // Capture final references for use inside lambdas
-        final BigDecimal fTotalInvested = totalInvested;
-        final BigDecimal fTotalValue = totalValue;
-        final BigDecimal fTotalPnl = totalPnl;
-        final BigDecimal fPnlPercent = pnlPercent;
-        final BigDecimal fLargestWeight = largestWeight;
-        final int fStockCount = stockCount;
-
-        portfolioStatsRepository.findById(user.getId()).ifPresentOrElse(
-                existing -> {
-                    existing.setTotalInvested(fTotalInvested);
-                    existing.setTotalValue(fTotalValue);
-                    existing.setTotalPnl(fTotalPnl);
-                    existing.setPnlPercent(fPnlPercent);
-                    existing.setLargestWeight(fLargestWeight);
-                    existing.setStockCount(fStockCount);
-                    existing.setCalculatedAt(now);
-                    portfolioStatsRepository.save(existing);
-                },
-                () -> portfolioStatsRepository.save(new PortfolioStats(
-                        user, fTotalInvested, fTotalValue, fTotalPnl,
-                        fPnlPercent, fLargestWeight, fStockCount, now
-                ))
+        PortfolioStats portfolioStats = new PortfolioStats(
+            user.getId(),
+            totalInvested,
+            totalValue,
+            totalPnl,
+            pnlPercent,
+            largestWeight,
+            stockCount,
+            dayChange,
+            dayChangePercent,
+            top3HoldingPercent,
+            diversificationScore,
+            now
         );
+
+        portfolioStatsRepository.save(portfolioStats);
 
         logger.info("Portfolio stats saved for user=" + user.getId()
                 + " totalInvested=" + totalInvested
                 + " totalValue=" + totalValue
                 + " pnl=" + totalPnl
+                + " dayChange=" + dayChange
                 + " stocks=" + stockCount);
     }
 
