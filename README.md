@@ -18,7 +18,8 @@ A **Spring Boot + Spring AI + Ollama** application that analyses an Indian equit
 | LLM | Ollama — `qwen2.5:7b-instruct` (default, configurable) |
 | Broker API | Zerodha KiteConnect SDK 3.4 |
 | Market Data | NSE public API |
-| Storage | In-memory (`ConcurrentHashMap`) |
+| Storage | PostgreSQL |
+| API Docs | SpringDoc OpenAPI (Swagger UI at `/swagger-ui.html`) |
 
 ---
 
@@ -32,6 +33,7 @@ A **Spring Boot + Spring AI + Ollama** application that analyses an Indian equit
    ollama pull qwen2.5:7b-instruct
    ```
 4. A **Zerodha developer account** — create an app at <https://developers.kite.trade/> to obtain your `api_key` and `api_secret`.
+5. **PostgreSQL** running locally (or via Docker — see below).
 
 ---
 
@@ -51,6 +53,9 @@ All sensitive values are read from **environment variables**. Never commit crede
 | `PORTFOLIO_ADVISOR_KEEP_ALIVE` | Ollama model keep-alive window to reduce cold-start latency (default: `10m`) | No |
 | `PORTFOLIO_ADVISOR_INTERNAL_TOOL_EXECUTION` | Enables Spring AI/Ollama internal tool execution for the advisor flow (default: `true`) | No |
 | `PORTFOLIO_ADVISOR_THINKING_ENABLED` | Enables model thinking mode for the advisor flow. Keep `false` for lower latency. | No |
+| `SPRING_DATASOURCE_URL` | PostgreSQL JDBC URL (default: `jdbc:postgresql://localhost:5432/portfolio`) | No |
+| `SPRING_DATASOURCE_USERNAME` | PostgreSQL username (default: `portfolio`) | No |
+| `SPRING_DATASOURCE_PASSWORD` | PostgreSQL password (default: `portfolio`) | No |
 
 ### Setting environment variables
 
@@ -106,6 +111,8 @@ The datasource already points to `jdbc:postgresql://localhost:5432/portfolio` wi
 
 ## API Reference
 
+Browse the full interactive API documentation at **http://localhost:8080/swagger-ui.html** once the application is running.
+
 ### Zerodha Authentication
 
 | Method | Path | Description |
@@ -114,33 +121,83 @@ The datasource already points to `jdbc:postgresql://localhost:5432/portfolio` wi
 | `GET` | `/api/zerodha/callback?request_token=...` | OAuth callback — exchanges token for session |
 | `GET` | `/api/zerodha/session` | Checks if a session is active |
 
+**Login URL response**
+```json
+{ "loginUrl": "https://kite.trade/connect/login?api_key=...&v=3" }
+```
+
 **OAuth flow** (first-time login):
 1. `GET /api/zerodha/login-url` → open the URL in your browser.
 2. Log in with Zerodha credentials.
 3. Zerodha redirects to the callback URL; the app exchanges the `request_token` for a session.
 
+**Callback response**
+```json
+{ "message": "Zerodha session created. You can now import holdings.", "tokenActive": true }
+```
+
+**Session status response**
+```json
+{ "authenticated": true, "hint": "Session is active in this JVM. ..." }
+```
+
+### Import Holdings from Zerodha
+
+| Method | Path | Description |
+|---|---|---|
+| `POST` | `/api/portfolios/holdings/import/zerodha` | Import holdings from the authenticated Zerodha account |
+
+**Import response**
+```json
+{
+  "portfolioId": "user-id",
+  "importedHoldings": 12,
+  "symbols": ["RELIANCE", "INFY", "TCS", "..."]
+}
+```
+
 ### Portfolio Management
 
 | Method | Path | Description |
 |---|---|---|
-| `POST` | `/api/portfolios` | Create a portfolio `{"ownerName":"..."}` |
+| `POST` | `/api/portfolios` | Create a new portfolio for the authenticated user |
 | `GET` | `/api/portfolios` | List all portfolios |
-| `GET` | `/api/portfolios/{id}` | Get a specific portfolio |
-| `PUT` | `/api/portfolios/{id}/holdings` | Add or update a holding |
-| `DELETE` | `/api/portfolios/{id}/holdings/{symbol}` | Remove a holding |
+| `GET` | `/api/portfolios/me` | Get the authenticated user's portfolio |
+| `PUT` | `/api/portfolios/holdings` | Add or update a holding |
+| `DELETE` | `/api/portfolios/holdings/{symbol}` | Remove a holding by symbol |
 
-### Import from Zerodha
-
-| Method | Path | Description |
-|---|---|---|
-| `POST` | `/api/portfolios/{id}/holdings/import/zerodha` | Import into an existing portfolio |
-| `POST` | `/api/portfolios/holdings/import/zerodha` | Import + auto-create portfolio `{"ownerName":"..."}` |
+**Add / update holding request body**
+```json
+{
+  "symbol": "RELIANCE",
+  "exchange": "NSE",
+  "assetType": "EQUITY",
+  "quantity": 10,
+  "averageBuyPrice": 2450.00
+}
+```
 
 ### AI Analysis
 
 | Method | Path | Description |
 |---|---|---|
-| `GET` | `/api/portfolios/{id}/analysis` | Run AI-powered portfolio analysis |
+| `GET` | `/api/portfolios/analysis` | Run AI-powered portfolio analysis |
+
+**Analysis response**
+```json
+{
+  "portfolioUserId": "user-id",
+  "totalInvested": 245000.00,
+  "totalCurrentValue": 268500.00,
+  "totalProfitLoss": 23500.00,
+  "aiInsights": {
+    "risk_overview": "...",
+    "diversification_feedback": "...",
+    "suggestions": ["...", "...", "..."],
+    "cautionary_note": "..."
+  }
+}
+```
 
 The analysis response includes:
 - Per-holding performance (P&L, allocation %, risk flags)
@@ -157,9 +214,10 @@ The advisor flow keeps **metrics deterministic** and uses the LLM only for reaso
 ## Typical Workflow
 
 ```
-1. Authenticate  : GET /api/zerodha/login-url  → login in browser
-2. Import        : POST /api/portfolios/holdings/import/zerodha  {"ownerName":"Alice"}
-3. Analyse       : GET /api/portfolios/{id}/analysis
+1. Login      : GET  /api/zerodha/login-url  → open URL in browser
+2. Callback   : GET  /api/zerodha/callback?request_token=...  (handled automatically by browser redirect)
+3. Import     : POST /api/portfolios/holdings/import/zerodha
+4. Analyse    : GET  /api/portfolios/analysis
 ```
 
 ---
@@ -196,16 +254,16 @@ src/main/java/.../
 ├── integration/
 │   ├── zerodha/         KiteConnect SDK wrapper + DTOs
 │   └── market/          NSE API client + DTOs
-├── model/               Domain models (Portfolio, Holding, AssetType)
+├── model/               Domain models (Portfolio, Holding, AssetType, JPA entities)
+├── repository/          Spring Data JPA repositories
 ├── dto/                 Request/response DTOs
-└── config/              Spring beans (RestTemplate)
+└── config/              Spring beans (RestTemplate, OpenAPI)
 ```
 
 ---
 
 ## Known Limitations
 
-- **In-memory storage** — all data is lost on restart. A future version should add a database (PostgreSQL / H2).
 - **Market cap type** — the NSE public API does not return SEBI market-cap classification (LARGE / MID / SMALL) directly. The `SMALL_CAP_RISK` flag relies on this field and will not trigger until a proper classification source is integrated.
 - **NSE API rate limits** — the NSE website may block or throttle rapid requests. Consider adding delays or caching TTLs between imports.
 - **Zerodha session** — access tokens expire daily; the app must go through the OAuth flow each day. The `ZERODHA_AUTH_HEADER` env var can skip the flow during development, but it must be refreshed manually.
