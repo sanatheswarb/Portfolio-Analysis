@@ -5,6 +5,7 @@ import com.cursor_springa_ai.playground.dto.PortfolioAdviceResponse;
 import com.cursor_springa_ai.playground.dto.PortfolioAnalysisResponse;
 import com.cursor_springa_ai.playground.dto.PortfolioSummary;
 import com.cursor_springa_ai.playground.model.PortfolioStats;
+import com.cursor_springa_ai.playground.model.RiskFlag;
 import com.cursor_springa_ai.playground.model.User;
 import com.cursor_springa_ai.playground.model.UserHolding;
 import com.cursor_springa_ai.playground.repository.UserHoldingRepository;
@@ -106,21 +107,21 @@ public class PortfolioAnalysisService {
                 return value.setScale(2, RoundingMode.HALF_UP);
         }
 
-        private List<String> calculatePortfolioRiskFlags(PortfolioStats stats, List<UserHolding> holdings) {
+        private List<RiskFlag> calculatePortfolioRiskFlags(PortfolioStats stats, List<UserHolding> holdings) {
                 if (stats == null || holdings.isEmpty()) {
                         return List.of();
                 }
-                List<String> flags = new ArrayList<>();
+                List<RiskFlag> flags = new ArrayList<>();
 
                 BigDecimal largestWeight = stats.getLargestWeight() != null ? stats.getLargestWeight() : BigDecimal.ZERO;
                 BigDecimal top3 = stats.getTop3HoldingPercent() != null ? stats.getTop3HoldingPercent() : BigDecimal.ZERO;
                 int stockCount = stats.getStockCount() != null ? stats.getStockCount() : holdings.size();
 
                 if (largestWeight.compareTo(BigDecimal.valueOf(25)) > 0) {
-                        flags.add("HIGH_CONCENTRATION");
+                        flags.add(RiskFlag.HIGH_CONCENTRATION);
                 }
                 if (top3.compareTo(BigDecimal.valueOf(60)) > 0) {
-                        flags.add("TOP_HEAVY_PORTFOLIO");
+                        flags.add(RiskFlag.TOP_HEAVY_PORTFOLIO);
                 }
 
                 Map<String, BigDecimal> sectorExposure = new HashMap<>();
@@ -132,14 +133,14 @@ public class PortfolioAnalysisService {
                         BigDecimal w = h.getWeightPercent() != null ? h.getWeightPercent() : BigDecimal.ZERO;
                         sectorExposure.merge(sector, w, BigDecimal::add);
                 }
-                sectorExposure.forEach((sector, exposure) -> {
-                        if (exposure.compareTo(BigDecimal.valueOf(40)) > 0) {
-                                flags.add("SECTOR_CONCENTRATION_" + sector.toUpperCase().replace(" ", "_"));
-                        }
-                });
+                boolean hasSectorConcentration = sectorExposure.values().stream()
+                                .anyMatch(exposure -> exposure.compareTo(BigDecimal.valueOf(40)) > 0);
+                if (hasSectorConcentration) {
+                        flags.add(RiskFlag.SECTOR_CONCENTRATION);
+                }
 
                 if (stockCount < 5) {
-                        flags.add("UNDER_DIVERSIFIED");
+                        flags.add(RiskFlag.UNDER_DIVERSIFIED);
                 }
 
                 return flags;

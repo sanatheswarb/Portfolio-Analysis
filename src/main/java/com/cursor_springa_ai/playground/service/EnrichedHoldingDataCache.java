@@ -2,6 +2,7 @@ package com.cursor_springa_ai.playground.service;
 
 import com.cursor_springa_ai.playground.dto.EnrichedHoldingData;
 import com.cursor_springa_ai.playground.model.Instrument;
+import com.cursor_springa_ai.playground.model.RiskFlag;
 import com.cursor_springa_ai.playground.model.StockFundamentals;
 import com.cursor_springa_ai.playground.model.UserHolding;
 import org.springframework.stereotype.Service;
@@ -105,36 +106,36 @@ public class EnrichedHoldingDataCache {
         List<EnrichedHoldingData> result = new ArrayList<>();
 
         for (EnrichedHoldingData enriched : enrichedHoldings) {
-            java.util.List<String> riskFlags = new ArrayList<>();
+            java.util.List<RiskFlag> riskFlags = new ArrayList<>();
 
             // 1. Concentration risk: allocation > 20%
             if (enriched.allocationPercent() != null &&
                     enriched.allocationPercent().compareTo(BigDecimal.valueOf(20)) > 0) {
-                riskFlags.add("HIGH_CONCENTRATION");
+                riskFlags.add(RiskFlag.HIGH_CONCENTRATION);
             }
 
             // 2. Valuation risk: pe > sectorPe * 1.5
             if (enriched.pe() != null && enriched.sectorPe() != null &&
                     enriched.pe().compareTo(enriched.sectorPe().multiply(BigDecimal.valueOf(1.5))) > 0) {
-                riskFlags.add("HIGH_VALUATION");
+                riskFlags.add(RiskFlag.HIGH_VALUATION);
             }
 
             // 3. Drawdown risk: distanceFromHigh < -25
             if (enriched.distanceFromHigh() != null &&
                     enriched.distanceFromHigh().compareTo(BigDecimal.valueOf(-25)) < 0) {
-                riskFlags.add("DEEP_CORRECTION");
+                riskFlags.add(RiskFlag.DEEP_CORRECTION);
             }
 
             // 4. Size risk: marketCapType == SMALL
             if (enriched.marketCapType() != null &&
                     enriched.marketCapType().equalsIgnoreCase("SMALL")) {
-                riskFlags.add("SMALL_CAP_RISK");
+                riskFlags.add(RiskFlag.SMALL_CAP_RISK);
             }
 
             // 5. Profit booking signal: profitPercent > 40
             if (enriched.profitPercent() != null &&
                     enriched.profitPercent().compareTo(BigDecimal.valueOf(40)) > 0) {
-                riskFlags.add("PROFIT_BOOKING_ZONE");
+                riskFlags.add(RiskFlag.PROFIT_BOOKING_ZONE);
             }
 
             // Create new enriched holding with riskFlags set

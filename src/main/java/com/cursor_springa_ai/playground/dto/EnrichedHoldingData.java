@@ -1,5 +1,6 @@
 package com.cursor_springa_ai.playground.dto;
 
+import com.cursor_springa_ai.playground.model.RiskFlag;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
 import java.math.BigDecimal;
@@ -65,6 +66,6 @@ public record EnrichedHoldingData(
         BigDecimal distanceFromHigh,
 
         @JsonProperty("risk_flags")
-        List<String> riskFlags
+        List<RiskFlag> riskFlags
 ) {
 }

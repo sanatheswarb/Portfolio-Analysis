@@ -1,6 +1,7 @@
 package com.cursor_springa_ai.playground.service;
 
 import com.cursor_springa_ai.playground.dto.EnrichedHoldingData;
+import com.cursor_springa_ai.playground.model.RiskFlag;
 import com.cursor_springa_ai.playground.dto.PortfolioSummary;
 import com.cursor_springa_ai.playground.model.PortfolioStats;
 
@@ -10,7 +11,7 @@ public record PortfolioReasoningContext(
         String portfolioUserId,
         PortfolioSummary portfolioSummary,
         PortfolioStats portfolioStats,
-        List<String> portfolioRiskFlags,
+        List<RiskFlag> portfolioRiskFlags,
         List<EnrichedHoldingData> enrichedHoldings
 ) {
 
