@@ -64,6 +64,15 @@ public record EnrichedHoldingData(
         @JsonProperty("distance_from_high")
         BigDecimal distanceFromHigh,
 
+        @JsonProperty("valuation_flag")
+        String valuationFlag,
+
+        @JsonProperty("momentum_score")
+        BigDecimal momentumScore,
+
+        @JsonProperty("risk_score")
+        BigDecimal riskScore,
+
         @JsonProperty("risk_flags")
         List<String> riskFlags
 ) {

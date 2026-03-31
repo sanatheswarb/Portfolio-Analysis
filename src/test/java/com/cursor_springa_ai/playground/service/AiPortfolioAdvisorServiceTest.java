@@ -179,6 +179,9 @@ class AiPortfolioAdvisorServiceTest {
                 BigDecimal.valueOf(35),
                 BigDecimal.TEN,
                 BigDecimal.valueOf(-8),
+                "FAIRLY_VALUED",
+                BigDecimal.valueOf(91.67),
+                BigDecimal.valueOf(2),
                 List.of(RiskFlag.HIGH_CONCENTRATION.name())
         );
 
