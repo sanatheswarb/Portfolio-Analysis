@@ -19,66 +19,66 @@ import java.util.Map;
 @Service
 public class PortfolioAnalyticsService {
 
-	private static final BigDecimal HIGH_CONCENTRATION_THRESHOLD = BigDecimal.valueOf(25);
-	private static final BigDecimal TOP_HEAVY_THRESHOLD = BigDecimal.valueOf(60);
-	private static final BigDecimal SECTOR_CONCENTRATION_THRESHOLD = BigDecimal.valueOf(40);
-	private static final int MIN_DIVERSIFIED_HOLDINGS = 5;
+    private static final BigDecimal HIGH_CONCENTRATION_THRESHOLD = BigDecimal.valueOf(25);
+    private static final BigDecimal TOP_HEAVY_THRESHOLD = BigDecimal.valueOf(60);
+    private static final BigDecimal SECTOR_CONCENTRATION_THRESHOLD = BigDecimal.valueOf(40);
+    private static final int MIN_DIVERSIFIED_HOLDINGS = 5;
 
-	public PortfolioStats calculatePortfolioStats(User user, List<UserHolding> holdings, LocalDateTime calculatedAt) {
-		List<UserHolding> safeHoldings = holdings == null ? List.of() : holdings;
-		BigDecimal totalInvested = BigDecimal.ZERO;
-		BigDecimal totalValue = BigDecimal.ZERO;
-		BigDecimal largestWeight = BigDecimal.ZERO;
-		BigDecimal dayChange = BigDecimal.ZERO;
-		BigDecimal sumWeightSquared = BigDecimal.ZERO;
+    public PortfolioStats calculatePortfolioStats(User user, List<UserHolding> holdings, LocalDateTime calculatedAt) {
+        List<UserHolding> safeHoldings = holdings == null ? List.of() : holdings;
+        BigDecimal totalInvested = BigDecimal.ZERO;
+        BigDecimal totalValue = BigDecimal.ZERO;
+        BigDecimal largestWeight = BigDecimal.ZERO;
+        BigDecimal dayChange = BigDecimal.ZERO;
+        BigDecimal sumWeightSquared = BigDecimal.ZERO;
 
-		for (UserHolding holding : safeHoldings) {
-			totalInvested = totalInvested.add(nvl(holding.getInvestedValue()));
-			totalValue = totalValue.add(nvl(holding.getCurrentValue()));
-			dayChange = dayChange.add(nvl(holding.getDayChange()));
-			BigDecimal weight = nvl(holding.getWeightPercent());
-			if (weight.compareTo(largestWeight) > 0) {
-				largestWeight = weight;
-			}
-			BigDecimal weightFraction = weight.divide(BigDecimal.valueOf(100), 6, RoundingMode.HALF_UP);
-			sumWeightSquared = sumWeightSquared.add(weightFraction.multiply(weightFraction));
-		}
+        for (UserHolding holding : safeHoldings) {
+            totalInvested = totalInvested.add(nvl(holding.getInvestedValue()));
+            totalValue = totalValue.add(nvl(holding.getCurrentValue()));
+            dayChange = dayChange.add(nvl(holding.getDayChange()));
+            BigDecimal weight = nvl(holding.getWeightPercent());
+            if (weight.compareTo(largestWeight) > 0) {
+                largestWeight = weight;
+            }
+            BigDecimal weightFraction = weight.divide(BigDecimal.valueOf(100), 6, RoundingMode.HALF_UP);
+            sumWeightSquared = sumWeightSquared.add(weightFraction.multiply(weightFraction));
+        }
 
-		BigDecimal totalPnl = totalValue.subtract(totalInvested);
-		BigDecimal pnlPercent = totalInvested.compareTo(BigDecimal.ZERO) != 0
-				? totalPnl.divide(totalInvested, 6, RoundingMode.HALF_UP).multiply(BigDecimal.valueOf(100))
-				: BigDecimal.ZERO;
+        BigDecimal totalPnl = totalValue.subtract(totalInvested);
+        BigDecimal pnlPercent = totalInvested.compareTo(BigDecimal.ZERO) != 0
+                ? totalPnl.divide(totalInvested, 6, RoundingMode.HALF_UP).multiply(BigDecimal.valueOf(100))
+                : BigDecimal.ZERO;
 
-		BigDecimal previousValue = totalValue.subtract(dayChange);
-		BigDecimal dayChangePercent = previousValue.compareTo(BigDecimal.ZERO) != 0
-				? dayChange.divide(previousValue, 6, RoundingMode.HALF_UP).multiply(BigDecimal.valueOf(100))
-				: BigDecimal.ZERO;
+        BigDecimal previousValue = totalValue.subtract(dayChange);
+        BigDecimal dayChangePercent = previousValue.compareTo(BigDecimal.ZERO) != 0
+                ? dayChange.divide(previousValue, 6, RoundingMode.HALF_UP).multiply(BigDecimal.valueOf(100))
+                : BigDecimal.ZERO;
 
-		BigDecimal top3HoldingPercent = safeHoldings.stream()
-				.map(holding -> nvl(holding.getWeightPercent()))
-				.sorted(Comparator.reverseOrder())
-				.limit(3)
-				.reduce(BigDecimal.ZERO, BigDecimal::add);
+        BigDecimal top3HoldingPercent = safeHoldings.stream()
+                .map(holding -> nvl(holding.getWeightPercent()))
+                .sorted(Comparator.reverseOrder())
+                .limit(3)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
 
-		BigDecimal diversificationScore = safeHoldings.isEmpty()
-				? BigDecimal.ZERO
-				: BigDecimal.ONE.subtract(sumWeightSquared).setScale(4, RoundingMode.HALF_UP);
+        BigDecimal diversificationScore = safeHoldings.isEmpty()
+                ? BigDecimal.ZERO
+                : BigDecimal.ONE.subtract(sumWeightSquared).setScale(4, RoundingMode.HALF_UP);
 
-		return new PortfolioStats(
-				user.getId(),
-				totalInvested,
-				totalValue,
-				totalPnl,
-				pnlPercent,
-				largestWeight,
-				safeHoldings.size(),
-				dayChange,
-				dayChangePercent,
-				top3HoldingPercent,
-				diversificationScore,
-				calculatedAt
-		);
-	}
+        return new PortfolioStats(
+                user.getId(),
+                totalInvested,
+                totalValue,
+                totalPnl,
+                pnlPercent,
+                largestWeight,
+                safeHoldings.size(),
+                dayChange,
+                dayChangePercent,
+                top3HoldingPercent,
+                diversificationScore,
+                calculatedAt
+        );
+    }
 
 	public PortfolioSummary toPortfolioSummary(PortfolioStats portfolioStats) {
 		if (portfolioStats == null) {
