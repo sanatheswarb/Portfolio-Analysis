@@ -4,6 +4,7 @@ import com.cursor_springa_ai.playground.dto.EnrichedHoldingData;
 import com.cursor_springa_ai.playground.dto.PortfolioAdviceResponse;
 import com.cursor_springa_ai.playground.dto.PortfolioAnalysisResponse;
 import com.cursor_springa_ai.playground.dto.PortfolioSummary;
+import com.cursor_springa_ai.playground.model.PortfolioClassification;
 import com.cursor_springa_ai.playground.model.PortfolioStats;
 import com.cursor_springa_ai.playground.model.User;
 import com.cursor_springa_ai.playground.model.UserHolding;
@@ -21,6 +22,7 @@ public class PortfolioAnalysisService {
     private final PortfolioAnalyticsService portfolioAnalyticsService;
     private final ZerodhaAuthService zerodhaAuthService;
     private final AiAnalysisService aiAnalysisService;
+    private final PortfolioClassificationService portfolioClassificationService;
 
     public PortfolioAnalysisService(
             UserHoldingRepository userHoldingRepository,
@@ -28,13 +30,15 @@ public class PortfolioAnalysisService {
             HoldingAnalyticsService holdingAnalyticsService,
             PortfolioAnalyticsService portfolioAnalyticsService,
             ZerodhaAuthService zerodhaAuthService,
-            AiAnalysisService aiAnalysisService) {
+            AiAnalysisService aiAnalysisService,
+            PortfolioClassificationService portfolioClassificationService) {
         this.userHoldingRepository = userHoldingRepository;
         this.aiPortfolioAdvisorService = aiPortfolioAdvisorService;
         this.holdingAnalyticsService = holdingAnalyticsService;
         this.portfolioAnalyticsService = portfolioAnalyticsService;
         this.zerodhaAuthService = zerodhaAuthService;
         this.aiAnalysisService = aiAnalysisService;
+        this.portfolioClassificationService = portfolioClassificationService;
     }
 
     public PortfolioAnalysisResponse analyzeCurrentUserPortfolio() {
@@ -58,12 +62,17 @@ public class PortfolioAnalysisService {
 
         PortfolioSummary portfolioSummary = portfolioAnalyticsService.toPortfolioSummary(portfolioStats);
 
+        PortfolioClassification classification = portfolioClassificationService.classify(
+                portfolioStats,
+                enrichedHoldings);
+
         PortfolioReasoningContext reasoningContext = new PortfolioReasoningContext(
                 portfolioUserId,
                 portfolioSummary,
                 portfolioStats,
                 portfolioAnalyticsService.calculatePortfolioRiskFlags(portfolioStats, enrichedHoldings),
-                enrichedHoldings);
+                enrichedHoldings,
+                classification);
 
         PortfolioAdviceResponse aiInsights = aiPortfolioAdvisorService.generateInsights(reasoningContext);
 

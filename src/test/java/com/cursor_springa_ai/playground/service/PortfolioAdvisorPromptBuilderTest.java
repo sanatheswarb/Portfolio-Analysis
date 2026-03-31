@@ -72,7 +72,8 @@ class PortfolioAdvisorPromptBuilderTest {
                 summary,
                 null,
                 List.of(RiskFlag.HIGH_CONCENTRATION.name()),
-                List.of()
+                List.of(),
+                null
         );
 
         String data = builder.buildReasoningRequest(reasoningContext);

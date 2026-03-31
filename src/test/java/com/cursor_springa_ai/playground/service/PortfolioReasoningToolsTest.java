@@ -152,7 +152,8 @@ class PortfolioReasoningToolsTest {
                 summary,
                 stats,
                 List.of(RiskFlag.HIGH_CONCENTRATION.name()),
-                List.of(infy, tcs, hdfcBank)
+                List.of(infy, tcs, hdfcBank),
+                null
         );
     }
 }

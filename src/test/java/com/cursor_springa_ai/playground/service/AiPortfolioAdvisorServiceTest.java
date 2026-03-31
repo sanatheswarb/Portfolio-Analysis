@@ -190,7 +190,8 @@ class AiPortfolioAdvisorServiceTest {
                 summary,
                 stats,
                 List.of(RiskFlag.HIGH_CONCENTRATION.name()),
-                List.of(holding)
+                List.of(holding),
+                null
         );
     }
 }
