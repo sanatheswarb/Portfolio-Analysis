@@ -1,6 +1,7 @@
 package com.cursor_springa_ai.playground.service;
 
 import com.cursor_springa_ai.playground.dto.EnrichedHoldingData;
+import com.cursor_springa_ai.playground.model.RiskFlag;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.stereotype.Component;
 
@@ -41,7 +42,7 @@ public class PortfolioAdvisorPromptBuilder {
 
                 RESPONSE RULES:
                 - Suggestions must be specific, actionable, and risk focused.
-                - If HIGH_CONCENTRATION exists, the first suggestion must address concentration.
+                - If %s exists, the first suggestion must address concentration.
                 - If sector concentration exists, one suggestion must address diversification.
                 - Avoid generic advice such as monitor market, stay invested, or diversify more.
                 - Return ONLY valid JSON.
@@ -51,7 +52,7 @@ public class PortfolioAdvisorPromptBuilder {
                 - risk_overview and diversification_feedback should each be at least one full sentence.
                 - suggestions must contain exactly 3 plain-text strings.
                 - Do not use colons inside suggestion strings.
-                """
+                 """.formatted(RiskFlag.HIGH_CONCENTRATION.name())
                 ;
     }
 

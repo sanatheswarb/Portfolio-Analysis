@@ -2,6 +2,7 @@ package com.cursor_springa_ai.playground.service;
 
 import com.cursor_springa_ai.playground.dto.EnrichedHoldingData;
 import com.cursor_springa_ai.playground.dto.PortfolioSummary;
+import com.cursor_springa_ai.playground.model.RiskFlag;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
 
@@ -67,7 +68,7 @@ class PortfolioAdvisorPromptBuilderTest {
                 "portfolio-1",
                 summary,
                 null,
-                List.of("HIGH_CONCENTRATION"),
+                List.of(RiskFlag.HIGH_CONCENTRATION.name()),
                 List.of()
         );
 
@@ -78,7 +79,7 @@ class PortfolioAdvisorPromptBuilderTest {
         assertTrue(data.contains("First action: call portfolio_overview"));
         assertTrue(data.contains("portfolio_stock_count: 2"));
         assertTrue(data.contains("total_invested: 10000"));
-        assertTrue(data.contains("HIGH_CONCENTRATION"));
+        assertTrue(data.contains(RiskFlag.HIGH_CONCENTRATION.name()));
         assertFalse(data.contains("portfolio_overview_json"));
         assertFalse(data.contains("Use the smallest number of tool calls required to produce the final advice."));
     }
