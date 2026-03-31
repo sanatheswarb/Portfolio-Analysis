@@ -1,8 +1,6 @@
 package com.cursor_springa_ai.playground.service;
 
 import com.cursor_springa_ai.playground.dto.EnrichedHoldingData;
-import com.cursor_springa_ai.playground.dto.PortfolioMetrics;
-import com.cursor_springa_ai.playground.dto.PortfolioSummary;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.stereotype.Component;
 
@@ -130,19 +128,4 @@ public class PortfolioAdvisorPromptBuilder {
         }
     }
 
-    public String buildPortfolioSummaryJson(PortfolioSummary portfolioSummary) {
-        try {
-            return objectMapper.writeValueAsString(portfolioSummary);
-        } catch (Exception e) {
-            throw new RuntimeException("Failed to serialize portfolio summary", e);
-        }
-    }
-
-    public String buildPortfolioMetricsJson(PortfolioMetrics portfolioMetrics) {
-        try {
-            return objectMapper.writeValueAsString(portfolioMetrics);
-        } catch (Exception e) {
-            throw new RuntimeException("Failed to serialize portfolio metrics", e);
-        }
-    }
 }

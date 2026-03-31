@@ -1,6 +1,7 @@
 package com.cursor_springa_ai.playground.integration.market;
 
 import com.cursor_springa_ai.playground.dto.StockMetrics;
+import com.cursor_springa_ai.playground.integration.market.dto.NseQuoteResponse;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpEntity;
@@ -8,11 +9,15 @@ import org.springframework.http.HttpMethod;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.client.RestTemplate;
 
+import java.util.Optional;
+
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 class NseApiClientTest {
@@ -87,5 +92,38 @@ class NseApiClientTest {
 
         assertNotNull(metrics);
         assertEquals("Information Technology", metrics.sector());
+    }
+
+    @Test
+    void fetchQuote_encodesSymbolsAndReturnsParsedQuote() {
+        RestTemplate restTemplate = mock(RestTemplate.class);
+        NseApiClient client = new NseApiClient(restTemplate, new ObjectMapper());
+
+        when(restTemplate.exchange(any(String.class), eq(HttpMethod.GET), any(HttpEntity.class), eq(String.class)))
+                .thenReturn(ResponseEntity.ok("""
+                        {
+                          "info": {
+                            "symbol": "M&M",
+                            "companyName": "Mahindra & Mahindra Ltd",
+                            "isETFSec": false
+                          },
+                          "industryInfo": {
+                            "sector": "Automobile and Auto Components",
+                            "industry": "Passenger Cars & Utility Vehicles"
+                          }
+                        }
+                        """));
+
+        Optional<NseQuoteResponse> quoteOpt = client.fetchQuote("M&M");
+
+        assertTrue(quoteOpt.isPresent());
+        assertEquals("M&M", quoteOpt.get().info().symbol());
+        assertEquals("Automobile and Auto Components", quoteOpt.get().industryInfo().sector());
+        verify(restTemplate).exchange(
+                eq("https://www.nseindia.com/api/quote-equity?symbol=M%26M"),
+                eq(HttpMethod.GET),
+                any(HttpEntity.class),
+                eq(String.class)
+        );
     }
 }
