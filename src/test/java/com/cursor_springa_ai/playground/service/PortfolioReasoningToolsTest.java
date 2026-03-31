@@ -88,6 +88,9 @@ class PortfolioReasoningToolsTest {
                 BigDecimal.valueOf(35),
                 BigDecimal.valueOf(16.67),
                 BigDecimal.valueOf(-7.89),
+                "OVERVALUED",
+                BigDecimal.valueOf(92.11),
+                BigDecimal.valueOf(4),
                 List.of("HIGH_CONCENTRATION")
         );
 
@@ -111,6 +114,9 @@ class PortfolioReasoningToolsTest {
                 BigDecimal.valueOf(30),
                 BigDecimal.valueOf(4.16),
                 BigDecimal.valueOf(-7.42),
+                "FAIRLY_VALUED",
+                BigDecimal.valueOf(92.58),
+                BigDecimal.valueOf(3),
                 List.of("HIGH_VALUATION")
         );
 
@@ -134,6 +140,9 @@ class PortfolioReasoningToolsTest {
                 BigDecimal.valueOf(20),
                 BigDecimal.valueOf(3.45),
                 BigDecimal.valueOf(-16.67),
+                "FAIRLY_VALUED",
+                BigDecimal.valueOf(83.33),
+                BigDecimal.valueOf(2),
                 List.of()
         );
 

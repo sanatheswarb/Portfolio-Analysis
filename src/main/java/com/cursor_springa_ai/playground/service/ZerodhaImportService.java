@@ -73,8 +73,8 @@ public class ZerodhaImportService {
                         + item.getTradingSymbol() + ": " + ex.getMessage());
             }
         }
-
-        stockMetricsCalculationService.calculateForUser(currentUser);
+        // We can revisit this if we need to store stock metrics anytime in future
+       // stockMetricsCalculationService.calculateForUser(currentUser);
 
         portfolioStatsBatchService.calculateForUserAsync(currentUser.getId());
 

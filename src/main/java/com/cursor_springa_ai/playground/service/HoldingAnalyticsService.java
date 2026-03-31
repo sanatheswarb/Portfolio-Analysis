@@ -37,6 +37,10 @@ public class HoldingAnalyticsService {
                 : BigDecimal.ZERO;
         BigDecimal currentPrice = scale(holding != null ? holding.getLastPrice() : null);
         BigDecimal week52High = fundamentals != null ? fundamentals.getWeek52High() : null;
+        String valuationFlag = computeValuationFlag(fundamentals);
+        BigDecimal momentumScore = computeMomentumScore(holding != null ? holding.getLastPrice() : null, week52High);
+        BigDecimal volatility = calculateVolatility(holding);
+        BigDecimal riskScore = computeRiskScore(volatility);
 
         EnrichedHoldingData enrichedHolding = new EnrichedHoldingData(
                 resolveSymbol(holding),
@@ -58,18 +62,12 @@ public class HoldingAnalyticsService {
                 scale(holding != null ? holding.getWeightPercent() : null),
                 scale(holding != null ? holding.getPnlPercent() : null),
                 calculateDistanceFromHigh(currentPrice, week52High),
+                valuationFlag,
+                momentumScore,
+                riskScore,
                 List.of()
         );
         return withRiskFlags(enrichedHolding);
-    }
-
-    public List<EnrichedHoldingData> withRiskFlags(List<EnrichedHoldingData> enrichedHoldings) {
-        if (enrichedHoldings == null || enrichedHoldings.isEmpty()) {
-            return List.of();
-        }
-        return enrichedHoldings.stream()
-                .map(this::withRiskFlags)
-                .toList();
     }
 
     public EnrichedHoldingData withRiskFlags(EnrichedHoldingData enrichedHolding) {
@@ -96,6 +94,9 @@ public class HoldingAnalyticsService {
                 enrichedHolding.allocationPercent(),
                 enrichedHolding.profitPercent(),
                 enrichedHolding.distanceFromHigh(),
+                enrichedHolding.valuationFlag(),
+                enrichedHolding.momentumScore(),
+                enrichedHolding.riskScore(),
                 calculateRiskFlags(enrichedHolding)
         );
     }

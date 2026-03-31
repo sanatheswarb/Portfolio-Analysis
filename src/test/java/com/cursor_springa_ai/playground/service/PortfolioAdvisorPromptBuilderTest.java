@@ -38,6 +38,9 @@ class PortfolioAdvisorPromptBuilderTest {
                 BigDecimal.valueOf(20),
                 BigDecimal.valueOf(15),
                 BigDecimal.valueOf(10),
+                "FAIRLY_VALUED",
+                BigDecimal.valueOf(45.83),
+                BigDecimal.valueOf(3),
                 List.of("high_volatility")
         );
 
