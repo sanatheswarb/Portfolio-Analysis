@@ -30,7 +30,6 @@ public class PortfolioAnalysisService {
                         UserHoldingRepository userHoldingRepository,
                         AiPortfolioAdvisorService aiPortfolioAdvisorService,
                         EnrichedHoldingDataCache enrichedHoldingDataCache,
-                        PortfolioMetricsService portfolioMetricsService,
                         ZerodhaAuthService zerodhaAuthService,
                         AiAnalysisService aiAnalysisService) {
                 this.userHoldingRepository = userHoldingRepository;

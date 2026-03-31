@@ -67,9 +67,7 @@ public class ZerodhaImportService {
 
             try {
                 String symbol = importSingleHolding(currentUser, item, totalCurrentValue);
-                if (symbol != null) {
-                    importedSymbols.add(symbol);
-                }
+                importedSymbols.add(symbol);
             } catch (RuntimeException ex) {
                 logger.warning("Failed to import holding "
                         + item.getTradingSymbol() + ": " + ex.getMessage());
