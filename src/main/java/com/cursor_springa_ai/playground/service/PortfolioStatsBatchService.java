@@ -11,10 +11,7 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.math.BigDecimal;
-import java.math.RoundingMode;
 import java.time.LocalDateTime;
-import java.util.Comparator;
 import java.util.List;
 import java.util.logging.Logger;
 
@@ -45,13 +42,16 @@ public class PortfolioStatsBatchService {
     private final UserRepository userRepository;
     private final UserHoldingRepository userHoldingRepository;
     private final PortfolioStatsRepository portfolioStatsRepository;
+    private final PortfolioAnalyticsService portfolioAnalyticsService;
 
     public PortfolioStatsBatchService(UserRepository userRepository,
                                       UserHoldingRepository userHoldingRepository,
-                                      PortfolioStatsRepository portfolioStatsRepository) {
+                                      PortfolioStatsRepository portfolioStatsRepository,
+                                      PortfolioAnalyticsService portfolioAnalyticsService) {
         this.userRepository = userRepository;
         this.userHoldingRepository = userHoldingRepository;
         this.portfolioStatsRepository = portfolioStatsRepository;
+        this.portfolioAnalyticsService = portfolioAnalyticsService;
     }
 
     // ------------------------------------------------------------------
@@ -73,7 +73,6 @@ public class PortfolioStatsBatchService {
      *
      * @return number of user rows written
      */
-    @Transactional
     public int calculateForAllUsers() {
         List<User> users = userRepository.findAll();
         int count = 0;
@@ -109,83 +108,16 @@ public class PortfolioStatsBatchService {
             return;
         }
 
-        BigDecimal totalInvested = BigDecimal.ZERO;
-        BigDecimal totalValue = BigDecimal.ZERO;
-        BigDecimal largestWeight = BigDecimal.ZERO;
-        BigDecimal dayChange = BigDecimal.ZERO;
-        BigDecimal sumWeightSquared = BigDecimal.ZERO;
-
-        for (UserHolding h : holdings) {
-            totalInvested = totalInvested.add(nvl(h.getInvestedValue()));
-            totalValue = totalValue.add(nvl(h.getCurrentValue()));
-            dayChange = dayChange.add(nvl(h.getDayChange()));
-            BigDecimal w = nvl(h.getWeightPercent());
-            if (w.compareTo(largestWeight) > 0) {
-                largestWeight = w;
-            }
-            // weight as fraction (e.g. 0.25 for 25%)
-            BigDecimal wFraction = w.divide(BigDecimal.valueOf(100), 6, RoundingMode.HALF_UP);
-            sumWeightSquared = sumWeightSquared.add(wFraction.multiply(wFraction));
-        }
-
-        BigDecimal totalPnl = totalValue.subtract(totalInvested);
-        BigDecimal pnlPercent = totalInvested.compareTo(BigDecimal.ZERO) != 0
-                ? totalPnl.divide(totalInvested, 6, RoundingMode.HALF_UP)
-                        .multiply(BigDecimal.valueOf(100))
-                : BigDecimal.ZERO;
-
-        // day_change_percent = day_change / (portfolio_value - day_change) * 100
-        BigDecimal previousValue = totalValue.subtract(dayChange);
-        BigDecimal dayChangePercent = previousValue.compareTo(BigDecimal.ZERO) != 0
-                ? dayChange.divide(previousValue, 6, RoundingMode.HALF_UP)
-                        .multiply(BigDecimal.valueOf(100))
-                : BigDecimal.ZERO;
-
-        // Top 3 holdings by weight
-        BigDecimal top3HoldingPercent = holdings.stream()
-                .map(h -> nvl(h.getWeightPercent()))
-                .sorted(Comparator.reverseOrder())
-                .limit(3)
-                .reduce(BigDecimal.ZERO, BigDecimal::add);
-
-        // Diversification score = 1 - HHI (Herfindahl index)
-        BigDecimal diversificationScore = BigDecimal.ONE.subtract(sumWeightSquared)
-                .setScale(4, RoundingMode.HALF_UP);
-
-        int stockCount = holdings.size();
-
-        LocalDateTime now = LocalDateTime.now();
-
-        PortfolioStats portfolioStats = new PortfolioStats(
-            user.getId(),
-            totalInvested,
-            totalValue,
-            totalPnl,
-            pnlPercent,
-            largestWeight,
-            stockCount,
-            dayChange,
-            dayChangePercent,
-            top3HoldingPercent,
-            diversificationScore,
-            now
-        );
+        PortfolioStats portfolioStats = portfolioAnalyticsService
+                .calculatePortfolioStats(user, holdings, LocalDateTime.now());
 
         portfolioStatsRepository.save(portfolioStats);
 
         logger.info("Portfolio stats saved for user=" + user.getId()
-                + " totalInvested=" + totalInvested
-                + " totalValue=" + totalValue
-                + " pnl=" + totalPnl
-                + " dayChange=" + dayChange
-                + " stocks=" + stockCount);
-    }
-
-    // ------------------------------------------------------------------
-    // private helpers
-    // ------------------------------------------------------------------
-
-    private BigDecimal nvl(BigDecimal value) {
-        return value != null ? value : BigDecimal.ZERO;
+                + " totalInvested=" + portfolioStats.getTotalInvested()
+                + " totalValue=" + portfolioStats.getTotalValue()
+                + " pnl=" + portfolioStats.getTotalPnl()
+                + " dayChange=" + portfolioStats.getDayChange()
+                + " stocks=" + portfolioStats.getStockCount());
     }
 }

@@ -205,7 +205,8 @@ The analysis response includes:
 - Tool-assisted LLM-generated advice: risk overview, diversification feedback, 3 actionable suggestions, cautionary note
 
 The advisor flow keeps **metrics deterministic** and uses the LLM only for reasoning:
-- `PortfolioMetricsService` computes portfolio concentration/diversification metrics
+- `HoldingAnalyticsService` computes canonical holding-level valuation, momentum, and risk flags
+- `PortfolioAnalyticsService` computes canonical portfolio concentration/diversification metrics
 - `PortfolioReasoningTools` exposes those metrics plus flagged holdings through Spring AI tool calling
 - `AiPortfolioAdvisorService` sends a compact routing prompt to Ollama, enables internal tool execution, and lets the model pull only the evidence it needs
 

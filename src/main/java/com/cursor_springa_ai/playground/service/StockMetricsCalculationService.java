@@ -12,7 +12,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
-import java.math.RoundingMode;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.logging.Logger;
@@ -40,13 +39,16 @@ public class StockMetricsCalculationService {
     private final UserHoldingRepository userHoldingRepository;
     private final UserStockMetricsRepository userStockMetricsRepository;
     private final StockFundamentalsRepository stockFundamentalsRepository;
+    private final HoldingAnalyticsService holdingAnalyticsService;
 
     public StockMetricsCalculationService(UserHoldingRepository userHoldingRepository,
                                           UserStockMetricsRepository userStockMetricsRepository,
-                                          StockFundamentalsRepository stockFundamentalsRepository) {
+                                          StockFundamentalsRepository stockFundamentalsRepository,
+                                          HoldingAnalyticsService holdingAnalyticsService) {
         this.userHoldingRepository = userHoldingRepository;
         this.userStockMetricsRepository = userStockMetricsRepository;
         this.stockFundamentalsRepository = stockFundamentalsRepository;
+        this.holdingAnalyticsService = holdingAnalyticsService;
     }
 
     /**
@@ -81,12 +83,10 @@ public class StockMetricsCalculationService {
                 .findById(instrument.getInstrumentToken()).orElse(null);
 
         BigDecimal week52High = fundamentals != null ? fundamentals.getWeek52High() : null;
-        BigDecimal volatility = holding.getDayChangePercent() != null
-                ? holding.getDayChangePercent().abs()
-                : BigDecimal.ZERO;
-        BigDecimal momentumScore = computeMomentumScore(nvl(holding.getLastPrice()), week52High);
-        String valuationFlag = computeValuationFlag(fundamentals);
-        BigDecimal riskScore = computeRiskScore(volatility);
+        BigDecimal volatility = holdingAnalyticsService.calculateVolatility(holding);
+        BigDecimal momentumScore = holdingAnalyticsService.computeMomentumScore(holding.getLastPrice(), week52High);
+        String valuationFlag = holdingAnalyticsService.computeValuationFlag(fundamentals);
+        BigDecimal riskScore = holdingAnalyticsService.computeRiskScore(volatility);
 
         userStockMetricsRepository
                 .findByUserIdAndInstrumentInstrumentToken(user.getId(), instrument.getInstrumentToken())
@@ -117,61 +117,4 @@ public class StockMetricsCalculationService {
         m.setCalculatedAt(calculatedAt);
     }
 
-    /**
-     * Momentum = (lastPrice / week52High) × 100.
-     * Returns null when week52High is unavailable or zero.
-     */
-    private BigDecimal computeMomentumScore(BigDecimal lastPrice, BigDecimal week52High) {
-        if (week52High == null || week52High.compareTo(BigDecimal.ZERO) == 0) {
-            return null;
-        }
-        return lastPrice.divide(week52High, 6, RoundingMode.HALF_UP)
-                .multiply(BigDecimal.valueOf(100))
-                .setScale(2, RoundingMode.HALF_UP);
-    }
-
-    /**
-     * Valuation flag based on stock PE vs sector PE (±20 % bands).
-     * Returns null when PE data is unavailable.
-     */
-    private String computeValuationFlag(StockFundamentals fundamentals) {
-        if (fundamentals == null || fundamentals.getPe() == null || fundamentals.getSectorPe() == null
-                || fundamentals.getSectorPe().compareTo(BigDecimal.ZERO) == 0) {
-            return null;
-        }
-        BigDecimal pe = fundamentals.getPe();
-        BigDecimal sectorPe = fundamentals.getSectorPe();
-        BigDecimal upper = sectorPe.multiply(BigDecimal.valueOf(1.2));
-        BigDecimal lower = sectorPe.multiply(BigDecimal.valueOf(0.8));
-        if (pe.compareTo(upper) > 0) {
-            return "OVERVALUED";
-        }
-        if (pe.compareTo(lower) < 0) {
-            return "UNDERVALUED";
-        }
-        return "FAIRLY_VALUED";
-    }
-
-    /**
-     * Risk score 1–10 based on absolute daily-change percentage.
-     */
-    private BigDecimal computeRiskScore(BigDecimal volatility) {
-        double v = volatility.doubleValue();
-        int score;
-        if (v <= 0.5)      score = 1;
-        else if (v <= 1.0) score = 2;
-        else if (v <= 1.5) score = 3;
-        else if (v <= 2.0) score = 4;
-        else if (v <= 2.5) score = 5;
-        else if (v <= 3.0) score = 6;
-        else if (v <= 4.0) score = 7;
-        else if (v <= 5.0) score = 8;
-        else if (v <= 7.0) score = 9;
-        else               score = 10;
-        return BigDecimal.valueOf(score);
-    }
-
-    private BigDecimal nvl(BigDecimal v) {
-        return v != null ? v : BigDecimal.ZERO;
-    }
 }
