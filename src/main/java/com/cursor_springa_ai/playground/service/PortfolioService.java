@@ -1,5 +1,6 @@
 package com.cursor_springa_ai.playground.service;
 
+import com.cursor_springa_ai.playground.dto.UserHoldingDto;
 import com.cursor_springa_ai.playground.model.User;
 import com.cursor_springa_ai.playground.model.UserHolding;
 import com.cursor_springa_ai.playground.repository.UserHoldingRepository;
@@ -19,7 +20,29 @@ public class PortfolioService {
 
 
     @Transactional(readOnly = true)
-    public List<UserHolding> getPortfolio(User user) {
-        return userHoldingRepository.findByUserId(user.getId());
+    public List<UserHoldingDto> getPortfolio(User user) {
+        return userHoldingRepository.findByUserId(user.getId())
+                .stream()
+                .map(this::toDto)
+                .toList();
+    }
+
+    private UserHoldingDto toDto(UserHolding h) {
+        return new UserHoldingDto(
+                h.getId(),
+                h.getSymbol(),
+                h.getQuantity(),
+                h.getAvgPrice(),
+                h.getClosePrice(),
+                h.getLastPrice(),
+                h.getInvestedValue(),
+                h.getCurrentValue(),
+                h.getPnl(),
+                h.getPnlPercent(),
+                h.getDayChange(),
+                h.getDayChangePercent(),
+                h.getWeightPercent(),
+                h.getUpdatedAt()
+        );
     }
 }

@@ -1,9 +1,9 @@
 package com.cursor_springa_ai.playground.controller;
 
 import com.cursor_springa_ai.playground.dto.PortfolioAnalysisResponse;
+import com.cursor_springa_ai.playground.dto.UserHoldingDto;
 import com.cursor_springa_ai.playground.dto.ZerodhaImportResponse;
 import com.cursor_springa_ai.playground.model.User;
-import com.cursor_springa_ai.playground.model.UserHolding;
 import com.cursor_springa_ai.playground.service.PortfolioAnalysisService;
 import com.cursor_springa_ai.playground.service.PortfolioService;
 import com.cursor_springa_ai.playground.service.ZerodhaAuthService;
@@ -40,11 +40,11 @@ public class PortfolioController {
         this.zerodhaAuthService = zerodhaAuthService;
     }
 
-    @Operation(summary = "Get current user's portfolio",
+    @Operation(summary = "Get current user's holdings",
             description = "Returns the current holdings belonging to the authenticated Zerodha user.",
             responses = @ApiResponse(responseCode = "200", description = "Holdings returned"))
     @GetMapping("/me")
-    public List<UserHolding> getPortfolio() {
+    public List<UserHoldingDto> getPortfolio() {
         return portfolioService.getPortfolio(requireAuthenticatedUser());
     }
 
