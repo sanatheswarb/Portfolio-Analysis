@@ -153,7 +153,7 @@ public class PortfolioReasoningTools {
                     : BigDecimal.ZERO;
             exposure.merge(sector, allocationPercent, BigDecimal::add);
         }
-        return new LinkedHashMap<>(exposure);
+        return exposure;
     }
 
     private int compareByAllocation(EnrichedHoldingData left, EnrichedHoldingData right) {
