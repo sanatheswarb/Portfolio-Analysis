@@ -6,6 +6,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.ai.tool.annotation.Tool;
 import org.springframework.ai.tool.annotation.ToolParam;
 
+import java.math.BigDecimal;
 import java.util.LinkedHashMap;
 import java.util.ArrayList;
 import java.util.List;
@@ -41,6 +42,7 @@ public class PortfolioReasoningTools {
         payload.put("portfolioUserId", context.portfolioUserId());
         payload.put("summary", context.portfolioSummary());
         payload.put("metrics", portfolioStatsPayload());
+        payload.put("sectorExposure", sectorExposure());
         payload.put("portfolioRiskFlags", context.portfolioRiskFlags());
         payload.put("largestHoldings", largestHoldings());
         portfolioOverviewCache = toJson(payload);
@@ -137,6 +139,21 @@ public class PortfolioReasoningTools {
         payload.put("top3HoldingPercent", context.portfolioStats().getTop3HoldingPercent());
         payload.put("diversificationScore", context.portfolioStats().getDiversificationScore());
         return payload;
+    }
+
+    private Map<String, Object> sectorExposure() {
+        Map<String, BigDecimal> exposure = new LinkedHashMap<>();
+        for (EnrichedHoldingData holding : context.enrichedHoldings()) {
+            String sector = holding.sector();
+            if (sector == null || sector.isBlank()) {
+                sector = "UNKNOWN";
+            }
+            BigDecimal allocationPercent = holding.allocationPercent() != null
+                    ? holding.allocationPercent()
+                    : BigDecimal.ZERO;
+            exposure.merge(sector, allocationPercent, BigDecimal::add);
+        }
+        return new LinkedHashMap<>(exposure);
     }
 
     private int compareByAllocation(EnrichedHoldingData left, EnrichedHoldingData right) {

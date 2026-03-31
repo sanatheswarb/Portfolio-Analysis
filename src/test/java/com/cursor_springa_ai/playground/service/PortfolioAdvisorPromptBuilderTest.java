@@ -39,7 +39,7 @@ class PortfolioAdvisorPromptBuilderTest {
                 BigDecimal.valueOf(20),
                 BigDecimal.valueOf(15),
                 BigDecimal.valueOf(10),
-                List.of(RiskFlag.HIGH_VALUATION)
+                List.of(RiskFlag.HIGH_CONCENTRATION)
         );
 
         String json = builder.buildEnrichedHoldingsJson(List.of(holding));
