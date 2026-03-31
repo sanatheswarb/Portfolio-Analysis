@@ -2,6 +2,7 @@ package com.cursor_springa_ai.playground.service;
 
 import com.cursor_springa_ai.playground.dto.EnrichedHoldingData;
 import com.cursor_springa_ai.playground.model.Instrument;
+import com.cursor_springa_ai.playground.model.RiskFlag;
 import com.cursor_springa_ai.playground.model.StockFundamentals;
 import com.cursor_springa_ai.playground.model.User;
 import com.cursor_springa_ai.playground.model.UserHolding;
@@ -42,7 +43,13 @@ class HoldingAnalyticsServiceTest {
         assertEquals(new BigDecimal("6"), service.computeRiskScore(service.calculateVolatility(holding)));
         assertEquals("OVERVALUED", service.computeValuationFlag(enriched.pe(), enriched.sectorPe()));
         assertIterableEquals(
-                List.of("HIGH_CONCENTRATION", "HIGH_VALUATION", "DEEP_CORRECTION", "SMALL_CAP_RISK", "PROFIT_BOOKING_ZONE"),
+                List.of(
+                        RiskFlag.HIGH_CONCENTRATION.name(),
+                        RiskFlag.HIGH_VALUATION.name(),
+                        RiskFlag.DEEP_CORRECTION.name(),
+                        RiskFlag.SMALL_CAP_RISK.name(),
+                        RiskFlag.PROFIT_BOOKING_ZONE.name()
+                ),
                 enriched.riskFlags()
         );
     }
@@ -105,4 +112,3 @@ class HoldingAnalyticsServiceTest {
         field.set(target, value);
     }
 }
-

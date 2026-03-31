@@ -4,6 +4,7 @@ import com.cursor_springa_ai.playground.dto.EnrichedHoldingData;
 import com.cursor_springa_ai.playground.dto.PortfolioSummary;
 import com.cursor_springa_ai.playground.model.Instrument;
 import com.cursor_springa_ai.playground.model.PortfolioStats;
+import com.cursor_springa_ai.playground.model.RiskFlag;
 import com.cursor_springa_ai.playground.model.User;
 import com.cursor_springa_ai.playground.model.UserHolding;
 import org.junit.jupiter.api.Test;
@@ -50,10 +51,10 @@ class PortfolioAnalyticsServiceTest {
         assertEquals(new BigDecimal("8.33"), summary.totalPnLPercent());
         assertEquals(4, summary.totalHoldings());
 
-        assertTrue(riskFlags.contains("HIGH_CONCENTRATION"));
-        assertTrue(riskFlags.contains("TOP_HEAVY_PORTFOLIO"));
+        assertTrue(riskFlags.contains(RiskFlag.HIGH_CONCENTRATION.name()));
+        assertTrue(riskFlags.contains(RiskFlag.TOP_HEAVY_PORTFOLIO.name()));
         assertTrue(riskFlags.contains("SECTOR_CONCENTRATION_TECHNOLOGY"));
-        assertTrue(riskFlags.contains("UNDER_DIVERSIFIED"));
+        assertTrue(riskFlags.contains(RiskFlag.UNDER_DIVERSIFIED.name()));
     }
 
     private UserHolding holding(User user,
@@ -93,4 +94,3 @@ class PortfolioAnalyticsServiceTest {
         field.set(target, value);
     }
 }
-
