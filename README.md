@@ -210,6 +210,21 @@ src/main/java/.../
 
 ---
 
+## Cursor IDE Agent Rules
+
+This project ships with [Cursor IDE](https://cursor.sh) agent rules in `.cursor/rules/`, sourced from the [agency-agents](https://github.com/msitarzewski/agency-agents) library. These give Cursor's AI context-specific expertise when working on this codebase.
+
+| Rule file | Agent | When activated |
+|---|---|---|
+| `backend-architect.mdc` | 🏗️ Backend Architect | Architecture, API design, database schema, scalability |
+| `ai-engineer.mdc` | 🤖 AI Engineer | Spring AI, Ollama integration, LLM tool-calling, prompt engineering |
+
+To activate an agent in a Cursor session, mention it by role, for example:
+
+> "Act as the Backend Architect and review the PortfolioAnalysisService for scaling bottlenecks."
+
+---
+
 ## Contributing
 
 Pull requests are welcome. Please open an issue first to discuss significant changes.
