@@ -2,6 +2,7 @@ package com.cursor_springa_ai.playground.service;
 
 import com.cursor_springa_ai.playground.dto.EnrichedHoldingData;
 import com.cursor_springa_ai.playground.dto.PortfolioSummary;
+import com.cursor_springa_ai.playground.model.RiskFlag;
 import com.cursor_springa_ai.playground.model.PortfolioStats;
 import com.cursor_springa_ai.playground.model.User;
 import com.cursor_springa_ai.playground.model.UserHolding;
@@ -105,10 +106,10 @@ public class PortfolioAnalyticsService {
 		int stockCount = stats.getStockCount() != null ? stats.getStockCount() : enrichedHoldings.size();
 
 		if (largestWeight.compareTo(HIGH_CONCENTRATION_THRESHOLD) > 0) {
-			flags.add("HIGH_CONCENTRATION");
+			flags.add(RiskFlag.HIGH_CONCENTRATION.name());
 		}
 		if (top3HoldingPercent.compareTo(TOP_HEAVY_THRESHOLD) > 0) {
-			flags.add("TOP_HEAVY_PORTFOLIO");
+			flags.add(RiskFlag.TOP_HEAVY_PORTFOLIO.name());
 		}
 
 		calculateSectorExposure(enrichedHoldings).forEach((sector, exposure) -> {
@@ -118,7 +119,7 @@ public class PortfolioAnalyticsService {
 		});
 
 		if (stockCount < MIN_DIVERSIFIED_HOLDINGS) {
-			flags.add("UNDER_DIVERSIFIED");
+			flags.add(RiskFlag.UNDER_DIVERSIFIED.name());
 		}
 
 		return List.copyOf(flags);
@@ -147,4 +148,3 @@ public class PortfolioAnalyticsService {
 		return value != null ? value : BigDecimal.ZERO;
 	}
 }
-

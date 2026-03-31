@@ -2,6 +2,7 @@ package com.cursor_springa_ai.playground.service;
 
 import com.cursor_springa_ai.playground.dto.EnrichedHoldingData;
 import com.cursor_springa_ai.playground.model.Instrument;
+import com.cursor_springa_ai.playground.model.RiskFlag;
 import com.cursor_springa_ai.playground.model.StockFundamentals;
 import com.cursor_springa_ai.playground.model.UserHolding;
 import org.springframework.stereotype.Service;
@@ -108,21 +109,21 @@ public class HoldingAnalyticsService {
 
         List<String> riskFlags = new ArrayList<>();
         if (isGreaterThan(enrichedHolding.allocationPercent(), HOLDING_CONCENTRATION_THRESHOLD)) {
-            riskFlags.add("HIGH_CONCENTRATION");
+            riskFlags.add(RiskFlag.HIGH_CONCENTRATION.name());
         }
         if ("OVERVALUED".equals(computeValuationFlag(enrichedHolding.pe(), enrichedHolding.sectorPe()))) {
-            riskFlags.add("HIGH_VALUATION");
+            riskFlags.add(RiskFlag.HIGH_VALUATION.name());
         }
         if (enrichedHolding.distanceFromHigh() != null
                 && enrichedHolding.distanceFromHigh().compareTo(DEEP_CORRECTION_THRESHOLD) < 0) {
-            riskFlags.add("DEEP_CORRECTION");
+            riskFlags.add(RiskFlag.DEEP_CORRECTION.name());
         }
         if (enrichedHolding.marketCapType() != null
                 && enrichedHolding.marketCapType().equalsIgnoreCase("SMALL")) {
-            riskFlags.add("SMALL_CAP_RISK");
+            riskFlags.add(RiskFlag.SMALL_CAP_RISK.name());
         }
         if (isGreaterThan(enrichedHolding.profitPercent(), PROFIT_BOOKING_THRESHOLD)) {
-            riskFlags.add("PROFIT_BOOKING_ZONE");
+            riskFlags.add(RiskFlag.PROFIT_BOOKING_ZONE.name());
         }
         return List.copyOf(riskFlags);
     }
@@ -269,5 +270,4 @@ public class HoldingAnalyticsService {
         return value != null && value.compareTo(threshold) > 0;
     }
 }
-
 

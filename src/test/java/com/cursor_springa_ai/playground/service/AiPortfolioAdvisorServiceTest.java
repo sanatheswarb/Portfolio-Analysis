@@ -4,6 +4,7 @@ import com.cursor_springa_ai.playground.dto.PortfolioAdviceResponse;
 import com.cursor_springa_ai.playground.dto.EnrichedHoldingData;
 import com.cursor_springa_ai.playground.dto.PortfolioSummary;
 import com.cursor_springa_ai.playground.model.PortfolioStats;
+import com.cursor_springa_ai.playground.model.RiskFlag;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
 import org.springframework.ai.chat.client.ChatClient;
@@ -181,14 +182,14 @@ class AiPortfolioAdvisorServiceTest {
                 "FAIRLY_VALUED",
                 BigDecimal.valueOf(91.67),
                 BigDecimal.valueOf(2),
-                List.of("HIGH_CONCENTRATION")
+                List.of(RiskFlag.HIGH_CONCENTRATION.name())
         );
 
         return new PortfolioReasoningContext(
                 "portfolio-1",
                 summary,
                 stats,
-                List.of("HIGH_CONCENTRATION"),
+                List.of(RiskFlag.HIGH_CONCENTRATION.name()),
                 List.of(holding)
         );
     }

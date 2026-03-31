@@ -3,6 +3,7 @@ package com.cursor_springa_ai.playground.service;
 import com.cursor_springa_ai.playground.dto.EnrichedHoldingData;
 import com.cursor_springa_ai.playground.dto.PortfolioSummary;
 import com.cursor_springa_ai.playground.model.PortfolioStats;
+import com.cursor_springa_ai.playground.model.RiskFlag;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
 
@@ -26,7 +27,7 @@ class PortfolioReasoningToolsTest {
         Map<?, ?> payload = objectMapper.readValue(json, Map.class);
 
         assertEquals("portfolio-1", payload.get("portfolioUserId"));
-        assertTrue(json.contains("HIGH_CONCENTRATION"));
+        assertTrue(json.contains(RiskFlag.HIGH_CONCENTRATION.name()));
         assertTrue(json.contains("INFY"));
     }
 
@@ -37,7 +38,7 @@ class PortfolioReasoningToolsTest {
         String json = tools.holdingDetails("infy");
 
         assertTrue(json.contains("\"symbol\":\"INFY\""));
-        assertTrue(json.contains("HIGH_CONCENTRATION"));
+        assertTrue(json.contains(RiskFlag.HIGH_CONCENTRATION.name()));
     }
 
     @Test
@@ -47,7 +48,7 @@ class PortfolioReasoningToolsTest {
         String json = tools.flaggedHoldings();
 
         assertTrue(json.contains("INFY"));
-        assertTrue(json.contains("HIGH_CONCENTRATION"));
+        assertTrue(json.contains(RiskFlag.HIGH_CONCENTRATION.name()));
         assertTrue(json.contains("TCS"));
         assertFalse(json.contains("HDFCBANK"));
     }
@@ -91,7 +92,7 @@ class PortfolioReasoningToolsTest {
                 "OVERVALUED",
                 BigDecimal.valueOf(92.11),
                 BigDecimal.valueOf(4),
-                List.of("HIGH_CONCENTRATION")
+                List.of(RiskFlag.HIGH_CONCENTRATION.name())
         );
 
         EnrichedHoldingData tcs = new EnrichedHoldingData(
@@ -117,7 +118,7 @@ class PortfolioReasoningToolsTest {
                 "FAIRLY_VALUED",
                 BigDecimal.valueOf(92.58),
                 BigDecimal.valueOf(3),
-                List.of("HIGH_VALUATION")
+                List.of(RiskFlag.HIGH_VALUATION.name())
         );
 
         EnrichedHoldingData hdfcBank = new EnrichedHoldingData(
@@ -146,6 +147,12 @@ class PortfolioReasoningToolsTest {
                 List.of()
         );
 
-        return new PortfolioReasoningContext("portfolio-1", summary, stats, List.of("HIGH_CONCENTRATION"), List.of(infy, tcs, hdfcBank));
+        return new PortfolioReasoningContext(
+                "portfolio-1",
+                summary,
+                stats,
+                List.of(RiskFlag.HIGH_CONCENTRATION.name()),
+                List.of(infy, tcs, hdfcBank)
+        );
     }
 }

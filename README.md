@@ -225,6 +225,8 @@ The advisor flow keeps **metrics deterministic** and uses the LLM only for reaso
 
 ## Risk Flags
 
+Fixed risk flag names are centralized in `com.cursor_springa_ai.playground.model.RiskFlag`.
+
 ### Holding-level
 
 | Flag | Trigger |
