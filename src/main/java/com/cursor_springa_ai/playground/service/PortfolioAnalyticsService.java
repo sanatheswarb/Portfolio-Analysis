@@ -14,6 +14,7 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 
 @Service
@@ -112,7 +113,7 @@ public class PortfolioAnalyticsService {
 
 		calculateSectorExposure(enrichedHoldings).forEach((sector, exposure) -> {
 			if (exposure.compareTo(SECTOR_CONCENTRATION_THRESHOLD) > 0) {
-				flags.add("SECTOR_CONCENTRATION_" + sector.toUpperCase().replace(" ", "_"));
+				flags.add("SECTOR_CONCENTRATION_" + sector.toUpperCase(Locale.ROOT).replace(" ", "_"));
 			}
 		});
 
