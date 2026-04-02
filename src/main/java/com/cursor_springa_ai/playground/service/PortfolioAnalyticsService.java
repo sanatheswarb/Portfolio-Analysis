@@ -62,9 +62,7 @@ public class PortfolioAnalyticsService {
                 .limit(3)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
 
-        BigDecimal diversificationScore = safeHoldings.isEmpty()
-                ? BigDecimal.ZERO
-                : BigDecimal.ONE.subtract(sumWeightSquared).setScale(4, RoundingMode.HALF_UP);
+		BigDecimal diversificationScore = calculateDiversificationScore(safeHoldings.size(), sumWeightSquared);
 
         return new PortfolioStats(
                 user.getId(),
@@ -135,6 +133,25 @@ public class PortfolioAnalyticsService {
 			sectorExposure.merge(sector, nvl(holding.allocationPercent()), BigDecimal::add);
 		}
 		return sectorExposure;
+	}
+
+	private BigDecimal calculateDiversificationScore(int holdingCount, BigDecimal sumWeightSquared) {
+		if (holdingCount <= 1) {
+			return BigDecimal.ZERO;
+		}
+
+		BigDecimal rawScore = BigDecimal.ONE.subtract(sumWeightSquared);
+		BigDecimal maxPossibleScore = BigDecimal.ONE.subtract(
+				BigDecimal.ONE.divide(BigDecimal.valueOf(holdingCount), 6, RoundingMode.HALF_UP));
+
+		if (maxPossibleScore.compareTo(BigDecimal.ZERO) <= 0) {
+			return BigDecimal.ZERO;
+		}
+
+		return rawScore
+				.divide(maxPossibleScore, 4, RoundingMode.HALF_UP)
+				.max(BigDecimal.ZERO)
+				.min(BigDecimal.ONE);
 	}
 
 	private BigDecimal scale(BigDecimal value) {
