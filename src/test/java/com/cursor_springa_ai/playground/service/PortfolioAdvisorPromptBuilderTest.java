@@ -2,16 +2,20 @@ package com.cursor_springa_ai.playground.service;
 
 import com.cursor_springa_ai.playground.dto.EnrichedHoldingData;
 import com.cursor_springa_ai.playground.dto.PortfolioSummary;
+import com.cursor_springa_ai.playground.model.RiskFlag;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
 
 import java.math.BigDecimal;
 import java.util.List;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class PortfolioAdvisorPromptBuilderTest {
 
-    private final PortfolioAdvisorPromptBuilder builder = new PortfolioAdvisorPromptBuilder();
+    private final PortfolioAdvisorPromptBuilder builder = new PortfolioAdvisorPromptBuilder(new ObjectMapper());
 
     @Test
     void buildEnrichedHoldingsJson_excludesPeFromOutput() {
@@ -35,6 +39,9 @@ class PortfolioAdvisorPromptBuilderTest {
                 BigDecimal.valueOf(20),
                 BigDecimal.valueOf(15),
                 BigDecimal.valueOf(10),
+                "FAIRLY_VALUED",
+                BigDecimal.valueOf(45.83),
+                BigDecimal.valueOf(3),
                 List.of("high_volatility")
         );
 
@@ -51,27 +58,38 @@ class PortfolioAdvisorPromptBuilderTest {
 
         assertNotNull(prompt);
         assertTrue(prompt.contains("PRIMARY OBJECTIVE"));
-        assertTrue(prompt.contains("portfolio_overview_json"));
-        assertTrue(prompt.contains("OUTPUT REQUIREMENTS"));
+        assertTrue(prompt.contains("MUST call portfolio_overview"));
+        assertTrue(prompt.contains("RESPONSE RULES"));
+        assertTrue(prompt.contains("TOOL RULES"));
+        assertTrue(prompt.contains("PORTFOLIO CLASSIFICATION RULES"));
+        assertTrue(prompt.contains("SUGGESTION ALIGNMENT RULES"));
+        assertTrue(prompt.contains("EXPLANATION RULES"));
+        assertTrue(prompt.contains("DO NOT"));
+        assertFalse(prompt.contains("RESPONSE FORMAT"));
     }
 
     @Test
-    void buildReasoningRequest_containsCompactToolDrivenSections() {
+    void buildReasoningRequest_containsCompactToolCallingInstructions() {
         PortfolioSummary summary = new PortfolioSummary(BigDecimal.valueOf(10000), BigDecimal.valueOf(11000), BigDecimal.valueOf(1000), BigDecimal.valueOf(10), 2);
         PortfolioReasoningContext reasoningContext = new PortfolioReasoningContext(
                 "portfolio-1",
                 summary,
                 null,
-                List.of("HIGH_CONCENTRATION"),
-                List.of()
+                List.of(RiskFlag.HIGH_CONCENTRATION.name()),
+                List.of(),
+                null
         );
 
-        String data = builder.buildReasoningRequest(reasoningContext, "{\"portfolioUserId\":\"portfolio-1\"}", "[]");
+        String data = builder.buildReasoningRequest(reasoningContext);
 
         assertNotNull(data);
         assertTrue(data.contains("portfolio_userId: portfolio-1"));
-        assertTrue(data.contains("use_deterministic_evidence_for_metrics_and_holding_support: true"));
-        assertTrue(data.contains("portfolio_overview_json: {\"portfolioUserId\":\"portfolio-1\"}"));
-        assertTrue(data.contains("HIGH_CONCENTRATION"));
+        assertTrue(data.contains("First action: call portfolio_overview"));
+        assertTrue(data.contains("portfolio_stock_count: 2"));
+        assertTrue(data.contains("total_invested: 10000"));
+        assertTrue(data.contains(RiskFlag.HIGH_CONCENTRATION.name()));
+        assertFalse(data.contains("portfolio_classification:"));
+        assertFalse(data.contains("portfolio_overview_json"));
+        assertFalse(data.contains("Use the smallest number of tool calls required to produce the final advice."));
     }
 }

@@ -1,83 +1,136 @@
 package com.cursor_springa_ai.playground.service;
 
 import com.cursor_springa_ai.playground.dto.EnrichedHoldingData;
-import com.cursor_springa_ai.playground.dto.PortfolioMetrics;
-import com.cursor_springa_ai.playground.dto.PortfolioSummary;
+import com.cursor_springa_ai.playground.model.RiskFlag;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.stereotype.Component;
 
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.logging.Logger;
 
 @Component
 public class PortfolioAdvisorPromptBuilder {
-
-    private static final Logger logger = Logger.getLogger(PortfolioAdvisorPromptBuilder.class.getName());
     private final ObjectMapper objectMapper;
 
-    public PortfolioAdvisorPromptBuilder() {
-        this.objectMapper = new ObjectMapper();
+    public PortfolioAdvisorPromptBuilder(ObjectMapper objectMapper) {
+        this.objectMapper = objectMapper;
     }
 
     public String buildSystemPrompt() {
         return """
-                        You are a conservative Indian equity portfolio advisor.
+                You are a conservative Indian equity portfolio advisor.
 
-                        PRIMARY OBJECTIVE:
-                        Protect capital and reduce portfolio risk before optimizing returns.
+                PRIMARY OBJECTIVE:
+                Protect capital and reduce portfolio risk before optimizing returns.
 
-                        DETERMINISTIC EVIDENCE RULES:
-                        - Treat the provided portfolio_overview_json and flagged_holdings_json as the source of truth.
-                        - Do not recompute metrics yourself.
+                PORTFOLIO CLASSIFICATION RULES:
+                - Use provided portfolio_classification as the primary interpretation of portfolio structure.
+                - Do not attempt to redefine risk level or diversification.
+                - Explain risks using the provided classifications.
+                - Align suggestions with portfolio_style.
 
-                        ANALYSIS PRIORITY:
-                        1. Portfolio risk flags and concentration
-                        2. Diversification quality
-                        3. Holding-level supporting evidence
-                        4. Return optimization
+                TOOL RULES:
+                - You MUST call portfolio_overview exactly once before producing any final answer.
+                - Use tool outputs as the only source of portfolio facts.
+                - Do not recompute metrics yourself.
+                - Do not invent holding-level details.
+                - Do not call portfolio_overview again after its first result.
+                - Do not call the same tool repeatedly if you already have its result.
+                - Call flagged_holdings only when you need risk evidence for recommendations.
+                - Call holding_details only for the few symbols that materially affect the advice.
 
-                        SUGGESTION RULES:
-                        - Suggestions must be specific, actionable, and risk focused.
-                        - If HIGH_CONCENTRATION exists, the first suggestion must address concentration.
-                        - If sector concentration exists, one suggestion must address diversification.
-                        - Avoid generic advice such as monitor market, stay invested, or diversify more.
+                PORTFOLIO INTERPRETATION PRIORITY:
+                1. Portfolio classification
+                2. Risk flags
+                3. Portfolio metrics
+                4. Holding evidence
 
-                        OUTPUT REQUIREMENTS:
-                        - Return ONLY valid JSON.
-                        - Do NOT include markdown or commentary outside the JSON object.
-                        - Include all keys: risk_overview, diversification_feedback, suggestions, cautionary_note.
-                        - risk_overview, diversification_feedback, and cautionary_note must be non-null strings.
-                        - risk_overview and diversification_feedback should each be at least one full sentence.
-                        - suggestions must contain exactly 3 plain-text strings.
-                        - Do not use colons inside suggestion strings.
-                        - Base every conclusion on the supplied tool outputs only.
+                SUGGESTION ALIGNMENT RULES:
+                - If portfolio_style is GROWTH_HEAVY, suggestions should focus on risk balancing.
+                - If portfolio_style is VALUE_HEAVY, suggestions should focus on diversification.
+                - If portfolio_style is MOMENTUM_HEAVY, suggestions should focus on downside protection.
+                - If diversification_level is POOR, one suggestion must address diversification.
+                - If risk_level is HIGH, first suggestion must reduce concentration risk.
 
-                        """;
+                SUGGESTION STRUCTURE:
+                - Suggestion 1: Reduce the biggest identified risk.
+                - Suggestion 2: Improve diversification or style balance.
+                - Suggestion 3: Improve portfolio resilience.
+
+                RESPONSE RULES:
+                - Suggestions must be specific, actionable, and risk focused.
+                - If %s exists, the first suggestion must address concentration.
+                - If sector concentration exists, one suggestion must address diversification.
+                - Avoid generic advice such as monitor market, stay invested, or diversify more.
+                - Also identify 1 portfolio strength if present.
+                - Return ONLY valid JSON.
+                - Do NOT include markdown or commentary outside the JSON object.
+                - Include all keys: risk_overview, diversification_feedback, suggestions, cautionary_note.
+                - risk_overview, diversification_feedback, and cautionary_note must be non-null strings.
+                - risk_overview and diversification_feedback should each be at least one full sentence.
+                - suggestions must contain exactly 3 plain-text strings.
+                - Do not use colons inside suggestion strings.
+
+                EXPLANATION RULES:
+                - Always explain advice using portfolio classification and risk flags.
+                - Do not give generic investment advice.
+                - Reference concentration, diversification, or style when explaining risks.
+                - When explaining risk, state the classification, state the cause, state the implication.
+
+                DO NOT:
+                - Suggest buying or selling specific stocks.
+                - Provide price targets.
+                - Give financial advisory language.
+                """.formatted(RiskFlag.HIGH_CONCENTRATION.name());
     }
 
-    public String buildReasoningRequest(PortfolioReasoningContext reasoningContext,
-                    String portfolioOverviewJson,
-                    String flaggedHoldingsJson) {
-        String summaryJson = buildPortfolioSummaryJson(reasoningContext.portfolioSummary());
-
+    public String buildReasoningRequest(PortfolioReasoningContext reasoningContext) {
         return """
                         Portfolio Analysis Request:
                         portfolio_userId: %s
-                        portfolio_summary: %s
+                portfolio_summary:
+                - total_invested: %s
+                - total_current_value: %s
+                - total_pnl: %s
+                - total_pnl_percent: %s
                         precomputed_portfolio_risk_flags: %s
-            portfolio_overview_json: %s
-            flagged_holdings_json: %s
-            use_deterministic_evidence_for_metrics_and_holding_support: true
+                        portfolio_stock_count: %s
+                First action: call portfolio_overview.
+                Do not call portfolio_overview again after the first result.
+                Then pull additional tool data only if needed.
                         """
                 .formatted(
                         reasoningContext.portfolioUserId(),
-                        summaryJson,
-            portfolioRiskFlags(reasoningContext),
-            portfolioOverviewJson,
-            flaggedHoldingsJson
-                );
+                        reasoningContext.portfolioSummary() != null
+                                ? reasoningContext.portfolioSummary().totalInvested()
+                                : null,
+                        reasoningContext.portfolioSummary() != null
+                                ? reasoningContext.portfolioSummary().totalCurrentValue()
+                                : null,
+                        reasoningContext.portfolioSummary() != null
+                                ? reasoningContext.portfolioSummary().totalPnL()
+                                : null,
+                        reasoningContext.portfolioSummary() != null
+                                ? reasoningContext.portfolioSummary().totalPnLPercent()
+                                : null,
+                        portfolioRiskFlags(reasoningContext),
+                        reasoningContext.portfolioSummary() != null
+                                ? reasoningContext.portfolioSummary().totalHoldings()
+                                : 0);
+    }
+
+    public String buildRetryReasoningRequest(String baseUserPrompt) {
+        return baseUserPrompt + """
+
+                Previous response was truncated.
+                Reuse portfolio classification and tool data already obtained.
+                Do not repeat analysis steps.
+                Return a shorter JSON response.
+                Keep risk_overview and diversification_feedback to one concise sentence each.
+                Keep each suggestion short and plain text.
+                Keep cautionary_note to one short sentence.
+                """;
     }
 
     private List<String> portfolioRiskFlags(PortfolioReasoningContext reasoningContext) {
@@ -100,31 +153,10 @@ public class PortfolioAdvisorPromptBuilder {
                     })
                     .toList();
 
-            String json = objectMapper.writeValueAsString(simplifiedHoldings);
-            logger.info("Built enriched holdings JSON length=" + json.length());
-            return json;
+            return objectMapper.writeValueAsString(simplifiedHoldings);
         } catch (Exception e) {
             throw new RuntimeException("Failed to serialize enriched holdings", e);
         }
     }
 
-    public String buildPortfolioSummaryJson(PortfolioSummary portfolioSummary) {
-        try {
-            String json = objectMapper.writeValueAsString(portfolioSummary);
-            logger.info("Built portfolio summary JSON length=" + json.length());
-            return json;
-        } catch (Exception e) {
-            throw new RuntimeException("Failed to serialize portfolio summary", e);
-        }
-    }
-
-    public String buildPortfolioMetricsJson(PortfolioMetrics portfolioMetrics) {
-        try {
-            String json = objectMapper.writeValueAsString(portfolioMetrics);
-            logger.info("Built portfolio metrics JSON length=" + json.length());
-            return json;
-        } catch (Exception e) {
-            throw new RuntimeException("Failed to serialize portfolio metrics", e);
-        }
-    }
 }

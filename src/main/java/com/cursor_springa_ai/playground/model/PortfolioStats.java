@@ -62,7 +62,7 @@ public class PortfolioStats {
     @Column(name = "top3_holding_percent", precision = 10, scale = 4)
     private BigDecimal top3HoldingPercent;
 
-    /** 1 − Σ(weight_i²) — Herfindahl-based diversification score (0 = concentrated, 1 = diversified). */
+    /** Normalized Herfindahl-based diversification score: (1 − Σ(weight_i²)) / (1 − 1/n). */
     @Column(name = "diversification_score", precision = 10, scale = 4)
     private BigDecimal diversificationScore;
 

@@ -2,7 +2,6 @@ package com.cursor_springa_ai.playground.integration.market;
 
 import com.cursor_springa_ai.playground.dto.StockMetrics;
 import com.cursor_springa_ai.playground.integration.market.dto.NseQuoteResponse;
-import com.cursor_springa_ai.playground.integration.zerodha.dto.ZerodhaHoldingItem;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
@@ -14,9 +13,6 @@ import org.springframework.web.client.RestTemplate;
 import java.math.BigDecimal;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
 import java.util.Optional;
 import java.util.logging.Logger;
 
@@ -29,142 +25,21 @@ public class NseApiClient {
     private final RestTemplate restTemplate;
     private final ObjectMapper objectMapper;
 
-    public NseApiClient(RestTemplate restTemplate) {
+    public NseApiClient(RestTemplate restTemplate, ObjectMapper objectMapper) {
         this.restTemplate = restTemplate;
-        this.objectMapper = new ObjectMapper();
-    }
-
-    /**
-     * Fetch metrics for multiple holdings from NSE API.
-     * NSE API requires individual calls per symbol (no batch support).
-     */
-    public Map<String, StockMetrics> fetchMetricsForHoldings(List<ZerodhaHoldingItem> holdings) {
-        Map<String, StockMetrics> result = new HashMap<>();
-
-        if (holdings == null || holdings.isEmpty()) {
-            return result;
-        }
-
-        for (ZerodhaHoldingItem holding : holdings) {
-            String symbol = holding.getTradingSymbol();
-            if (symbol != null && !symbol.isBlank()) {
-                try {
-                    StockMetrics metrics = fetchMetricsForSymbol(symbol);
-                    if (metrics != null) {
-                        result.put(symbol, metrics);
-                    }
-                } catch (Exception e) {
-                    logger.warning("Failed to fetch NSE metrics for " + symbol + ": " + e.getMessage());
-                }
-            }
-        }
-
-        return result;
+        this.objectMapper = objectMapper;
     }
 
     /**
      * Fetch metrics for a single symbol from NSE API.
-     * API: https://www.nseindia.com/api/quote-equity?symbol=INFY
+     * API: <a href="https://www.nseindia.com/api/quote-equity?symbol=INFY">quote-equity</a>
      * Handles special characters like & in symbols (e.g., M&M) via proper URL encoding.
      */
     public StockMetrics fetchMetricsForSymbol(String symbol) {
-        try {
-            logger.info("Fetching NSE metrics for symbol: " + symbol);
-
-            String encodedSymbol = URLEncoder.encode(symbol, StandardCharsets.UTF_8);
-            String url = NSE_API_BASE_URL + "?symbol=" + encodedSymbol;
-            logger.info("NSE metrics request URL: " + url);
-
-            HttpHeaders headers = new HttpHeaders();
-            headers.set("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36");
-            headers.set("Accept", "application/json");
-            headers.set("Referer", "https://www.nseindia.com/");
-
-            HttpEntity<String> entity = new HttpEntity<>(headers);
-
-            ResponseEntity<String> response = restTemplate.exchange(
-                    url,
-                    HttpMethod.GET,
-                    entity,
-                    String.class
-            );
-
-            if (response.getStatusCode().is2xxSuccessful() && response.getBody() != null) {
-                String responseBody = response.getBody();
-                NseQuoteResponse nseResponse = objectMapper.readValue(responseBody, NseQuoteResponse.class);
-
-                if (nseResponse != null) {
-                    BigDecimal pe = null;
-                    if (nseResponse.metadata() != null && nseResponse.metadata().pdSymbolPe() != null) {
-                        pe = BigDecimal.valueOf(nseResponse.metadata().pdSymbolPe());
-                    }
-
-                    BigDecimal week52High = null;
-                    BigDecimal week52Low = null;
-                    if (nseResponse.priceInfo() != null && nseResponse.priceInfo().weekHighLow() != null) {
-                        if (nseResponse.priceInfo().weekHighLow().max() != null) {
-                            week52High = BigDecimal.valueOf(nseResponse.priceInfo().weekHighLow().max());
-                        }
-                        if (nseResponse.priceInfo().weekHighLow().min() != null) {
-                            week52Low = BigDecimal.valueOf(nseResponse.priceInfo().weekHighLow().min());
-                        }
-                    }
-
-                    String sector = "N/A";
-                    if (nseResponse.industryInfo() != null && nseResponse.industryInfo().industry() != null) {
-                        sector = nseResponse.industryInfo().industry();
-                    }
-
-                    BigDecimal sectorPe = null;
-                    if (nseResponse.metadata() != null && nseResponse.metadata().pdSectorPe() != null) {
-                        sectorPe = BigDecimal.valueOf(nseResponse.metadata().pdSectorPe());
-                    }
-
-                    Long issuedSize = null;
-                    if (nseResponse.securityInfo() != null) {
-                        issuedSize = nseResponse.securityInfo().issuedSize();
-                    }
-
-                    BigDecimal lastPrice = null;
-                    if (nseResponse.priceInfo() != null && nseResponse.priceInfo().lastPrice() != null) {
-                        lastPrice = BigDecimal.valueOf(nseResponse.priceInfo().lastPrice());
-                    }
-
-                    if (pe == null && week52High == null && week52Low == null
-                            && sectorPe == null && issuedSize == null && lastPrice == null
-                            && "N/A".equals(sector)) {
-                        logger.info("NSE raw response for " + symbol + ": " + responseBody);
-                    }
-
-                    // Market cap type is not directly provided by NSE API.
-                    // It can be approximated from the company's market cap (issuedSize * price),
-                    // but SEBI thresholds change periodically. Left as N/A for now.
-                    StockMetrics metrics = new StockMetrics(
-                            symbol,
-                            sector,
-                            "N/A", // marketCapType: not available from NSE quote API
-                            pe,
-                            null, // NSE API doesn't provide beta
-                            week52High,
-                            week52Low,
-                            sectorPe,
-                            issuedSize,
-                            null,  // NSE API doesn't provide 200DMA directly
-                            lastPrice
-                    );
-
-                    logger.info("Fetched NSE metrics for " + symbol + " | Sector: " + sector +
-                            ", PE: " + pe + ", 52WeekHigh: " + week52High + ", 52WeekLow: " + week52Low +
-                            ", SectorPE: " + sectorPe + ", IssuedSize: " + issuedSize + ", LastPrice: " + lastPrice);
-
-                    return metrics;
-                }
-            }
-        } catch (Exception e) {
-            logger.warning("Error fetching NSE metrics for " + symbol + ": " + e.getMessage());
-        }
-
-        return null;
+        logger.info("Fetching NSE metrics for symbol: " + symbol);
+        return fetchQuoteResponse(symbol, "metrics")
+                .map(quote -> toStockMetrics(symbol, quote))
+                .orElse(null);
     }
 
     /**
@@ -173,26 +48,110 @@ public class NseApiClient {
      * and market-cap details that are not present in {@link com.cursor_springa_ai.playground.dto.StockMetrics}.
      */
     public Optional<NseQuoteResponse> fetchQuote(String symbol) {
+        return fetchQuoteResponse(symbol, "quote");
+    }
+
+    private Optional<NseQuoteResponse> fetchQuoteResponse(String symbol, String requestType) {
         try {
-            String encodedSymbol = URLEncoder.encode(symbol, StandardCharsets.UTF_8);
-            String url = NSE_API_BASE_URL + "?symbol=" + encodedSymbol;
-            logger.info("NSE quote request URL: " + url);
+            String url = buildQuoteUrl(symbol);
+            logger.info("NSE " + requestType + " request URL: " + url);
 
-            HttpHeaders headers = new HttpHeaders();
-            headers.set("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36");
-            headers.set("Accept", "application/json");
-            headers.set("Referer", "https://www.nseindia.com/");
-
-            HttpEntity<String> entity = new HttpEntity<>(headers);
-
-            ResponseEntity<String> response = restTemplate.exchange(url, HttpMethod.GET, entity, String.class);
+            ResponseEntity<String> response = restTemplate.exchange(url, HttpMethod.GET, buildRequestEntity(), String.class);
 
             if (response.getStatusCode().is2xxSuccessful() && response.getBody() != null) {
                 return Optional.ofNullable(objectMapper.readValue(response.getBody(), NseQuoteResponse.class));
             }
         } catch (Exception e) {
-            logger.warning("Error fetching NSE quote for " + symbol + ": " + e.getMessage());
+            logger.warning("Error fetching NSE " + requestType + " for " + symbol + ": " + e.getMessage());
         }
         return Optional.empty();
+    }
+
+    private String buildQuoteUrl(String symbol) {
+        String encodedSymbol = URLEncoder.encode(symbol, StandardCharsets.UTF_8);
+        return NSE_API_BASE_URL + "?symbol=" + encodedSymbol;
+    }
+
+    private HttpEntity<String> buildRequestEntity() {
+        HttpHeaders headers = new HttpHeaders();
+        headers.set("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36");
+        headers.set("Accept", "application/json");
+        headers.set("Referer", "https://www.nseindia.com/");
+        return new HttpEntity<>(headers);
+    }
+
+    private StockMetrics toStockMetrics(String symbol, NseQuoteResponse nseResponse) {
+        BigDecimal pe = null;
+        if (nseResponse.metadata() != null && nseResponse.metadata().pdSymbolPe() != null) {
+            pe = BigDecimal.valueOf(nseResponse.metadata().pdSymbolPe());
+        }
+
+        BigDecimal week52High = null;
+        BigDecimal week52Low = null;
+        if (nseResponse.priceInfo() != null && nseResponse.priceInfo().weekHighLow() != null) {
+            if (nseResponse.priceInfo().weekHighLow().max() != null) {
+                week52High = BigDecimal.valueOf(nseResponse.priceInfo().weekHighLow().max());
+            }
+            if (nseResponse.priceInfo().weekHighLow().min() != null) {
+                week52Low = BigDecimal.valueOf(nseResponse.priceInfo().weekHighLow().min());
+            }
+        }
+
+        String sector = resolveSector(nseResponse);
+
+        BigDecimal sectorPe = null;
+        if (nseResponse.metadata() != null && nseResponse.metadata().pdSectorPe() != null) {
+            sectorPe = BigDecimal.valueOf(nseResponse.metadata().pdSectorPe());
+        }
+
+        Long issuedSize = null;
+        if (nseResponse.securityInfo() != null) {
+            issuedSize = nseResponse.securityInfo().issuedSize();
+        }
+
+        BigDecimal lastPrice = null;
+        if (nseResponse.priceInfo() != null && nseResponse.priceInfo().lastPrice() != null) {
+            lastPrice = BigDecimal.valueOf(nseResponse.priceInfo().lastPrice());
+        }
+
+        if (pe == null && week52High == null && week52Low == null
+                && sectorPe == null && issuedSize == null && lastPrice == null
+                && "N/A".equals(sector)) {
+            logger.info("NSE quote parsed with no usable metrics for " + symbol);
+        }
+
+        StockMetrics metrics = new StockMetrics(
+                symbol,
+                sector,
+                "N/A",
+                pe,
+                null,
+                week52High,
+                week52Low,
+                sectorPe,
+                issuedSize,
+                null,
+                lastPrice
+        );
+
+        logger.info("Fetched NSE metrics for " + symbol + " | Sector: " + sector +
+                ", PE: " + pe + ", 52WeekHigh: " + week52High + ", 52WeekLow: " + week52Low +
+                ", SectorPE: " + sectorPe + ", IssuedSize: " + issuedSize + ", LastPrice: " + lastPrice);
+
+        return metrics;
+    }
+
+    public String resolveSector(NseQuoteResponse quote) {
+        if (quote == null) {
+            return "N/A";
+        }
+        if (quote.info() != null && Boolean.TRUE.equals(quote.info().isETFSec())) {
+            return "ETF";
+        }
+        if (quote.industryInfo() != null && quote.industryInfo().sector() != null
+                && !quote.industryInfo().sector().isBlank()) {
+            return quote.industryInfo().sector();
+        }
+        return "N/A";
     }
 }

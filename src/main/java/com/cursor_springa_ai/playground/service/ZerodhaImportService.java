@@ -67,16 +67,14 @@ public class ZerodhaImportService {
 
             try {
                 String symbol = importSingleHolding(currentUser, item, totalCurrentValue);
-                if (symbol != null) {
-                    importedSymbols.add(symbol);
-                }
+                importedSymbols.add(symbol);
             } catch (RuntimeException ex) {
                 logger.warning("Failed to import holding "
                         + item.getTradingSymbol() + ": " + ex.getMessage());
             }
         }
-
-        stockMetricsCalculationService.calculateForUser(currentUser);
+        // We can revisit this if we need to store stock metrics anytime in future
+       // stockMetricsCalculationService.calculateForUser(currentUser);
 
         portfolioStatsBatchService.calculateForUserAsync(currentUser.getId());
 

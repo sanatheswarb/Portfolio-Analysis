@@ -2,6 +2,7 @@ package com.cursor_springa_ai.playground.service;
 
 import com.cursor_springa_ai.playground.dto.EnrichedHoldingData;
 import com.cursor_springa_ai.playground.dto.PortfolioSummary;
+import com.cursor_springa_ai.playground.model.PortfolioClassification;
 import com.cursor_springa_ai.playground.model.PortfolioStats;
 
 import java.util.List;
@@ -11,7 +12,8 @@ public record PortfolioReasoningContext(
         PortfolioSummary portfolioSummary,
         PortfolioStats portfolioStats,
         List<String> portfolioRiskFlags,
-        List<EnrichedHoldingData> enrichedHoldings
+        List<EnrichedHoldingData> enrichedHoldings,
+        PortfolioClassification classification
 ) {
 
     public PortfolioReasoningContext {

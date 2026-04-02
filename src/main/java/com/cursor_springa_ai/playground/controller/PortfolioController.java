@@ -1,29 +1,24 @@
 package com.cursor_springa_ai.playground.controller;
 
-import com.cursor_springa_ai.playground.dto.AddHoldingRequest;
 import com.cursor_springa_ai.playground.dto.PortfolioAnalysisResponse;
+import com.cursor_springa_ai.playground.dto.UserHoldingDto;
 import com.cursor_springa_ai.playground.dto.ZerodhaImportResponse;
-import com.cursor_springa_ai.playground.model.Holding;
-import com.cursor_springa_ai.playground.model.Portfolio;
 import com.cursor_springa_ai.playground.model.User;
 import com.cursor_springa_ai.playground.service.PortfolioAnalysisService;
 import com.cursor_springa_ai.playground.service.PortfolioService;
 import com.cursor_springa_ai.playground.service.ZerodhaAuthService;
 import com.cursor_springa_ai.playground.service.ZerodhaImportService;
-import jakarta.validation.Valid;
-import org.springframework.http.HttpStatus;
-import org.springframework.web.bind.annotation.DeleteMapping;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.PutMapping;
-import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
 
+@Tag(name = "Portfolio Management", description = "Manage portfolios, holdings, imports, and AI analysis")
 @RestController
 @RequestMapping("/api/portfolios")
 public class PortfolioController {
@@ -45,54 +40,29 @@ public class PortfolioController {
         this.zerodhaAuthService = zerodhaAuthService;
     }
 
-    @PostMapping
-    @ResponseStatus(HttpStatus.CREATED)
-    public Portfolio createPortfolio() {
-        return portfolioService.createPortfolio(requireAuthenticatedUser());
-    }
-
-    @GetMapping
-    public List<Portfolio> getAllPortfolios() {
-        return portfolioService.getAllPortfolios();
-    }
-
+    @Operation(summary = "Get current user's holdings",
+            description = "Returns the current holdings belonging to the authenticated Zerodha user.",
+            responses = @ApiResponse(responseCode = "200", description = "Holdings returned"))
     @GetMapping("/me")
-    public Portfolio getPortfolio() {
+    public List<UserHoldingDto> getPortfolio() {
         return portfolioService.getPortfolio(requireAuthenticatedUser());
     }
 
-    @PutMapping("/holdings")
-    public Holding addOrUpdateHolding(
-            @Valid @RequestBody AddHoldingRequest request
-    ) {
-        Holding holding = new Holding(
-                request.symbol(),
-                request.exchange(),
-                request.assetType(),
-                request.quantity(),
-                request.averageBuyPrice(),
-                null,
-                null
-        );
-        return portfolioService.addOrUpdateHolding(requireAuthenticatedUser(), holding);
-    }
 
-    @DeleteMapping("/holdings/{symbol}")
-    @ResponseStatus(HttpStatus.NO_CONTENT)
-    public void removeHolding(
-            @PathVariable String symbol
-    ) {
-        portfolioService.removeHolding(requireAuthenticatedUser(), symbol);
-    }
-
-    @GetMapping("/analysis")
-    public PortfolioAnalysisResponse analyzePortfolio() {
-        return portfolioAnalysisService.analyzeCurrentUserPortfolio();
-    }
-
+    @Operation(summary = "Import holdings from Zerodha",
+            description = "Fetches live holdings from the authenticated Zerodha account and saves them to the portfolio.",
+            responses = @ApiResponse(responseCode = "200", description = "Holdings imported"))
     @PostMapping("/holdings/import/zerodha")
     public ZerodhaImportResponse importFromZerodha() {
         return zerodhaImportService.importHoldings();
+    }
+
+    @Operation(summary = "Run AI portfolio analysis",
+            description = "Computes portfolio metrics and generates AI-powered investment advice using Ollama LLM.",
+            responses = @ApiResponse(responseCode = "200", description = "Analysis result returned"))
+    @GetMapping("/analysis")
+    public PortfolioAnalysisResponse analyzePortfolio() {
+        return portfolioAnalysisService.analyzeCurrentUserPortfolio();
     }
 
     private User requireAuthenticatedUser() {

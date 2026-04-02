@@ -24,75 +24,166 @@ public class AiPortfolioAdvisorService {
         @Value("${portfolio.advisor.temperature:0.2}")
         private double temperature;
 
-        @Value("${portfolio.advisor.num-predict:512}")
+        @Value("${portfolio.advisor.num-predict:192}")
         private int numPredict;
 
         @Value("${portfolio.advisor.keep-alive:10m}")
         private String keepAlive;
 
+        @Value("${portfolio.advisor.internal-tool-execution:true}")
+        private boolean internalToolExecutionEnabled;
+
+        @Value("${portfolio.advisor.thinking-enabled:false}")
+        private boolean thinkingEnabled;
+
         public AiPortfolioAdvisorService(ChatClient.Builder chatClientBuilder,
+                        ObjectMapper objectMapper,
                         PortfolioAdvisorPromptBuilder promptBuilder) {
                 this.chatClient = chatClientBuilder.build();
-                this.objectMapper = new ObjectMapper();
+                this.objectMapper = objectMapper;
                 this.promptBuilder = promptBuilder;
         }
 
         public PortfolioAdviceResponse generateInsights(PortfolioReasoningContext reasoningContext) {
                 String systemPrompt = promptBuilder.buildSystemPrompt();
-                PortfolioReasoningTools reasoningTools = new PortfolioReasoningTools(reasoningContext, objectMapper);
-                String portfolioOverviewJson = reasoningTools.portfolioOverview();
-                String flaggedHoldingsJson = reasoningTools.flaggedHoldings();
-                String userPrompt = promptBuilder.buildReasoningRequest(
+                String userPrompt = promptBuilder.buildReasoningRequest(reasoningContext);
+
+                AdvisorCallResult firstAttempt = callAdvisor(reasoningContext, systemPrompt, userPrompt, numPredict, temperature);
+                PortfolioAdviceResponse parsedFirstAttempt = parseAdviceResponse(firstAttempt.aiResponse(), true);
+                if (parsedFirstAttempt != null) {
+                        return parsedFirstAttempt;
+                }
+
+                int retryNumPredict = Math.max(numPredict + 64, 192);
+                double retryTemperature = Math.min(temperature, 0.1d);
+                String retryUserPrompt = promptBuilder.buildRetryReasoningRequest(userPrompt);
+                logger.info("Retrying advisor response with higher token budget after truncated JSON response");
+
+                AdvisorCallResult secondAttempt = callAdvisor(
                                 reasoningContext,
-                                portfolioOverviewJson,
-                                flaggedHoldingsJson);
+                                systemPrompt,
+                                retryUserPrompt,
+                                retryNumPredict,
+                                retryTemperature);
+                PortfolioAdviceResponse parsedSecondAttempt = parseAdviceResponse(secondAttempt.aiResponse(), false);
+                if (parsedSecondAttempt != null) {
+                        return parsedSecondAttempt;
+                }
 
-                logger.info("System prompt length: " + systemPrompt.length());
-                logger.info("User prompt length: " + userPrompt.length());
+                return fallbackAdviceResponse(secondAttempt.aiResponse());
+        }
 
-                OllamaChatOptions options = OllamaChatOptions.builder()
-                                .model(advisorModel)
-                                .temperature(temperature)
-                                .numPredict(numPredict)
-                                .keepAlive(keepAlive)
-                                .topP(0.9)
-                                .build();
+        private AdvisorCallResult callAdvisor(
+                        PortfolioReasoningContext reasoningContext,
+                        String systemPrompt,
+                        String userPrompt,
+                        int responseNumPredict,
+                        double responseTemperature) {
+                PortfolioReasoningTools reasoningTools = new PortfolioReasoningTools(reasoningContext, objectMapper);
+                OllamaChatOptions options = buildOptions(responseNumPredict, responseTemperature);
 
                 long startTime = System.currentTimeMillis();
                 String aiResponse = chatClient.prompt()
                                 .system(systemPrompt)
                                 .user(userPrompt)
+                                .tools(reasoningTools)
                                 .options(options)
                                 .call()
                                 .content();
                 long llmTime = System.currentTimeMillis() - startTime;
                 logger.info("LLM time: " + llmTime + " ms");
-
-                return parseAdviceResponse(aiResponse);
+                validateRequiredToolUsage(reasoningTools);
+                logger.info("Advisor tool usage summary: firstTool=" + reasoningTools.firstInvokedTool()
+                                + ", totalCalls=" + reasoningTools.invocationCount()
+                                + ", counts=" + reasoningTools.invocationCounts());
+                logRepeatedOverviewUsage(reasoningTools);
+                logMissingDrillDownUsage(reasoningTools);
+                return new AdvisorCallResult(aiResponse, llmTime);
         }
 
-        private PortfolioAdviceResponse parseAdviceResponse(String aiResponse) {
+        private OllamaChatOptions buildOptions(int responseNumPredict, double responseTemperature) {
+                OllamaChatOptions.Builder optionsBuilder = OllamaChatOptions.builder()
+                                .model(advisorModel)
+                                .temperature(responseTemperature)
+                                .numPredict(responseNumPredict)
+                                .keepAlive(keepAlive)
+                                .topP(0.7)
+                                .internalToolExecutionEnabled(internalToolExecutionEnabled);
+
+                if (thinkingEnabled) {
+                        optionsBuilder.enableThinking();
+                } else {
+                        optionsBuilder.disableThinking();
+                }
+
+                return optionsBuilder.build();
+        }
+
+        private void validateRequiredToolUsage(PortfolioReasoningTools reasoningTools) {
+                if (!reasoningTools.hasInvokedTool("portfolio_overview")) {
+                        throw new IllegalStateException(
+                                        "Advisor response rejected because no portfolio_overview tool call was made.");
+                }
+                if (!"portfolio_overview".equals(reasoningTools.firstInvokedTool())) {
+                        throw new IllegalStateException(
+                                        "Advisor response rejected because the first tool call was not portfolio_overview.");
+                }
+        }
+
+        private void logMissingDrillDownUsage(PortfolioReasoningTools reasoningTools) {
+                if (reasoningTools.hasInvokedTool("flagged_holdings") || reasoningTools.hasInvokedTool("holding_details")) {
+                        return;
+                }
+                logger.info("Advisor completed without drill-down tool calls; only portfolio_overview data was used.");
+        }
+
+        private void logRepeatedOverviewUsage(PortfolioReasoningTools reasoningTools) {
+                Integer overviewCalls = reasoningTools.invocationCounts().get("portfolio_overview");
+                if (overviewCalls == null || overviewCalls <= 1) {
+                        return;
+                }
+                logger.info("Advisor called portfolio_overview multiple times in one request: count=" + overviewCalls);
+        }
+
+        private PortfolioAdviceResponse parseAdviceResponse(String aiResponse, boolean retryOnTruncation) {
+                if (aiResponse == null || aiResponse.isBlank()) {
+                        return null;
+                }
                 try {
                         PortfolioAdviceResponse parsed = objectMapper.readValue(aiResponse, PortfolioAdviceResponse.class);
                         return normalizeAdviceResponse(parsed);
                 } catch (Exception e) {
+                        if (retryOnTruncation && isLikelyTruncatedResponse(aiResponse, e)) {
+                                return null;
+                        }
                         logger.warning("Failed to parse AI response as JSON: " + e.getMessage());
                         logger.warning("Raw AI response: " + aiResponse);
 
-                        // Try to extract suggestions from malformed JSON
                         PortfolioAdviceResponse fallback = tryExtractSuggestionsFromMalformedJson(aiResponse);
                         if (fallback != null) {
-                                logger.info("Successfully extracted suggestions from malformed JSON");
                                 return normalizeAdviceResponse(fallback);
                         }
-
-                        // Return a fallback response with the raw text
-                        return new PortfolioAdviceResponse(
-                                        "Unable to parse AI response. Raw response: " + aiResponse.substring(0, Math.min(200, aiResponse.length())),
-                                        "Unable to parse structured response",
-                                        List.of("Review portfolio manually", "Consult with financial advisor", "Monitor risk metrics closely"),
-                                        "AI response parsing failed - manual review required");
+                        return fallbackAdviceResponse(aiResponse);
                 }
+        }
+
+        private boolean isLikelyTruncatedResponse(String aiResponse, Exception exception) {
+                String message = exception.getMessage();
+                if (message != null && message.contains("Unexpected end-of-input")) {
+                        return true;
+                }
+                String trimmed = aiResponse == null ? "" : aiResponse.trim();
+                return !trimmed.isEmpty() && !trimmed.endsWith("}");
+        }
+
+        private PortfolioAdviceResponse fallbackAdviceResponse(String aiResponse) {
+                String safeResponse = aiResponse == null ? "" : aiResponse;
+                return new PortfolioAdviceResponse(
+                                "Unable to parse AI response. Raw response: "
+                                                + safeResponse.substring(0, Math.min(200, safeResponse.length())),
+                                "Unable to parse structured response",
+                                List.of("Review portfolio manually", "Consult with financial advisor", "Monitor risk metrics closely"),
+                                "AI response parsing failed - manual review required");
         }
 
         private PortfolioAdviceResponse normalizeAdviceResponse(PortfolioAdviceResponse response) {
@@ -142,7 +233,6 @@ public class AiPortfolioAdvisorService {
 
         private PortfolioAdviceResponse tryExtractSuggestionsFromMalformedJson(String aiResponse) {
                 try {
-                        // Look for suggestions array in the response
                         int suggestionsStart = aiResponse.indexOf("\"suggestions\":");
                         if (suggestionsStart == -1) {
                                 return null;
@@ -157,16 +247,14 @@ public class AiPortfolioAdvisorService {
 
                         String suggestionsArray = aiResponse.substring(arrayStart, arrayEnd + 1);
 
-                        // Try to parse just the suggestions array
-                        List<String> suggestions = objectMapper.readValue(suggestionsArray, objectMapper.getTypeFactory().constructCollectionType(List.class, String.class));
+                        List<String> suggestions = objectMapper.readValue(
+                                        suggestionsArray,
+                                        objectMapper.getTypeFactory().constructCollectionType(List.class, String.class));
 
-                        // Filter out any non-string entries that might have been parsed
                         suggestions = suggestions.stream()
-                                        .filter(s -> s instanceof String && !s.contains(":") && !s.trim().isEmpty())
-                                        .map(Object::toString)
+                                        .filter(s -> !s.contains(":") && !s.trim().isEmpty())
                                         .toList();
 
-                        // If we have at least one valid suggestion, create a response
                         if (!suggestions.isEmpty()) {
                                 return new PortfolioAdviceResponse(
                                                 extractFieldFromJson(aiResponse, "risk_overview"),
@@ -204,7 +292,6 @@ public class AiPortfolioAdvisorService {
                 }
         }
 
-        
-
-      
+        private record AdvisorCallResult(String aiResponse, long llmTimeMs) {
+        }
 }
