@@ -29,6 +29,7 @@ class PortfolioReasoningToolsTest {
         assertEquals("portfolio-1", payload.get("portfolioUserId"));
         assertTrue(json.contains(RiskFlag.HIGH_CONCENTRATION.name()));
         assertTrue(json.contains("INFY"));
+        assertTrue(payload.containsKey("classification"));
     }
 
     @Test
