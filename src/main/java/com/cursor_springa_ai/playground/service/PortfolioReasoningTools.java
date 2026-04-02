@@ -372,7 +372,7 @@ public class PortfolioReasoningTools {
                 || sectorExposure.sector() == null) {
             return null;
         }
-        return sectorExposure.sector() + " sector exposure is high at "
+        return sectorExposure.sector().toLowerCase(Locale.ROOT) + " sector exposure is high at "
                 + formatWithoutTrailingZeros(sectorExposure.allocationPercent()) + "%.";
     }
 
