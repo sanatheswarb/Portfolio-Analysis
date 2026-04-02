@@ -46,7 +46,8 @@ class PortfolioReasoningToolsTest {
         assertEquals("INFY", payload.path("largest_holdings").get(0).path("symbol").asText());
         assertTrue(json.contains(RiskFlag.HIGH_CONCENTRATION.name()));
         assertTrue(payload.path("portfolio_strengths").toString().contains("Overall performance is healthy."));
-        assertTrue(payload.path("portfolio_concerns").toString().contains("technology sector exposure is high at 65%."));
+        assertEquals("Largest holding concentration is high.", payload.path("portfolio_concerns").get(0).asText());
+        assertEquals("technology sector exposure is high at 65%.", payload.path("portfolio_concerns").get(1).asText());
     }
 
     @Test

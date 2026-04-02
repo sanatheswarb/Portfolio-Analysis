@@ -373,14 +373,14 @@ public class PortfolioReasoningTools {
             return null;
         }
         return sectorExposure.sector() + " sector exposure is high at "
-                + trimTrailingZeros(sectorExposure.allocationPercent()) + "%.";
+                + formatWithoutTrailingZeros(sectorExposure.allocationPercent()) + "%.";
     }
 
     private String enumName(Enum<?> value) {
         return value == null ? null : value.name();
     }
 
-    private String trimTrailingZeros(BigDecimal value) {
+    private String formatWithoutTrailingZeros(BigDecimal value) {
         return value == null ? null : value.stripTrailingZeros().toPlainString();
     }
 
