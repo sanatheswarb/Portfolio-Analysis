@@ -38,6 +38,7 @@ public class PortfolioAdvisorPromptBuilder {
                 - Do not call portfolio_overview again after its first result.
                 - Do not call the same tool repeatedly if you already have its result.
                 - Call flagged_holdings only when you need risk evidence for recommendations.
+                - Call holdings_list to scan all holdings and identify which symbols are relevant.
                 - Call holding_details only for the few symbols that materially affect the advice.
 
                 PORTFOLIO INTERPRETATION PRIORITY:

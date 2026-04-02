@@ -3,6 +3,7 @@ package com.cursor_springa_ai.playground.service;
 import com.cursor_springa_ai.playground.dto.EnrichedHoldingData;
 import com.cursor_springa_ai.playground.dto.PortfolioSummary;
 import com.cursor_springa_ai.playground.dto.ai.FlaggedHoldingDto;
+import com.cursor_springa_ai.playground.dto.ai.HoldingListItemDto;
 import com.cursor_springa_ai.playground.model.PortfolioClassification;
 import com.cursor_springa_ai.playground.model.PortfolioStats;
 import com.cursor_springa_ai.playground.model.enums.DiversificationLevel;
@@ -29,16 +30,19 @@ public class PortfolioReasoningTools {
     private final PortfolioReasoningContext context;
     private final ObjectMapper objectMapper;
     private final FlaggedHoldingsBuilder flaggedHoldingsBuilder;
+    private final HoldingDetailsBuilder holdingDetailsBuilder;
     private final List<String> toolInvocationOrder = new ArrayList<>();
     private final Map<String, Integer> toolInvocationCounts = new LinkedHashMap<>();
     private String portfolioOverviewCache;
     private String flaggedHoldingsCache;
+    private String holdingsListCache;
     private final Map<String, String> holdingDetailsCache = new LinkedHashMap<>();
 
     public PortfolioReasoningTools(PortfolioReasoningContext context, ObjectMapper objectMapper) {
         this.context = context;
         this.objectMapper = objectMapper;
         this.flaggedHoldingsBuilder = new FlaggedHoldingsBuilder();
+        this.holdingDetailsBuilder = new HoldingDetailsBuilder();
     }
 
     @Tool(name = "portfolio_overview", description = "Returns deterministic portfolio summary, diversification metrics, sector exposure, portfolio risk flags, and the largest holdings. Call this first.")
@@ -70,31 +74,61 @@ public class PortfolioReasoningTools {
         return flaggedHoldingsCache;
     }
 
-    @Tool(name = "holding_details", description = "Returns deterministic metrics and risk flags for a single holding symbol when you need supporting evidence for advice.")
+    @Tool(name = "holdings_list", description = "Returns a minimal summary of all holdings: symbol, allocation, PnL, valuation flag, and risk flags. Use this to scan the full portfolio before deciding which symbols to inspect in detail.")
+    public String holdingsList() {
+        recordToolInvocation("holdings_list");
+        if (holdingsListCache != null) {
+            return holdingsListCache;
+        }
+        List<HoldingListItemDto> items = context.enrichedHoldings().stream()
+                .sorted((left, right) -> compareByAllocation(right, left))
+                .map(holding -> new HoldingListItemDto(
+                        holding.symbol(),
+                        holding.allocationPercent(),
+                        holding.profitPercent(),
+                        holding.valuationFlag(),
+                        holding.riskFlags() != null ? holding.riskFlags() : List.of()
+                ))
+                .toList();
+        holdingsListCache = toJson(items);
+        return holdingsListCache;
+    }
+
+    @Tool(name = "holding_details", description = "Returns structured, context-rich details for the given stock symbols: identity, portfolio role, valuation story, performance story, risk analysis, and human-readable signals. Call this to explain why a stock is risky or important.")
     public String holdingDetails(
-            @ToolParam(description = "Stock symbol to inspect, for example INFY or TCS", required = true)
-            String symbol
+            @ToolParam(description = "List of stock symbols to inspect, for example [\"INFY\",\"TCS\"]", required = true)
+            List<String> symbols
     ) {
         recordToolInvocation("holding_details");
-        logger.info("Advisor tool invoked: holding_details symbol=" + symbol);
-        if (symbol == null || symbol.isBlank()) {
-            return "{\"error\":\"symbol is required\"}";
+        if (symbols == null || symbols.isEmpty()) {
+            return "{\"error\":\"symbols list is required\"}";
         }
 
-        String normalizedSymbol = symbol.trim().toUpperCase(Locale.ROOT);
-        if (holdingDetailsCache.containsKey(normalizedSymbol)) {
-            return holdingDetailsCache.get(normalizedSymbol);
+        List<Map<String, Object>> results = new ArrayList<>();
+        for (String symbol : symbols) {
+            if (symbol == null || symbol.isBlank()) {
+                continue;
+            }
+            String normalizedSymbol = symbol.trim().toUpperCase(Locale.ROOT);
+            if (holdingDetailsCache.containsKey(normalizedSymbol)) {
+                try {
+                    results.add(objectMapper.readValue(holdingDetailsCache.get(normalizedSymbol), Map.class));
+                } catch (Exception e) {
+                    results.add(Map.of("error", "failed to deserialize cached details for " + normalizedSymbol));
+                }
+                continue;
+            }
+            Map<String, Object> detail = context.enrichedHoldings().stream()
+                    .filter(holding -> holding.symbol() != null)
+                    .filter(holding -> holding.symbol().equalsIgnoreCase(normalizedSymbol))
+                    .findFirst()
+                    .map(holding -> holdingDetailsBuilder.build(holding, context.enrichedHoldings()))
+                    .orElse(Map.of("error", "holding not found for symbol " + normalizedSymbol));
+            String detailJson = toJson(detail);
+            holdingDetailsCache.put(normalizedSymbol, detailJson);
+            results.add(detail);
         }
-
-        String payload = context.enrichedHoldings().stream()
-                .filter(holding -> holding.symbol() != null)
-                .filter(holding -> holding.symbol().equalsIgnoreCase(normalizedSymbol))
-                .findFirst()
-                .map(this::toHoldingSummary)
-                .map(this::toJson)
-                .orElse("{\"error\":\"holding not found for symbol " + normalizedSymbol + "\"}");
-        holdingDetailsCache.put(normalizedSymbol, payload);
-        return payload;
+        return toJson(results);
     }
 
     public int invocationCount() {
@@ -124,18 +158,6 @@ public class PortfolioReasoningTools {
                     return payload;
                 })
                 .toList();
-    }
-
-    private Map<String, Object> toHoldingSummary(EnrichedHoldingData holding) {
-        Map<String, Object> payload = new LinkedHashMap<>();
-        payload.put("symbol", holding.symbol());
-        payload.put("sector", holding.sector());
-        payload.put("allocationPercent", holding.allocationPercent());
-        payload.put("profitPercent", holding.profitPercent());
-        payload.put("distanceFromHigh", holding.distanceFromHigh());
-        payload.put("marketCapType", holding.marketCapType());
-        payload.put("riskFlags", holding.riskFlags());
-        return payload;
     }
 
     private Map<String, Object> portfolioIdentity() {
