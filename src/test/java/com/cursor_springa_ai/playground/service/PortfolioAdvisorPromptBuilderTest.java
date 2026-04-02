@@ -61,6 +61,10 @@ class PortfolioAdvisorPromptBuilderTest {
         assertTrue(prompt.contains("MUST call portfolio_overview"));
         assertTrue(prompt.contains("RESPONSE RULES"));
         assertTrue(prompt.contains("TOOL RULES"));
+        assertTrue(prompt.contains("PORTFOLIO CLASSIFICATION RULES"));
+        assertTrue(prompt.contains("SUGGESTION ALIGNMENT RULES"));
+        assertTrue(prompt.contains("EXPLANATION RULES"));
+        assertTrue(prompt.contains("DO NOT"));
         assertFalse(prompt.contains("RESPONSE FORMAT"));
     }
 
@@ -72,7 +76,8 @@ class PortfolioAdvisorPromptBuilderTest {
                 summary,
                 null,
                 List.of(RiskFlag.HIGH_CONCENTRATION.name()),
-                List.of()
+                List.of(),
+                null
         );
 
         String data = builder.buildReasoningRequest(reasoningContext);
@@ -83,6 +88,7 @@ class PortfolioAdvisorPromptBuilderTest {
         assertTrue(data.contains("portfolio_stock_count: 2"));
         assertTrue(data.contains("total_invested: 10000"));
         assertTrue(data.contains(RiskFlag.HIGH_CONCENTRATION.name()));
+        assertFalse(data.contains("portfolio_classification:"));
         assertFalse(data.contains("portfolio_overview_json"));
         assertFalse(data.contains("Use the smallest number of tool calls required to produce the final advice."));
     }

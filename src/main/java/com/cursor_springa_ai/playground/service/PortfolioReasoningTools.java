@@ -40,6 +40,7 @@ public class PortfolioReasoningTools {
         Map<String, Object> payload = new LinkedHashMap<>();
         payload.put("portfolioUserId", context.portfolioUserId());
         payload.put("summary", context.portfolioSummary());
+        payload.put("classification", context.classification());
         payload.put("metrics", portfolioStatsPayload());
         payload.put("portfolioRiskFlags", context.portfolioRiskFlags());
         payload.put("largestHoldings", largestHoldings());

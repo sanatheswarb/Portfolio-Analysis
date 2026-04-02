@@ -29,6 +29,7 @@ class PortfolioReasoningToolsTest {
         assertEquals("portfolio-1", payload.get("portfolioUserId"));
         assertTrue(json.contains(RiskFlag.HIGH_CONCENTRATION.name()));
         assertTrue(json.contains("INFY"));
+        assertTrue(payload.containsKey("classification"));
     }
 
     @Test
@@ -152,7 +153,8 @@ class PortfolioReasoningToolsTest {
                 summary,
                 stats,
                 List.of(RiskFlag.HIGH_CONCENTRATION.name()),
-                List.of(infy, tcs, hdfcBank)
+                List.of(infy, tcs, hdfcBank),
+                null
         );
     }
 }
