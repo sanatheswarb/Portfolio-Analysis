@@ -1,6 +1,7 @@
-package com.cursor_springa_ai.playground.service;
+package com.cursor_springa_ai.playground.ai.advisor;
 
 import com.cursor_springa_ai.playground.dto.EnrichedHoldingData;
+import com.cursor_springa_ai.playground.ai.reasoning.PortfolioReasoningContext;
 import com.cursor_springa_ai.playground.model.RiskFlag;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.stereotype.Component;

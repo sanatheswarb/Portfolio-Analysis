@@ -1,5 +1,6 @@
 package com.cursor_springa_ai.playground.service;
 
+import com.cursor_springa_ai.playground.analytics.HoldingAnalyticsService;
 import com.cursor_springa_ai.playground.model.Instrument;
 import com.cursor_springa_ai.playground.model.StockFundamentals;
 import com.cursor_springa_ai.playground.model.User;

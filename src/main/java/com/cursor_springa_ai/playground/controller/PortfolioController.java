@@ -4,7 +4,7 @@ import com.cursor_springa_ai.playground.dto.PortfolioAnalysisResponse;
 import com.cursor_springa_ai.playground.dto.UserHoldingDto;
 import com.cursor_springa_ai.playground.dto.ZerodhaImportResponse;
 import com.cursor_springa_ai.playground.model.User;
-import com.cursor_springa_ai.playground.service.PortfolioAnalysisService;
+import com.cursor_springa_ai.playground.ai.orchestration.PortfolioAnalysisService;
 import com.cursor_springa_ai.playground.service.PortfolioService;
 import com.cursor_springa_ai.playground.service.ZerodhaAuthService;
 import com.cursor_springa_ai.playground.service.ZerodhaImportService;

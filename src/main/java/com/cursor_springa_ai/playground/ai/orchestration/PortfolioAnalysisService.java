@@ -1,4 +1,4 @@
-package com.cursor_springa_ai.playground.service;
+package com.cursor_springa_ai.playground.ai.orchestration;
 
 import com.cursor_springa_ai.playground.dto.EnrichedHoldingData;
 import com.cursor_springa_ai.playground.dto.PortfolioAdviceResponse;
@@ -8,7 +8,14 @@ import com.cursor_springa_ai.playground.model.PortfolioClassification;
 import com.cursor_springa_ai.playground.model.PortfolioStats;
 import com.cursor_springa_ai.playground.model.User;
 import com.cursor_springa_ai.playground.model.UserHolding;
+import com.cursor_springa_ai.playground.ai.advisor.PortfolioAdvisorAgent;
+import com.cursor_springa_ai.playground.ai.persistence.AiAnalysisService;
+import com.cursor_springa_ai.playground.ai.reasoning.PortfolioReasoningContext;
+import com.cursor_springa_ai.playground.analytics.HoldingAnalyticsService;
+import com.cursor_springa_ai.playground.analytics.PortfolioAnalyticsService;
+import com.cursor_springa_ai.playground.analytics.PortfolioClassificationService;
 import com.cursor_springa_ai.playground.repository.UserHoldingRepository;
+import com.cursor_springa_ai.playground.service.ZerodhaAuthService;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -17,7 +24,7 @@ import java.util.List;
 public class PortfolioAnalysisService {
 
     private final UserHoldingRepository userHoldingRepository;
-    private final AiPortfolioAdvisorService aiPortfolioAdvisorService;
+    private final PortfolioAdvisorAgent aiPortfolioAdvisorService;
     private final HoldingAnalyticsService holdingAnalyticsService;
     private final PortfolioAnalyticsService portfolioAnalyticsService;
     private final ZerodhaAuthService zerodhaAuthService;
@@ -26,7 +33,7 @@ public class PortfolioAnalysisService {
 
     public PortfolioAnalysisService(
             UserHoldingRepository userHoldingRepository,
-            AiPortfolioAdvisorService aiPortfolioAdvisorService,
+            PortfolioAdvisorAgent aiPortfolioAdvisorService,
             HoldingAnalyticsService holdingAnalyticsService,
             PortfolioAnalyticsService portfolioAnalyticsService,
             ZerodhaAuthService zerodhaAuthService,
