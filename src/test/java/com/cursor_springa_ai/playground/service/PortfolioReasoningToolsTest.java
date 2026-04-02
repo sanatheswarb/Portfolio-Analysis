@@ -18,7 +18,6 @@ import java.math.BigDecimal;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class PortfolioReasoningToolsTest {
@@ -61,15 +60,36 @@ class PortfolioReasoningToolsTest {
     }
 
     @Test
-    void flaggedHoldings_returnsOnlyRiskFlaggedEntries() {
+    void flaggedHoldings_returnsAttentionHoldingsSortedByAllocation() throws Exception {
         PortfolioReasoningTools tools = new PortfolioReasoningTools(sampleContext(), objectMapper);
 
         String json = tools.flaggedHoldings();
+        JsonNode payload = objectMapper.readTree(json);
 
-        assertTrue(json.contains("INFY"));
-        assertTrue(json.contains(RiskFlag.HIGH_CONCENTRATION.name()));
-        assertTrue(json.contains("TCS"));
-        assertFalse(json.contains("HDFCBANK"));
+        // All three holdings qualify: INFY (35%), TCS (30%), HDFCBANK (20%) all have allocation > 10%
+        assertEquals(3, payload.size());
+        // sorted by allocation descending
+        assertEquals("INFY", payload.get(0).path("symbol").asText());
+        assertEquals("TCS", payload.get(1).path("symbol").asText());
+        assertEquals("HDFCBANK", payload.get(2).path("symbol").asText());
+    }
+
+    @Test
+    void flaggedHoldings_enrichedFieldsArePopulated() throws Exception {
+        PortfolioReasoningTools tools = new PortfolioReasoningTools(sampleContext(), objectMapper);
+
+        String json = tools.flaggedHoldings();
+        JsonNode infy = objectMapper.readTree(json).get(0);
+
+        assertEquals("CORE", infy.path("importance").asText());
+        assertEquals("PROFIT", infy.path("performance_status").asText());
+        assertEquals("OVERVALUED", infy.path("valuation").asText());
+        assertEquals("LOW", infy.path("risk_severity").asText());
+        assertEquals(RiskFlag.HIGH_CONCENTRATION.name(), infy.path("primary_concern").asText());
+        assertTrue(infy.path("risk_flags").toString().contains(RiskFlag.HIGH_CONCENTRATION.name()));
+        assertTrue(infy.path("attention_reasons").toString().contains("Largest portfolio allocation"));
+        assertTrue(infy.path("attention_reasons").toString().contains("Valuation above sector average"));
+        assertTrue(infy.path("attention_reasons").toString().contains("Trading near 52 week high"));
     }
 
     private PortfolioReasoningContext sampleContext() {
