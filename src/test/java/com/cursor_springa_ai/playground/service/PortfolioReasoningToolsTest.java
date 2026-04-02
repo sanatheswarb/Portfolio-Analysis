@@ -2,14 +2,20 @@ package com.cursor_springa_ai.playground.service;
 
 import com.cursor_springa_ai.playground.dto.EnrichedHoldingData;
 import com.cursor_springa_ai.playground.dto.PortfolioSummary;
+import com.cursor_springa_ai.playground.model.PortfolioClassification;
 import com.cursor_springa_ai.playground.model.PortfolioStats;
 import com.cursor_springa_ai.playground.model.RiskFlag;
+import com.cursor_springa_ai.playground.model.enums.ConcentrationLevel;
+import com.cursor_springa_ai.playground.model.enums.DiversificationLevel;
+import com.cursor_springa_ai.playground.model.enums.PerformanceLevel;
+import com.cursor_springa_ai.playground.model.enums.PortfolioRiskLevel;
+import com.cursor_springa_ai.playground.model.enums.PortfolioStyle;
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
 
 import java.math.BigDecimal;
 import java.util.List;
-import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -24,12 +30,23 @@ class PortfolioReasoningToolsTest {
         PortfolioReasoningTools tools = new PortfolioReasoningTools(sampleContext(), objectMapper);
 
         String json = tools.portfolioOverview();
-        Map<?, ?> payload = objectMapper.readValue(json, Map.class);
+        JsonNode payload = objectMapper.readTree(json);
 
-        assertEquals("portfolio-1", payload.get("portfolioUserId"));
+        assertEquals("GROWTH_HEAVY", payload.path("portfolio_identity").path("portfolio_style").asText());
+        assertEquals("HIGH", payload.path("portfolio_identity").path("risk_level").asText());
+        assertEquals("HIGH_RISK_GROWTH_HEAVY", payload.path("portfolio_identity").path("portfolio_health_summary").asText());
+        assertEquals(3, payload.path("portfolio_structure").path("stock_count").asInt());
+        assertEquals(35, payload.path("portfolio_structure").path("largest_holding_percent").asInt());
+        assertEquals("HIGH_CONCENTRATION", payload.path("portfolio_structure").path("largest_holding_assessment").asText());
+        assertEquals(65, payload.path("portfolio_structure").path("top_sector_percent").asInt());
+        assertEquals("SECTOR_CONCENTRATION", payload.path("portfolio_structure").path("sector_concentration_assessment").asText());
+        assertEquals(85, payload.path("portfolio_structure").path("large_cap_exposure").asInt());
+        assertEquals("GOOD", payload.path("portfolio_performance").path("performance_level").asText());
+        assertEquals("HIGH", payload.path("portfolio_risk_profile").path("risk_level").asText());
+        assertEquals("INFY", payload.path("largest_holdings").get(0).path("symbol").asText());
         assertTrue(json.contains(RiskFlag.HIGH_CONCENTRATION.name()));
-        assertTrue(json.contains("INFY"));
-        assertTrue(payload.containsKey("classification"));
+        assertTrue(payload.path("portfolio_strengths").toString().contains("Overall performance is healthy."));
+        assertTrue(payload.path("portfolio_concerns").toString().contains("technology sector exposure is high at 65%."));
     }
 
     @Test
@@ -154,7 +171,15 @@ class PortfolioReasoningToolsTest {
                 stats,
                 List.of(RiskFlag.HIGH_CONCENTRATION.name()),
                 List.of(infy, tcs, hdfcBank),
-                null
+                new PortfolioClassification(
+                        PortfolioRiskLevel.HIGH,
+                        DiversificationLevel.AVERAGE,
+                        ConcentrationLevel.CONCENTRATED,
+                        PerformanceLevel.GOOD,
+                        PortfolioStyle.GROWTH_HEAVY,
+                        BigDecimal.ZERO,
+                        BigDecimal.valueOf(65)
+                )
         );
     }
 }
