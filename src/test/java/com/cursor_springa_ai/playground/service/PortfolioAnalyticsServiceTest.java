@@ -44,7 +44,7 @@ class PortfolioAnalyticsServiceTest {
         assertEquals(new BigDecimal("25"), stats.getTotalPnl());
         assertEquals(new BigDecimal("50"), stats.getLargestWeight());
         assertEquals(new BigDecimal("85"), stats.getTop3HoldingPercent());
-        assertEquals(new BigDecimal("0.6650"), stats.getDiversificationScore());
+        assertEquals(new BigDecimal("0.8867"), stats.getDiversificationScore());
         assertEquals(new BigDecimal("300.00"), summary.totalInvested());
         assertEquals(new BigDecimal("325.00"), summary.totalCurrentValue());
         assertEquals(new BigDecimal("25.00"), summary.totalPnL());
@@ -55,6 +55,20 @@ class PortfolioAnalyticsServiceTest {
         assertTrue(riskFlags.contains(RiskFlag.TOP_HEAVY_PORTFOLIO.name()));
         assertTrue(riskFlags.contains("SECTOR_CONCENTRATION_TECHNOLOGY"));
         assertTrue(riskFlags.contains(RiskFlag.UNDER_DIVERSIFIED.name()));
+    }
+
+    @Test
+    void calculatePortfolioStats_returnsZeroDiversificationScoreForSingleHolding() throws Exception {
+        User user = new User("ZERODHA", "portfolio-1");
+        setField(user, "id", 42L);
+
+        List<UserHolding> holdings = List.of(
+                holding(user, 101L, "INFY", "Technology", BigDecimal.valueOf(100), BigDecimal.valueOf(120), BigDecimal.valueOf(5), BigDecimal.valueOf(100))
+        );
+
+        PortfolioStats stats = portfolioAnalyticsService.calculatePortfolioStats(user, holdings, LocalDateTime.now());
+
+        assertEquals(new BigDecimal("0"), stats.getDiversificationScore());
     }
 
     private UserHolding holding(User user,
