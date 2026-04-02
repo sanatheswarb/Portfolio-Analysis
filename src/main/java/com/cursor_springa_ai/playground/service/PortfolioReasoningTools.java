@@ -4,6 +4,8 @@ import com.cursor_springa_ai.playground.dto.EnrichedHoldingData;
 import com.cursor_springa_ai.playground.dto.PortfolioSummary;
 import com.cursor_springa_ai.playground.model.PortfolioClassification;
 import com.cursor_springa_ai.playground.model.PortfolioStats;
+import com.cursor_springa_ai.playground.model.enums.DiversificationLevel;
+import com.cursor_springa_ai.playground.model.enums.PerformanceLevel;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.ai.tool.annotation.Tool;
@@ -210,13 +212,13 @@ public class PortfolioReasoningTools {
                 : context.portfolioSummary() == null ? null : context.portfolioSummary().totalPnLPercent();
         BigDecimal topSectorPercent = topSectorExposure().allocationPercent();
 
-        if (classification != null && isAnyOf(enumName(classification.performanceLevel()), "GOOD", "STRONG")) {
+        if (classification != null && isPerformanceStrength(classification.performanceLevel())) {
             strengths.add("Overall performance is healthy.");
         } else if (isPositive(pnlPercent)) {
             strengths.add("Portfolio is profitable overall.");
         }
 
-        if (classification != null && isAnyOf(enumName(classification.diversificationLevel()), "GOOD")) {
+        if (classification != null && DiversificationLevel.GOOD.equals(classification.diversificationLevel())) {
             strengths.add("Diversification is healthy across the portfolio.");
         } else if (stockCount != null && stockCount >= 10) {
             strengths.add("Portfolio spans a healthy number of holdings.");
@@ -240,11 +242,9 @@ public class PortfolioReasoningTools {
         }
 
         SectorExposure sectorExposure = topSectorExposure();
-        if (sectorExposure.allocationPercent() != null
-                && sectorExposure.allocationPercent().compareTo(BigDecimal.valueOf(40)) >= 0
-                && sectorExposure.sector() != null) {
-            concerns.add(sectorExposure.sector() + " sector exposure is high at "
-                    + trimTrailingZeros(sectorExposure.allocationPercent()) + "%.");
+        String sectorConcern = sectorConcentrationConcern(sectorExposure);
+        if (sectorConcern != null) {
+            concerns.add(sectorConcern);
         }
         return List.copyOf(concerns);
     }
@@ -346,16 +346,8 @@ public class PortfolioReasoningTools {
         return value != null && value.compareTo(BigDecimal.ZERO) > 0;
     }
 
-    private boolean isAnyOf(String actual, String... expectedValues) {
-        if (actual == null) {
-            return false;
-        }
-        for (String expectedValue : expectedValues) {
-            if (actual.equals(expectedValue)) {
-                return true;
-            }
-        }
-        return false;
+    private boolean isPerformanceStrength(PerformanceLevel performanceLevel) {
+        return PerformanceLevel.GOOD.equals(performanceLevel) || PerformanceLevel.STRONG.equals(performanceLevel);
     }
 
     private String concernForRiskFlag(String riskFlag) {
@@ -372,6 +364,16 @@ public class PortfolioReasoningTools {
             case "PROFIT_BOOKING_ZONE" -> "Some holdings may face profit-booking pressure.";
             default -> "Portfolio has risk flag " + riskFlag + ".";
         };
+    }
+
+    private String sectorConcentrationConcern(SectorExposure sectorExposure) {
+        if (sectorExposure.allocationPercent() == null
+                || sectorExposure.allocationPercent().compareTo(BigDecimal.valueOf(40)) < 0
+                || sectorExposure.sector() == null) {
+            return null;
+        }
+        return sectorExposure.sector() + " sector exposure is high at "
+                + trimTrailingZeros(sectorExposure.allocationPercent()) + "%.";
     }
 
     private String enumName(Enum<?> value) {
