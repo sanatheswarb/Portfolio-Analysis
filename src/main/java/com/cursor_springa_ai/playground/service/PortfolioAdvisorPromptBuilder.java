@@ -1,7 +1,6 @@
 package com.cursor_springa_ai.playground.service;
 
 import com.cursor_springa_ai.playground.dto.EnrichedHoldingData;
-import com.cursor_springa_ai.playground.model.PortfolioClassification;
 import com.cursor_springa_ai.playground.model.RiskFlag;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.stereotype.Component;
@@ -95,8 +94,6 @@ public class PortfolioAdvisorPromptBuilder {
                 - total_current_value: %s
                 - total_pnl: %s
                 - total_pnl_percent: %s
-                portfolio_classification:
-                %s
                         precomputed_portfolio_risk_flags: %s
                         portfolio_stock_count: %s
                 First action: call portfolio_overview.
@@ -117,7 +114,6 @@ public class PortfolioAdvisorPromptBuilder {
                         reasoningContext.portfolioSummary() != null
                                 ? reasoningContext.portfolioSummary().totalPnLPercent()
                                 : null,
-                        buildClassificationBlock(reasoningContext.classification()),
                         portfolioRiskFlags(reasoningContext),
                         reasoningContext.portfolioSummary() != null
                                 ? reasoningContext.portfolioSummary().totalHoldings()
@@ -135,22 +131,6 @@ public class PortfolioAdvisorPromptBuilder {
                 Keep each suggestion short and plain text.
                 Keep cautionary_note to one short sentence.
                 """;
-    }
-
-    private String buildClassificationBlock(PortfolioClassification classification) {
-        if (classification == null) {
-            return """
-                    - risk_level: N/A
-                    - diversification_level: N/A
-                    - concentration_level: N/A
-                    - performance_level: N/A
-                    - portfolio_style: N/A""";
-        }
-        return "- risk_level: " + classification.riskLevel() + "\n" +
-                "- diversification_level: " + classification.diversificationLevel() + "\n" +
-                "- concentration_level: " + classification.concentrationLevel() + "\n" +
-                "- performance_level: " + classification.performanceLevel() + "\n" +
-                "- portfolio_style: " + classification.portfolioStyle();
     }
 
     private List<String> portfolioRiskFlags(PortfolioReasoningContext reasoningContext) {

@@ -2,7 +2,6 @@ package com.cursor_springa_ai.playground.service;
 
 import com.cursor_springa_ai.playground.dto.EnrichedHoldingData;
 import com.cursor_springa_ai.playground.dto.PortfolioSummary;
-import com.cursor_springa_ai.playground.model.PortfolioClassification;
 import com.cursor_springa_ai.playground.model.RiskFlag;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
@@ -89,41 +88,8 @@ class PortfolioAdvisorPromptBuilderTest {
         assertTrue(data.contains("portfolio_stock_count: 2"));
         assertTrue(data.contains("total_invested: 10000"));
         assertTrue(data.contains(RiskFlag.HIGH_CONCENTRATION.name()));
-        assertTrue(data.contains("portfolio_classification:"));
-        assertTrue(data.contains("risk_level: N/A"));
+        assertFalse(data.contains("portfolio_classification:"));
         assertFalse(data.contains("portfolio_overview_json"));
         assertFalse(data.contains("Use the smallest number of tool calls required to produce the final advice."));
-    }
-
-    @Test
-    void buildReasoningRequest_containsClassificationWhenPresent() {
-        PortfolioSummary summary = new PortfolioSummary(BigDecimal.valueOf(50000), BigDecimal.valueOf(55000), BigDecimal.valueOf(5000), BigDecimal.valueOf(10), 8);
-        PortfolioClassification classification = new PortfolioClassification(
-                com.cursor_springa_ai.playground.model.enums.PortfolioRiskLevel.HIGH,
-                com.cursor_springa_ai.playground.model.enums.DiversificationLevel.AVERAGE,
-                com.cursor_springa_ai.playground.model.enums.ConcentrationLevel.CONCENTRATED,
-                com.cursor_springa_ai.playground.model.enums.PerformanceLevel.GOOD,
-                com.cursor_springa_ai.playground.model.enums.PortfolioStyle.GROWTH_HEAVY,
-                BigDecimal.valueOf(10),
-                BigDecimal.valueOf(55)
-        );
-        PortfolioReasoningContext reasoningContext = new PortfolioReasoningContext(
-                "portfolio-2",
-                summary,
-                null,
-                List.of(),
-                List.of(),
-                classification
-        );
-
-        String data = builder.buildReasoningRequest(reasoningContext);
-
-        assertNotNull(data);
-        assertTrue(data.contains("portfolio_classification:"));
-        assertTrue(data.contains("risk_level: HIGH"));
-        assertTrue(data.contains("diversification_level: AVERAGE"));
-        assertTrue(data.contains("concentration_level: CONCENTRATED"));
-        assertTrue(data.contains("performance_level: GOOD"));
-        assertTrue(data.contains("portfolio_style: GROWTH_HEAVY"));
     }
 }
