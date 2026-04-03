@@ -4,6 +4,7 @@ import com.cursor_springa_ai.playground.dto.EnrichedHoldingData;
 import com.cursor_springa_ai.playground.dto.PortfolioAdviceResponse;
 import com.cursor_springa_ai.playground.dto.PortfolioAnalysisResponse;
 import com.cursor_springa_ai.playground.dto.PortfolioSummary;
+import com.cursor_springa_ai.playground.dto.ai.AnalysisSnapshot;
 import com.cursor_springa_ai.playground.model.PortfolioClassification;
 import com.cursor_springa_ai.playground.model.PortfolioStats;
 import com.cursor_springa_ai.playground.model.User;
@@ -11,6 +12,7 @@ import com.cursor_springa_ai.playground.model.UserHolding;
 import com.cursor_springa_ai.playground.ai.advisor.PortfolioAdvisorAgent;
 import com.cursor_springa_ai.playground.ai.persistence.AiAnalysisService;
 import com.cursor_springa_ai.playground.ai.reasoning.PortfolioReasoningContext;
+import com.cursor_springa_ai.playground.ai.tools.AnalysisSnapshotBuilder;
 import com.cursor_springa_ai.playground.analytics.HoldingAnalyticsService;
 import com.cursor_springa_ai.playground.analytics.PortfolioAnalyticsService;
 import com.cursor_springa_ai.playground.analytics.PortfolioClassificationService;
@@ -30,6 +32,7 @@ public class PortfolioAnalysisService {
     private final ZerodhaAuthService zerodhaAuthService;
     private final AiAnalysisService aiAnalysisService;
     private final PortfolioClassificationService portfolioClassificationService;
+    private final AnalysisSnapshotBuilder snapshotBuilder;
 
     public PortfolioAnalysisService(
             UserHoldingRepository userHoldingRepository,
@@ -38,7 +41,8 @@ public class PortfolioAnalysisService {
             PortfolioAnalyticsService portfolioAnalyticsService,
             ZerodhaAuthService zerodhaAuthService,
             AiAnalysisService aiAnalysisService,
-            PortfolioClassificationService portfolioClassificationService) {
+            PortfolioClassificationService portfolioClassificationService,
+            AnalysisSnapshotBuilder snapshotBuilder) {
         this.userHoldingRepository = userHoldingRepository;
         this.aiPortfolioAdvisorService = aiPortfolioAdvisorService;
         this.holdingAnalyticsService = holdingAnalyticsService;
@@ -46,6 +50,7 @@ public class PortfolioAnalysisService {
         this.zerodhaAuthService = zerodhaAuthService;
         this.aiAnalysisService = aiAnalysisService;
         this.portfolioClassificationService = portfolioClassificationService;
+        this.snapshotBuilder = snapshotBuilder;
     }
 
     public PortfolioAnalysisResponse analyzeCurrentUserPortfolio() {
@@ -81,10 +86,13 @@ public class PortfolioAnalysisService {
                 enrichedHoldings,
                 classification);
 
+        // Build the snapshot before calling the AI so it reflects the exact context used
+        AnalysisSnapshot snapshot = snapshotBuilder.build(reasoningContext);
+
         PortfolioAdviceResponse aiInsights = aiPortfolioAdvisorService.generateInsights(reasoningContext);
 
-        // Persist the AI response to ai_analysis (append-only audit log)
-        aiAnalysisService.savePortfolioAdvice(currentUser, aiInsights);
+        // Persist the AI response together with the reasoning snapshot (append-only audit log)
+        aiAnalysisService.savePortfolioAdvice(currentUser, aiInsights, snapshot);
 
         return new PortfolioAnalysisResponse(
                 portfolioUserId,
