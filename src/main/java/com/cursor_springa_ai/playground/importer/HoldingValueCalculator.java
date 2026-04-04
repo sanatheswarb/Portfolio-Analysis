@@ -1,6 +1,8 @@
 package com.cursor_springa_ai.playground.importer;
 
 import com.cursor_springa_ai.playground.integration.zerodha.dto.ZerodhaHoldingItem;
+import org.springframework.stereotype.Service;
+
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.util.List;
@@ -16,6 +18,7 @@ import java.util.Locale;
  *   <li>Derive all per-holding financial values (invested value, PnL, day change, weight).</li>
  * </ul>
  */
+@Service
 public class HoldingValueCalculator {
 
     /**

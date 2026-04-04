@@ -3,12 +3,9 @@ package com.cursor_springa_ai.playground.importer;
 import com.cursor_springa_ai.playground.dto.ZerodhaImportResponse;
 import com.cursor_springa_ai.playground.integration.zerodha.ZerodhaHoldingsClient;
 import com.cursor_springa_ai.playground.integration.zerodha.dto.ZerodhaHoldingItem;
-import com.cursor_springa_ai.playground.model.Instrument;
 import com.cursor_springa_ai.playground.model.User;
 import com.cursor_springa_ai.playground.model.UserHolding;
-import com.cursor_springa_ai.playground.service.InstrumentEnrichmentService;
 import com.cursor_springa_ai.playground.service.PortfolioStatsBatchService;
-import com.cursor_springa_ai.playground.service.StockFundamentalsService;
 import com.cursor_springa_ai.playground.service.UserHoldingSyncService;
 import com.cursor_springa_ai.playground.service.ZerodhaAuthService;
 import org.springframework.stereotype.Service;
@@ -17,6 +14,7 @@ import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
+import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
@@ -32,7 +30,8 @@ import java.util.logging.Logger;
  *   <li>Trigger an async portfolio stats recalculation.</li>
  * </ol>
  *
- * <p>Financial calculations are delegated to {@link HoldingValueCalculator}.
+ * <p>Holding preparation is delegated to {@link HoldingPreparationService}.
+ * Duplicate consolidation is delegated to {@link HoldingMergeService}.
  * Persistence is delegated to {@link UserHoldingSyncService}.
  */
 @Service
@@ -42,26 +41,25 @@ public class ZerodhaImportService {
 
     private final ZerodhaHoldingsClient zerodhaHoldingsClient;
     private final ZerodhaAuthService zerodhaAuthService;
-    private final InstrumentEnrichmentService instrumentEnrichmentService;
-    private final StockFundamentalsService stockFundamentalsService;
     private final UserHoldingSyncService userHoldingSyncService;
     private final PortfolioStatsBatchService portfolioStatsBatchService;
-    private final HoldingValueCalculator holdingValueCalculator = new HoldingValueCalculator();
+    private final HoldingPreparationService holdingPreparationService;
+    private final HoldingMergeService holdingMergeService;
 
     public ZerodhaImportService(
             ZerodhaHoldingsClient zerodhaHoldingsClient,
             ZerodhaAuthService zerodhaAuthService,
-            InstrumentEnrichmentService instrumentEnrichmentService,
-            StockFundamentalsService stockFundamentalsService,
             UserHoldingSyncService userHoldingSyncService,
-            PortfolioStatsBatchService portfolioStatsBatchService
+            PortfolioStatsBatchService portfolioStatsBatchService,
+            HoldingPreparationService holdingPreparationService,
+            HoldingMergeService holdingMergeService
     ) {
         this.zerodhaHoldingsClient = zerodhaHoldingsClient;
         this.zerodhaAuthService = zerodhaAuthService;
-        this.instrumentEnrichmentService = instrumentEnrichmentService;
-        this.stockFundamentalsService = stockFundamentalsService;
         this.userHoldingSyncService = userHoldingSyncService;
         this.portfolioStatsBatchService = portfolioStatsBatchService;
+        this.holdingPreparationService = holdingPreparationService;
+        this.holdingMergeService = holdingMergeService;
     }
 
     public ZerodhaImportResponse importHoldings() {
@@ -72,44 +70,17 @@ public class ZerodhaImportService {
         }
 
         List<ZerodhaHoldingItem> incoming = zerodhaHoldingsClient.fetchHoldings();
-        BigDecimal totalCurrentValue = holdingValueCalculator.computeTotalCurrentValue(incoming);
-
-        List<UserHolding> holdings = new ArrayList<>();
-        List<String> failedSymbols = new ArrayList<>();
-        RuntimeException lastFailure = null;
-
-        for (ZerodhaHoldingItem item : incoming) {
-            if (item.getTradingSymbol() == null
-                    || item.getQuantity() == null
-                    || item.getQuantity().compareTo(BigDecimal.ZERO) <= 0) {
-                continue;
-            }
-            String symbol = item.getTradingSymbol().toUpperCase(Locale.ROOT);
-            try {
-                Instrument instrument = instrumentEnrichmentService.upsertAndEnrich(item);
-                if (instrument != null) {
-                    BigDecimal previousClose = stockFundamentalsService.upsertIfStale(instrument);
-                    HoldingComputedValues values = holdingValueCalculator.computeValues(
-                            item, totalCurrentValue, previousClose);
-                    holdings.add(buildUserHolding(currentUser, instrument, values));
-                }
-            } catch (RuntimeException ex) {
-                logger.warning("Failed to prepare holding " + symbol + ": " + ex.getMessage());
-                failedSymbols.add(symbol);
-                lastFailure = ex;
-            }
-        }
-
-        if (!failedSymbols.isEmpty()) {
-            throw new IllegalStateException(
-                    "Import aborted; failed holdings: " + String.join(", ", failedSymbols),
-                    lastFailure);
-        }
-
-        userHoldingSyncService.replaceHoldings(currentUser.getId(), holdings);
+        List<ZerodhaHoldingItem> activeHoldings = incoming.stream()
+                .filter(holdingPreparationService::isImportableHolding)
+                .toList();
+        BigDecimal totalCurrentValue = holdingPreparationService.computeTotalCurrentValue(activeHoldings);
+        List<UserHolding> holdingsToPersist = holdingMergeService.mergeDuplicateHoldings(
+            prepareHoldingsOrThrow(currentUser, activeHoldings, totalCurrentValue)
+        );
+        userHoldingSyncService.replaceHoldings(currentUser.getId(), holdingsToPersist);
         portfolioStatsBatchService.calculateForUserAsync(currentUser.getId());
 
-        List<String> importedSymbols = holdings.stream()
+        List<String> importedSymbols = holdingsToPersist.stream()
                 .map(UserHolding::getSymbol)
                 .toList();
 
@@ -120,21 +91,40 @@ public class ZerodhaImportService {
         );
     }
 
-    // ------------------------------------------------------------------
-    // private helpers
-    // ------------------------------------------------------------------
+    private List<PreparedHolding> prepareHoldingsOrThrow(User currentUser,
+                                                         List<ZerodhaHoldingItem> activeHoldings,
+                                                         BigDecimal totalCurrentValue) {
+        List<PreparedHolding> preparedHoldings = new ArrayList<>();
+        List<String> failedSymbols = new ArrayList<>();
+        List<RuntimeException> failedExceptions = new ArrayList<>();
 
-    private UserHolding buildUserHolding(User user, Instrument instrument, HoldingComputedValues v) {
-        UserHolding holding = new UserHolding(
-                user, instrument, v.quantity(),
-                v.avgPrice(), v.closePrice(), v.lastPrice(),
-                v.investedValue(), v.currentValue(),
-                v.pnl(), v.pnlPercent(),
-                v.dayChange(), v.dayChangePct()
-        );
-        holding.setWeightPercent(v.weightPercent());
-        holding.setSymbol(v.symbol());
-        return holding;
+        for (ZerodhaHoldingItem item : activeHoldings) {
+            try {
+                preparedHoldings.add(
+                        holdingPreparationService.prepareHolding(currentUser, item, totalCurrentValue)
+                );
+            } catch (RuntimeException ex) {
+                String symbol = item.getTradingSymbol().toUpperCase(Locale.ROOT);
+                logger.log(Level.WARNING,
+                        "Failed to import holding " + symbol + ": " + ex.getMessage(),
+                        ex);
+                failedSymbols.add(symbol);
+                failedExceptions.add(ex);
+            }
+        }
+
+        if (!failedSymbols.isEmpty()) {
+            IllegalStateException importFailure = new IllegalStateException(
+                    "Import aborted; failed holdings: " + String.join(", ", failedSymbols),
+                    failedExceptions.getFirst()
+            );
+            failedExceptions.stream()
+                    .skip(1)
+                    .forEach(importFailure::addSuppressed);
+            throw importFailure;
+        }
+
+        return preparedHoldings;
     }
 }
 
