@@ -13,6 +13,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 
+import static com.cursor_springa_ai.playground.util.BigDecimalUtils.scale;
+
 @Service
 public class HoldingAnalyticsService {
 
@@ -31,7 +33,7 @@ public class HoldingAnalyticsService {
                 .toList();
     }
 
-    public EnrichedHoldingData buildEnrichedHolding(UserHolding holding) {
+    EnrichedHoldingData buildEnrichedHolding(UserHolding holding) {
         StockFundamentals fundamentals = fundamentalsOf(holding);
         BigDecimal quantity = holding != null && holding.getQuantity() != null
                 ? BigDecimal.valueOf(holding.getQuantity())
@@ -71,7 +73,7 @@ public class HoldingAnalyticsService {
         return withRiskFlags(enrichedHolding);
     }
 
-    public EnrichedHoldingData withRiskFlags(EnrichedHoldingData enrichedHolding) {
+    private EnrichedHoldingData withRiskFlags(EnrichedHoldingData enrichedHolding) {
         if (enrichedHolding == null) {
             return null;
         }
@@ -102,7 +104,7 @@ public class HoldingAnalyticsService {
         );
     }
 
-    public List<String> calculateRiskFlags(EnrichedHoldingData enrichedHolding) {
+    private List<String> calculateRiskFlags(EnrichedHoldingData enrichedHolding) {
         if (enrichedHolding == null) {
             return List.of();
         }
@@ -128,7 +130,7 @@ public class HoldingAnalyticsService {
         return List.copyOf(riskFlags);
     }
 
-    public BigDecimal calculateDistanceFromHigh(BigDecimal currentPrice, BigDecimal week52High) {
+    private BigDecimal calculateDistanceFromHigh(BigDecimal currentPrice, BigDecimal week52High) {
         if (week52High == null || currentPrice == null || week52High.compareTo(BigDecimal.ZERO) == 0) {
             return null;
         }
@@ -144,14 +146,6 @@ public class HoldingAnalyticsService {
 
     public BigDecimal calculateVolatility(BigDecimal dayChangePercent) {
         return dayChangePercent != null ? dayChangePercent.abs() : BigDecimal.ZERO;
-    }
-
-    public BigDecimal computeMomentumScore(UserHolding holding) {
-        StockFundamentals fundamentals = fundamentalsOf(holding);
-        return computeMomentumScore(
-                holding != null ? holding.getLastPrice() : null,
-                fundamentals != null ? fundamentals.getWeek52High() : null
-        );
     }
 
     public BigDecimal computeMomentumScore(BigDecimal lastPrice, BigDecimal week52High) {
@@ -212,7 +206,7 @@ public class HoldingAnalyticsService {
         return BigDecimal.valueOf(score);
     }
 
-    public String resolveSector(UserHolding holding) {
+    private String resolveSector(UserHolding holding) {
         StockFundamentals fundamentals = fundamentalsOf(holding);
         if (fundamentals != null && fundamentals.getSector() != null && !fundamentals.getSector().isBlank()) {
             return fundamentals.getSector();
@@ -224,7 +218,7 @@ public class HoldingAnalyticsService {
         return "N/A";
     }
 
-    public String resolveMarketCapType(UserHolding holding) {
+    private String resolveMarketCapType(UserHolding holding) {
         Instrument instrument = instrumentOf(holding);
         if (instrument != null && instrument.getMarketCapCategory() != null
                 && !instrument.getMarketCapCategory().isBlank()) {
@@ -251,13 +245,6 @@ public class HoldingAnalyticsService {
         }
         Instrument instrument = instrumentOf(holding);
         return instrument != null ? instrument.getSymbol() : null;
-    }
-
-    private BigDecimal scale(BigDecimal value) {
-        if (value == null) {
-            return BigDecimal.ZERO;
-        }
-        return value.setScale(2, RoundingMode.HALF_UP);
     }
 
     private String inferAssetType(String sector) {

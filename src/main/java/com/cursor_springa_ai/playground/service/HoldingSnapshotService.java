@@ -17,6 +17,8 @@ import java.time.LocalDate;
 import java.util.List;
 import java.util.logging.Logger;
 
+import static com.cursor_springa_ai.playground.util.BigDecimalUtils.nvl;
+
 /**
  * Records end-of-day portfolio snapshots into {@code holding_snapshots}.
  *
@@ -146,13 +148,5 @@ public class HoldingSnapshotService {
         }
 
         return written;
-    }
-
-    // ------------------------------------------------------------------
-    // private helpers
-    // ------------------------------------------------------------------
-
-    private BigDecimal nvl(BigDecimal value) {
-        return value != null ? value : BigDecimal.ZERO;
     }
 }

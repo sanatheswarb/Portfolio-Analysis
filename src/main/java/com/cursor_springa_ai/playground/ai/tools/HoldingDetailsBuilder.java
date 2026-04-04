@@ -10,6 +10,9 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
+import static com.cursor_springa_ai.playground.ai.tools.HoldingClassificationUtils.classifyImportance;
+import static com.cursor_springa_ai.playground.ai.tools.HoldingClassificationUtils.classifyPerformance;
+
 /**
  * Builds the structured, AI-optimal holding details payload used by the holding_details tool.
  * Groups data into reasoning contexts (identity, portfolio, valuation, performance, risk, signals)
@@ -17,9 +20,6 @@ import java.util.Map;
  */
 public class HoldingDetailsBuilder {
 
-    private static final BigDecimal CORE_THRESHOLD = BigDecimal.valueOf(20);
-    private static final BigDecimal SIGNIFICANT_THRESHOLD = BigDecimal.valueOf(10);
-    private static final BigDecimal SUPPORTING_THRESHOLD = BigDecimal.valueOf(5);
     private static final BigDecimal CONCENTRATION_THRESHOLD = BigDecimal.valueOf(20);
     private static final BigDecimal NEAR_HIGH_THRESHOLD = BigDecimal.valueOf(-10);
     private static final BigDecimal PULLBACK_THRESHOLD = BigDecimal.valueOf(-30);
@@ -155,22 +155,6 @@ public class HoldingDetailsBuilder {
         return sorted.size() + 1;
     }
 
-    private String classifyImportance(BigDecimal allocationPercent) {
-        if (allocationPercent == null) {
-            return "MINOR";
-        }
-        if (allocationPercent.compareTo(CORE_THRESHOLD) > 0) {
-            return "CORE";
-        }
-        if (allocationPercent.compareTo(SIGNIFICANT_THRESHOLD) > 0) {
-            return "SIGNIFICANT";
-        }
-        if (allocationPercent.compareTo(SUPPORTING_THRESHOLD) > 0) {
-            return "SUPPORTING";
-        }
-        return "MINOR";
-    }
-
     private boolean isConcentrationRisk(BigDecimal allocationPercent) {
         return allocationPercent != null && allocationPercent.compareTo(CONCENTRATION_THRESHOLD) > 0;
     }
@@ -183,20 +167,6 @@ public class HoldingDetailsBuilder {
                 .divide(sectorPe, 4, RoundingMode.HALF_UP)
                 .multiply(BigDecimal.valueOf(100))
                 .setScale(2, RoundingMode.HALF_UP);
-    }
-
-    private String classifyPerformance(BigDecimal profitPercent) {
-        if (profitPercent == null) {
-            return null;
-        }
-        int comparison = profitPercent.compareTo(BigDecimal.ZERO);
-        if (comparison > 0) {
-            return "PROFIT";
-        }
-        if (comparison < 0) {
-            return "LOSS";
-        }
-        return "BREAKEVEN";
     }
 
     private String classifyTrend(BigDecimal distanceFromHigh) {

@@ -6,6 +6,7 @@ import com.cursor_springa_ai.playground.model.RiskFlag;
 import com.cursor_springa_ai.playground.model.PortfolioStats;
 import com.cursor_springa_ai.playground.model.User;
 import com.cursor_springa_ai.playground.model.UserHolding;
+import com.cursor_springa_ai.playground.util.BigDecimalUtils;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
@@ -17,6 +18,9 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+
+import static com.cursor_springa_ai.playground.util.BigDecimalUtils.nvl;
+import static com.cursor_springa_ai.playground.util.BigDecimalUtils.scale;
 
 @Service
 public class PortfolioAnalyticsService {
@@ -152,16 +156,5 @@ public class PortfolioAnalyticsService {
 				.divide(maxPossibleScore, 4, RoundingMode.HALF_UP)
 				.max(BigDecimal.ZERO)
 				.min(BigDecimal.ONE);
-	}
-
-	private BigDecimal scale(BigDecimal value) {
-		if (value == null) {
-			return BigDecimal.ZERO;
-		}
-		return value.setScale(2, RoundingMode.HALF_UP);
-	}
-
-	private BigDecimal nvl(BigDecimal value) {
-		return value != null ? value : BigDecimal.ZERO;
 	}
 }

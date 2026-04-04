@@ -13,6 +13,8 @@ import org.springframework.stereotype.Service;
 import java.math.BigDecimal;
 import java.util.List;
 
+import static com.cursor_springa_ai.playground.util.BigDecimalUtils.nvl;
+
 @Service
 public class PortfolioClassificationService {
 
@@ -152,10 +154,6 @@ public class PortfolioClassificationService {
         }
 
         return total;
-    }
-
-    private BigDecimal nvl(BigDecimal v) {
-        return v == null ? BigDecimal.ZERO : v;
     }
 
     private PortfolioClassification emptyClassification() {

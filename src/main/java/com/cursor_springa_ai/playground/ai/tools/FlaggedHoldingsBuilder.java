@@ -8,6 +8,9 @@ import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
 
+import static com.cursor_springa_ai.playground.ai.tools.HoldingClassificationUtils.classifyImportance;
+import static com.cursor_springa_ai.playground.ai.tools.HoldingClassificationUtils.classifyPerformance;
+
 /**
  * Builds the AI-facing flagged holdings payload from enriched holding data.
  * Contains all derivation logic so the tool layer remains a pure mapping class.
@@ -15,8 +18,6 @@ import java.util.List;
 public class FlaggedHoldingsBuilder {
 
     private static final BigDecimal CORE_THRESHOLD = BigDecimal.valueOf(20);
-    private static final BigDecimal SIGNIFICANT_THRESHOLD = BigDecimal.valueOf(10);
-    private static final BigDecimal SUPPORTING_THRESHOLD = BigDecimal.valueOf(5);
     private static final BigDecimal ALLOCATION_FILTER_THRESHOLD = BigDecimal.valueOf(10);
     private static final BigDecimal NEAR_HIGH_THRESHOLD = BigDecimal.valueOf(-10);
     private static final BigDecimal DEEP_CORRECTION_THRESHOLD = BigDecimal.valueOf(-25);
@@ -60,36 +61,6 @@ public class FlaggedHoldingsBuilder {
                 riskFlags,
                 buildAttentionReasons(holding)
         );
-    }
-
-    private String classifyImportance(BigDecimal allocationPercent) {
-        if (allocationPercent == null) {
-            return "MINOR";
-        }
-        if (allocationPercent.compareTo(CORE_THRESHOLD) > 0) {
-            return "CORE";
-        }
-        if (allocationPercent.compareTo(SIGNIFICANT_THRESHOLD) > 0) {
-            return "SIGNIFICANT";
-        }
-        if (allocationPercent.compareTo(SUPPORTING_THRESHOLD) > 0) {
-            return "SUPPORTING";
-        }
-        return "MINOR";
-    }
-
-    private String classifyPerformance(BigDecimal profitPercent) {
-        if (profitPercent == null) {
-            return null;
-        }
-        int comparison = profitPercent.compareTo(BigDecimal.ZERO);
-        if (comparison > 0) {
-            return "PROFIT";
-        }
-        if (comparison < 0) {
-            return "LOSS";
-        }
-        return "BREAKEVEN";
     }
 
     private String classifyRiskSeverity(List<String> riskFlags) {

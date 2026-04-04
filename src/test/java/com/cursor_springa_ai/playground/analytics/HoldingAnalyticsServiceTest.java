@@ -41,7 +41,7 @@ class HoldingAnalyticsServiceTest {
         assertEquals("OVERVALUED", enriched.valuationFlag());
         assertEquals(new BigDecimal("70.00"), enriched.momentumScore());
         assertEquals(new BigDecimal("6"), enriched.riskScore());
-        assertEquals(new BigDecimal("70.00"), service.computeMomentumScore(holding));
+        assertEquals(new BigDecimal("70.00"), service.computeMomentumScore(BigDecimal.valueOf(140), BigDecimal.valueOf(200)));
         assertEquals(new BigDecimal("2.75"), service.calculateVolatility(holding));
         assertEquals(new BigDecimal("6"), service.computeRiskScore(service.calculateVolatility(holding)));
         assertEquals("OVERVALUED", service.computeValuationFlag(enriched.pe(), enriched.sectorPe()));
