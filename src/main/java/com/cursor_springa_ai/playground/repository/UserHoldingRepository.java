@@ -12,7 +12,7 @@ import java.util.Optional;
 @Repository
 public interface UserHoldingRepository extends JpaRepository<UserHolding, Long> {
 
-    Optional<UserHolding> findByUserIdAndInstrumentInstrumentToken(Long userId, Long instrumentToken);
+    Optional<UserHolding> findByUserIdAndInstrumentId(Long userId, Long instrumentId);
 
     Optional<UserHolding> findByUserIdAndInstrumentSymbolIgnoreCase(Long userId, String symbol);
 

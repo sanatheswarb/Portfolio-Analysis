@@ -79,10 +79,11 @@ class HoldingAnalyticsServiceTest {
         setField(user, "id", 1L);
 
         Instrument instrument = new Instrument(101L, symbol, "NSE", null);
+        setField(instrument, "id", 101L);
         instrument.setSector(sector);
         instrument.setMarketCapCategory(marketCapCategory);
 
-        StockFundamentals fundamentals = new StockFundamentals(101L);
+        StockFundamentals fundamentals = new StockFundamentals(instrument);
         fundamentals.setSector(sector);
         fundamentals.setPe(pe);
         fundamentals.setSectorPe(sectorPe);
