@@ -64,7 +64,7 @@ class ZerodhaImportServiceTest {
     }
 
     @Test
-    void importHoldings_abortsWhenAnyHoldingFailsAfterDelete() throws Exception {
+    void importHoldings_abortsBeforeReplacingHoldingsWhenAnyHoldingFails() throws Exception {
         ZerodhaHoldingsClient holdingsClient = mock(ZerodhaHoldingsClient.class);
         ZerodhaAuthService authService = mock(ZerodhaAuthService.class);
         InstrumentEnrichmentService enrichmentService = mock(InstrumentEnrichmentService.class);
