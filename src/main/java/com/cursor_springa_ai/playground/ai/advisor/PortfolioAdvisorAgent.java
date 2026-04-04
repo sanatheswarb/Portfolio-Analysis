@@ -211,7 +211,8 @@ public class PortfolioAdvisorAgent {
                                 ? List.of()
                                 : response.suggestions().stream()
                                                 .filter(s -> s != null && !s.isBlank())
-                                                .map(String::trim)
+                                                .map(s -> s.replaceAll("<[^>]*>", " ").replaceAll("\\s{2,}", " ").trim())
+                                                .filter(s -> !s.isBlank())
                                                 .toList();
 
                 if (suggestions.isEmpty()) {
@@ -230,7 +231,11 @@ public class PortfolioAdvisorAgent {
                 if (value == null || value.isBlank() || "null".equalsIgnoreCase(value.trim())) {
                         return fallback;
                 }
-                return value.trim();
+                String stripped = value.replaceAll("<[^>]*>", " ").replaceAll("\\s{2,}", " ").trim();
+                if (stripped.isBlank()) {
+                        return fallback;
+                }
+                return stripped;
         }
 
         private PortfolioAdviceResponse tryExtractSuggestionsFromMalformedJson(String aiResponse) {

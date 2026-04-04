@@ -73,6 +73,7 @@ public class PortfolioAdvisorPromptBuilder {
                 - risk_overview and diversification_feedback should each be at least one full sentence.
                 - suggestions must contain exactly 3 plain-text strings.
                 - Do not use colons inside suggestion strings.
+                - Do not use HTML tags such as <p>, <li>, <ol>, <ul>, <br>, or any other HTML in any field.
 
                 EXPLANATION RULES:
                 - Always explain advice using portfolio classification and risk flags.

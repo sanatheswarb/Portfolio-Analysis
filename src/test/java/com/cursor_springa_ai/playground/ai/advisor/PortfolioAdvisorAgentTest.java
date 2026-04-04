@@ -105,6 +105,42 @@ class PortfolioAdvisorAgentTest {
         }
 
         @Test
+        void generateInsights_stripsHtmlTagsFromAdviceFields() {
+                ChatClient.Builder builder = mock(ChatClient.Builder.class);
+                ChatClient chatClient = mock(ChatClient.class);
+                ChatClient.ChatClientRequestSpec requestSpec = mock(ChatClient.ChatClientRequestSpec.class);
+                ChatClient.CallResponseSpec responseSpec = mock(ChatClient.CallResponseSpec.class);
+                PortfolioAdvisorPromptBuilder promptBuilder = mock(PortfolioAdvisorPromptBuilder.class);
+                ObjectMapper objectMapper = new ObjectMapper();
+                PortfolioReasoningContext reasoningContext = reasoningContext();
+
+                when(builder.build()).thenReturn(chatClient);
+                when(chatClient.prompt()).thenReturn(requestSpec);
+                when(requestSpec.system(any(String.class))).thenReturn(requestSpec);
+                when(requestSpec.user(any(String.class))).thenReturn(requestSpec);
+                when(requestSpec.tools(any(Object[].class))).thenAnswer(invocation -> {
+                        PortfolioReasoningTools tools = invocation.getArgument(0, PortfolioReasoningTools.class);
+                        tools.portfolioOverview();
+                        return requestSpec;
+                });
+                when(requestSpec.options(any())).thenReturn(requestSpec);
+                when(requestSpec.call()).thenReturn(responseSpec);
+                when(responseSpec.content()).thenReturn("""
+                                {"risk_overview":"<p>High concentration risk</p>","diversification_feedback":"<p>Sector <b>exposure</b> is poor</p>","suggestions":["<li>Reduce concentration</li>","<li>Rebalance sectors</li>","<li>Trim weak positions</li>"],"cautionary_note":"<ol><li>Review manually</li></ol>"}
+                                """);
+                when(promptBuilder.buildSystemPrompt()).thenReturn("system");
+                when(promptBuilder.buildReasoningRequest(eq(reasoningContext))).thenReturn("user");
+
+                PortfolioAdvisorAgent service = new PortfolioAdvisorAgent(builder, objectMapper, promptBuilder);
+                PortfolioAdviceResponse response = service.generateInsights(reasoningContext);
+
+                assertEquals("High concentration risk", response.riskOverview());
+                assertEquals("Sector exposure is poor", response.diversificationFeedback());
+                assertEquals(List.of("Reduce concentration", "Rebalance sectors", "Trim weak positions"), response.suggestions());
+                assertEquals("Review manually", response.cautionaryNote());
+        }
+
+        @Test
         void generateInsights_failsWhenPortfolioOverviewToolIsNotCalledFirst() {
                 ChatClient.Builder builder = mock(ChatClient.Builder.class);
                 ChatClient chatClient = mock(ChatClient.class);

@@ -67,6 +67,7 @@ class PortfolioAdvisorPromptBuilderTest {
         assertTrue(prompt.contains("EXPLANATION RULES"));
         assertTrue(prompt.contains("DO NOT"));
         assertFalse(prompt.contains("RESPONSE FORMAT"));
+        assertTrue(prompt.contains("Do not use HTML tags"));
     }
 
     @Test
