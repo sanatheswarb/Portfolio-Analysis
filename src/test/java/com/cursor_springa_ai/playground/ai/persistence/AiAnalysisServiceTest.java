@@ -31,7 +31,7 @@ import static org.mockito.Mockito.when;
 class AiAnalysisServiceTest {
 
     private final AiAnalysisRepository repository = mock(AiAnalysisRepository.class);
-    private final AiAnalysisService service = new AiAnalysisService(repository);
+    private final AiAnalysisService service = new AiAnalysisService(repository, "qwen2.5:7b-instruct");
 
     @Test
     void savePortfolioAdvice_persistsRowWithCorrectType() {
@@ -47,6 +47,20 @@ class AiAnalysisServiceTest {
         assertNull(saved.getQuestion());
         assertNotNull(saved.getAnalysisData());
         assertNotNull(saved.getAnalysisContext());
+    }
+
+    @Test
+    void savePortfolioAdvice_storesModelAndVersion() {
+        when(repository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+        service.savePortfolioAdvice(null, sampleAdvice(), sampleSnapshot());
+
+        ArgumentCaptor<AiAnalysis> captor = ArgumentCaptor.forClass(AiAnalysis.class);
+        verify(repository).save(captor.capture());
+        AiAnalysis saved = captor.getValue();
+
+        assertEquals("qwen2.5:7b-instruct", saved.getModelUsed());
+        assertEquals(AiAnalysisService.ANALYSIS_VERSION, saved.getAnalysisVersion());
     }
 
     @Test

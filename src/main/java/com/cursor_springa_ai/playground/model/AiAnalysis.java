@@ -101,21 +101,26 @@ public class AiAnalysis {
     }
 
     /**
-     * Minimal constructor used by {@code AiAnalysisService} for analysis rows.
+     * Full constructor used by {@code AiAnalysisService} for analysis rows.
      *
-     * @param user             owning user (may be null)
-     * @param analysisType     type of AI interaction
-     * @param question         user question (null for analysis rows)
-     * @param analysisData     serialised AI response JSON
-     * @param analysisContext  serialised reasoning-context snapshot JSON (null for chat rows)
+     * @param user              owning user (may be null)
+     * @param analysisType      type of AI interaction
+     * @param question          user question (null for analysis rows)
+     * @param analysisData      serialised AI response JSON
+     * @param analysisContext   serialised reasoning-context snapshot JSON (null for chat rows)
+     * @param modelUsed         model identifier, e.g. {@code qwen2.5:7b-instruct}
+     * @param analysisVersion   prompt/logic version tag, e.g. {@code V1}
      */
     public AiAnalysis(User user, AnalysisType analysisType, String question,
-                      String analysisData, String analysisContext) {
+                      String analysisData, String analysisContext,
+                      String modelUsed, String analysisVersion) {
         this.user = user;
         this.analysisType = analysisType;
         this.question = question;
         this.analysisData = analysisData;
         this.analysisContext = analysisContext;
+        this.modelUsed = modelUsed;
+        this.analysisVersion = analysisVersion;
     }
 
     public Long getId() { return id; }

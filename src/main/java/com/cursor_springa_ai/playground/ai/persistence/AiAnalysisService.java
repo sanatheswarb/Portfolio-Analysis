@@ -8,6 +8,7 @@ import com.cursor_springa_ai.playground.model.User;
 import com.cursor_springa_ai.playground.repository.AiAnalysisRepository;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -20,14 +21,19 @@ import java.util.logging.Logger;
 @Service
 public class AiAnalysisService {
 
+    static final String ANALYSIS_VERSION = "V1";
+
     private static final Logger logger = Logger.getLogger(AiAnalysisService.class.getName());
 
     private final AiAnalysisRepository aiAnalysisRepository;
     private final ObjectMapper objectMapper;
+    private final String advisorModel;
 
-    public AiAnalysisService(AiAnalysisRepository aiAnalysisRepository) {
+    public AiAnalysisService(AiAnalysisRepository aiAnalysisRepository,
+                             @Value("${portfolio.advisor.model:qwen2.5:7b-instruct}") String advisorModel) {
         this.aiAnalysisRepository = aiAnalysisRepository;
         this.objectMapper = new ObjectMapper();
+        this.advisorModel = advisorModel;
     }
 
     /**
@@ -55,8 +61,12 @@ public class AiAnalysisService {
                     AnalysisType.PORTFOLIO_ANALYSIS,
                     null,
                     adviceJson,
-                    snapshotJson));
+                    snapshotJson,
+                    advisorModel,
+                    ANALYSIS_VERSION));
             logger.info("ai_analysis saved: type=" + AnalysisType.PORTFOLIO_ANALYSIS
+                    + " model=" + advisorModel
+                    + " version=" + ANALYSIS_VERSION
                     + (user != null ? " user=" + user.getId() : " (no user)"));
         } catch (JsonProcessingException e) {
             logger.warning("Failed to serialise PortfolioAdviceResponse for ai_analysis: " + e.getMessage());
