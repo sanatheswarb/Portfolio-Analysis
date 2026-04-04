@@ -2,6 +2,7 @@ package com.cursor_springa_ai.playground.service;
 
 import com.cursor_springa_ai.playground.dto.EnrichedHoldingData;
 import com.cursor_springa_ai.playground.dto.PortfolioSummary;
+import com.cursor_springa_ai.playground.dto.ai.FlaggedHoldingDto;
 import com.cursor_springa_ai.playground.model.PortfolioClassification;
 import com.cursor_springa_ai.playground.model.PortfolioStats;
 import com.cursor_springa_ai.playground.model.enums.DiversificationLevel;
@@ -27,6 +28,7 @@ public class PortfolioReasoningTools {
 
     private final PortfolioReasoningContext context;
     private final ObjectMapper objectMapper;
+    private final FlaggedHoldingsBuilder flaggedHoldingsBuilder;
     private final List<String> toolInvocationOrder = new ArrayList<>();
     private final Map<String, Integer> toolInvocationCounts = new LinkedHashMap<>();
     private String portfolioOverviewCache;
@@ -36,6 +38,7 @@ public class PortfolioReasoningTools {
     public PortfolioReasoningTools(PortfolioReasoningContext context, ObjectMapper objectMapper) {
         this.context = context;
         this.objectMapper = objectMapper;
+        this.flaggedHoldingsBuilder = new FlaggedHoldingsBuilder();
     }
 
     @Tool(name = "portfolio_overview", description = "Returns deterministic portfolio summary, diversification metrics, sector exposure, portfolio risk flags, and the largest holdings. Call this first.")
@@ -56,18 +59,13 @@ public class PortfolioReasoningTools {
         return portfolioOverviewCache;
     }
 
-    @Tool(name = "flagged_holdings", description = "Returns only holdings that already have deterministic risk flags, sorted by allocation descending. Use this when you need evidence for recommendations.")
+    @Tool(name = "flagged_holdings", description = "Returns holdings requiring attention, enriched with importance classification, performance status, valuation, risk severity, and human-readable attention reasons. Sorted by allocation descending. Use this for actionable, evidence-backed recommendations.")
     public String flaggedHoldings() {
         recordToolInvocation("flagged_holdings");
         if (flaggedHoldingsCache != null) {
             return flaggedHoldingsCache;
         }
-        List<Map<String, Object>> holdings = context.enrichedHoldings().stream()
-                .filter(holding -> holding.riskFlags() != null && !holding.riskFlags().isEmpty())
-                .sorted((left, right) -> compareByAllocation(right, left))
-                .limit(8)
-                .map(this::toHoldingSummary)
-                .toList();
+        List<FlaggedHoldingDto> holdings = flaggedHoldingsBuilder.build(context);
         flaggedHoldingsCache = toJson(holdings);
         return flaggedHoldingsCache;
     }

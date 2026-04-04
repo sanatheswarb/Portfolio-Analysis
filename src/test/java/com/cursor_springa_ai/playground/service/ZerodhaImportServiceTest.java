@@ -5,7 +5,6 @@ import com.cursor_springa_ai.playground.integration.zerodha.ZerodhaHoldingsClien
 import com.cursor_springa_ai.playground.integration.zerodha.dto.ZerodhaHoldingItem;
 import com.cursor_springa_ai.playground.model.Instrument;
 import com.cursor_springa_ai.playground.model.User;
-import com.cursor_springa_ai.playground.model.UserHolding;
 import org.junit.jupiter.api.Test;
 import org.mockito.InOrder;
 
@@ -16,6 +15,7 @@ import java.util.List;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.mock;
@@ -56,7 +56,7 @@ class ZerodhaImportServiceTest {
         ZerodhaImportResponse response = service.importHoldings();
 
         InOrder inOrder = inOrder(userHoldingSyncService, portfolioStatsBatchService);
-        inOrder.verify(userHoldingSyncService).replaceHoldings(eq(1L), any(List.class));
+        inOrder.verify(userHoldingSyncService).replaceHoldings(eq(1L), argThat(list -> list instanceof List));
         inOrder.verify(portfolioStatsBatchService).calculateForUserAsync(1L);
         assertEquals("portfolio-1", response.portfolioUserId());
         assertEquals(1, response.importedHoldings());
