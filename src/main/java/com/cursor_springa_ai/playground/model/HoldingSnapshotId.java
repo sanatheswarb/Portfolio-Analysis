@@ -16,8 +16,8 @@ public class HoldingSnapshotId implements Serializable {
     @Column(name = "user_id", nullable = false)
     private Long userId;
 
-    @Column(name = "instrument_token", nullable = false)
-    private Long instrumentToken;
+    @Column(name = "instrument_id", nullable = false)
+    private Long instrumentId;
 
     @Column(name = "snapshot_date", nullable = false)
     private LocalDate snapshotDate;
@@ -25,9 +25,9 @@ public class HoldingSnapshotId implements Serializable {
     protected HoldingSnapshotId() {
     }
 
-    public HoldingSnapshotId(Long userId, Long instrumentToken, LocalDate snapshotDate) {
+    public HoldingSnapshotId(Long userId, Long instrumentId, LocalDate snapshotDate) {
         this.userId = userId;
-        this.instrumentToken = instrumentToken;
+        this.instrumentId = instrumentId;
         this.snapshotDate = snapshotDate;
     }
 
@@ -35,8 +35,8 @@ public class HoldingSnapshotId implements Serializable {
         return userId;
     }
 
-    public Long getInstrumentToken() {
-        return instrumentToken;
+    public Long getInstrumentId() {
+        return instrumentId;
     }
 
     public LocalDate getSnapshotDate() {
@@ -48,12 +48,12 @@ public class HoldingSnapshotId implements Serializable {
         if (this == o) return true;
         if (!(o instanceof HoldingSnapshotId that)) return false;
         return Objects.equals(userId, that.userId)
-                && Objects.equals(instrumentToken, that.instrumentToken)
+                && Objects.equals(instrumentId, that.instrumentId)
                 && Objects.equals(snapshotDate, that.snapshotDate);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(userId, instrumentToken, snapshotDate);
+        return Objects.hash(userId, instrumentId, snapshotDate);
     }
 }

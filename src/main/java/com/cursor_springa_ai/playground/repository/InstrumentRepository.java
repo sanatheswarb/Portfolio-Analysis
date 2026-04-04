@@ -9,5 +9,9 @@ import java.util.Optional;
 @Repository
 public interface InstrumentRepository extends JpaRepository<Instrument, Long> {
 
+	Optional<Instrument> findByInstrumentToken(Long instrumentToken);
+
+	Optional<Instrument> findByIsinIgnoreCase(String isin);
+
 	Optional<Instrument> findBySymbolAndExchangeIgnoreCase(String symbol, String exchange);
 }

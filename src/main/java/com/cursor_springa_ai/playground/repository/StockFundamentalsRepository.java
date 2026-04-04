@@ -9,5 +9,7 @@ import java.util.List;
 @Repository
 public interface StockFundamentalsRepository extends JpaRepository<StockFundamentals, Long> {
 
-    List<StockFundamentals> findAllByInstrumentTokenIn(List<Long> instrumentTokens);
+    List<StockFundamentals> findAllByInstrumentIdIn(List<Long> instrumentIds);
+
+    java.util.Optional<StockFundamentals> findByInstrumentId(Long instrumentId);
 }

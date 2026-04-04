@@ -50,8 +50,9 @@ public class InstrumentEnrichmentService {
             return null;
         }
 
-        Instrument instrument = instrumentRepository.findById(token)
-                .orElseGet(() -> insertMinimal(item));
+        Instrument instrument = instrumentRepository.findByInstrumentToken(token)
+                .orElseGet(() -> findExistingInstrument(item)
+                        .orElseGet(() -> insertMinimal(item)));
 
         if (instrument.getLastEnriched() == null) {
             tryEnrich(instrument, item.getTradingSymbol());
@@ -64,6 +65,27 @@ public class InstrumentEnrichmentService {
     // private helpers
     // ------------------------------------------------------------------
 
+    private Optional<Instrument> findExistingInstrument(ZerodhaHoldingItem item) {
+        String isin = normalize(item.getIsin());
+        if (isin != null) {
+            Optional<Instrument> existingByIsin = instrumentRepository.findByIsinIgnoreCase(isin);
+            if (existingByIsin.isPresent()) {
+                logTokenMismatch(item, existingByIsin.get(), "isin");
+                return existingByIsin;
+            }
+        }
+
+        String symbol = normalize(item.getTradingSymbol());
+        String exchange = normalize(item.getExchange()) != null ? normalize(item.getExchange()) : "NSE";
+        if (symbol == null) {
+            return Optional.empty();
+        }
+
+        Optional<Instrument> existingBySymbol = instrumentRepository.findBySymbolAndExchangeIgnoreCase(symbol, exchange);
+        existingBySymbol.ifPresent(instrument -> logTokenMismatch(item, instrument, "symbol+exchange"));
+        return existingBySymbol;
+    }
+
     private Instrument insertMinimal(ZerodhaHoldingItem item) {
         Instrument instrument = new Instrument(
                 item.getInstrumentToken(),
@@ -74,6 +96,24 @@ public class InstrumentEnrichmentService {
         logger.info("Inserting new instrument: token=" + item.getInstrumentToken()
                 + " symbol=" + item.getTradingSymbol());
         return instrumentRepository.save(instrument);
+    }
+
+    private void logTokenMismatch(ZerodhaHoldingItem item, Instrument instrument, String matchedBy) {
+        if (item.getInstrumentToken().equals(instrument.getInstrumentToken())) {
+            return;
+        }
+        logger.warning("Incoming instrument token " + item.getInstrumentToken()
+                + " matched existing instrument token " + instrument.getInstrumentToken()
+                + " via " + matchedBy
+                + " for symbol=" + item.getTradingSymbol()
+                + ". Reusing existing instrument row.");
+    }
+
+    private String normalize(String value) {
+        if (value == null || value.isBlank()) {
+            return null;
+        }
+        return value.trim().toUpperCase();
     }
 
     private void tryEnrich(Instrument instrument, String symbol) {

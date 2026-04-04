@@ -25,7 +25,6 @@ public class ZerodhaImportService {
     private final ZerodhaAuthService zerodhaAuthService;
     private final InstrumentEnrichmentService instrumentEnrichmentService;
     private final StockFundamentalsService stockFundamentalsService;
-    private final StockMetricsCalculationService stockMetricsCalculationService;
     private final UserHoldingRepository userHoldingRepository;
     private final PortfolioStatsBatchService portfolioStatsBatchService;
 
@@ -34,7 +33,6 @@ public class ZerodhaImportService {
             ZerodhaAuthService zerodhaAuthService,
             InstrumentEnrichmentService instrumentEnrichmentService,
             StockFundamentalsService stockFundamentalsService,
-            StockMetricsCalculationService stockMetricsCalculationService,
             UserHoldingRepository userHoldingRepository,
             PortfolioStatsBatchService portfolioStatsBatchService
     ) {
@@ -42,7 +40,6 @@ public class ZerodhaImportService {
         this.zerodhaAuthService = zerodhaAuthService;
         this.instrumentEnrichmentService = instrumentEnrichmentService;
         this.stockFundamentalsService = stockFundamentalsService;
-        this.stockMetricsCalculationService = stockMetricsCalculationService;
         this.userHoldingRepository = userHoldingRepository;
         this.portfolioStatsBatchService = portfolioStatsBatchService;
     }
@@ -131,7 +128,7 @@ public class ZerodhaImportService {
                 : BigDecimal.ZERO;
 
         userHoldingRepository
-                .findByUserIdAndInstrumentInstrumentToken(user.getId(), instrument.getInstrumentToken())
+            .findByUserIdAndInstrumentId(user.getId(), instrument.getId())
                 .ifPresentOrElse(
                         existing -> {
                             existing.setQuantity(qtyInt);
