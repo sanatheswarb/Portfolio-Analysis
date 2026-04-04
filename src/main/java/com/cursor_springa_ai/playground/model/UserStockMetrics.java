@@ -23,7 +23,7 @@ import java.time.LocalDateTime;
         name = "user_stock_metrics",
         uniqueConstraints = @UniqueConstraint(
                 name = "uq_user_stock_metrics_user_instrument",
-                columnNames = {"user_id", "instrument_token"}
+        columnNames = {"user_id", "instrument_id"}
         )
 )
 public class UserStockMetrics {
@@ -37,7 +37,7 @@ public class UserStockMetrics {
     private User user;
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "instrument_token", nullable = false)
+    @JoinColumn(name = "instrument_id", nullable = false)
     private Instrument instrument;
 
     /** OVERVALUED / UNDERVALUED / FAIRLY_VALUED — derived from stock PE vs sector PE. */

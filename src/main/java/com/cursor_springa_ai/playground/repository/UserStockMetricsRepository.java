@@ -9,6 +9,6 @@ import java.util.Optional;
 @Repository
 public interface UserStockMetricsRepository extends JpaRepository<UserStockMetrics, Long> {
 
-    Optional<UserStockMetrics> findByUserIdAndInstrumentInstrumentToken(
-            Long userId, Long instrumentToken);
+        Optional<UserStockMetrics> findByUserIdAndInstrumentId(
+            Long userId, Long instrumentId);
 }

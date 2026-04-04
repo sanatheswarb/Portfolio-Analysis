@@ -81,7 +81,7 @@ public class StockMetricsCalculationService {
         }
 
         StockFundamentals fundamentals = stockFundamentalsRepository
-                .findById(instrument.getInstrumentToken()).orElse(null);
+            .findByInstrumentId(instrument.getId()).orElse(null);
 
         BigDecimal week52High = fundamentals != null ? fundamentals.getWeek52High() : null;
         BigDecimal volatility = holdingAnalyticsService.calculateVolatility(holding);
@@ -90,7 +90,7 @@ public class StockMetricsCalculationService {
         BigDecimal riskScore = holdingAnalyticsService.computeRiskScore(volatility);
 
         userStockMetricsRepository
-                .findByUserIdAndInstrumentInstrumentToken(user.getId(), instrument.getInstrumentToken())
+            .findByUserIdAndInstrumentId(user.getId(), instrument.getId())
                 .ifPresentOrElse(
                         existing -> {
                             applyFields(existing, valuationFlag, riskScore, momentumScore,
