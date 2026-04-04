@@ -17,6 +17,8 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.logging.Logger;
 
+import static com.cursor_springa_ai.playground.util.BigDecimalUtils.nvl;
+
 /**
  * Writes one end-of-day portfolio aggregate row per (user, date) into
  * {@code portfolio_daily_metrics}.
@@ -134,13 +136,5 @@ public class PortfolioDailyMetricsService {
         logger.info("portfolio_daily_metrics saved: user=" + user.getId() + " date=" + date
                 + " totalValue=" + totalValue + " pnl=" + totalPnl);
         return true;
-    }
-
-    // ------------------------------------------------------------------
-    // private helpers
-    // ------------------------------------------------------------------
-
-    private BigDecimal nvl(BigDecimal v) {
-        return v != null ? v : BigDecimal.ZERO;
     }
 }

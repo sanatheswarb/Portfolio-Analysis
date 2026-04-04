@@ -67,27 +67,19 @@ public class KiteConnectClient {
             throw new ZerodhaClientException("Missing zerodha.api-secret in application.properties");
         }
 
-        try {
-            User user = kiteSdk.generateSession(requestToken, apiSecret);
+        User user = kiteSdk.generateSession(requestToken, apiSecret);
 
-            if (user == null || user.accessToken == null || user.accessToken.isBlank()) {
-                throw new ZerodhaClientException("Failed to generate session: access token is missing");
-            }
-
-            // Store tokens for future API calls
-            this.accessToken = user.accessToken;
-            this.userId = user.userId;
-
-            // Set tokens in the SDK for all future calls
-            kiteSdk.setAccessToken(user.accessToken);
-            kiteSdk.setPublicToken(user.publicToken);
-        } catch (ZerodhaClientException ex) {
-            throw ex;
-        } catch (KiteException ex) {
-            throw ex;
-        } catch (IOException ex) {
-            throw ex;
+        if (user == null || user.accessToken == null || user.accessToken.isBlank()) {
+            throw new ZerodhaClientException("Failed to generate session: access token is missing");
         }
+
+        // Store tokens for future API calls
+        this.accessToken = user.accessToken;
+        this.userId = user.userId;
+
+        // Set tokens in the SDK for all future calls
+        kiteSdk.setAccessToken(user.accessToken);
+        kiteSdk.setPublicToken(user.publicToken);
     }
 
     /**
