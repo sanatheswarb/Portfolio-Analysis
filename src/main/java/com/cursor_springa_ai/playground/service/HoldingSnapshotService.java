@@ -117,8 +117,8 @@ public class HoldingSnapshotService {
             }
 
             // Skip if snapshot already exists for this date
-            if (holdingSnapshotRepository.existsByPkUserIdAndPkInstrumentTokenAndPkSnapshotDate(
-                    user.getId(), instrument.getInstrumentToken(), date)) {
+                if (holdingSnapshotRepository.existsByPkUserIdAndPkInstrumentIdAndPkSnapshotDate(
+                    user.getId(), instrument.getId(), date)) {
                 continue;
             }
 

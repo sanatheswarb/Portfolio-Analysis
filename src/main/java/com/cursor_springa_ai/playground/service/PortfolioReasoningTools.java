@@ -310,19 +310,26 @@ public class PortfolioReasoningTools {
 
     private SectorExposure topSectorExposure() {
         Map<String, BigDecimal> exposureBySector = new LinkedHashMap<>();
+        Map<String, String> displaySectorByNormalizedKey = new LinkedHashMap<>();
         for (EnrichedHoldingData holding : context.enrichedHoldings()) {
             if (holding.sector() == null || holding.sector().isBlank() || holding.allocationPercent() == null) {
                 continue;
             }
-            exposureBySector.merge(holding.sector(), holding.allocationPercent(), BigDecimal::add);
+            String normalizedSectorKey = normalizeSectorKey(holding.sector());
+            String displaySector = holding.sector().trim();
+            displaySectorByNormalizedKey.putIfAbsent(normalizedSectorKey, displaySector);
+            exposureBySector.merge(normalizedSectorKey, holding.allocationPercent(), BigDecimal::add);
         }
 
         return exposureBySector.entrySet().stream()
                 .max(Map.Entry.comparingByValue())
-                .map(entry -> new SectorExposure(entry.getKey(), entry.getValue()))
+                .map(entry -> new SectorExposure(displaySectorByNormalizedKey.get(entry.getKey()), entry.getValue()))
                 .orElse(new SectorExposure(null, null));
     }
 
+    private String normalizeSectorKey(String sector) {
+        return sector.trim().toLowerCase(Locale.ROOT);
+    }
     private String largestHoldingAssessment(BigDecimal largestHoldingPercent) {
         if (largestHoldingPercent == null) {
             return null;
