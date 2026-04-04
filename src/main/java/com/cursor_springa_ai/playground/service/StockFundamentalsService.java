@@ -47,14 +47,14 @@ public class StockFundamentalsService {
         if (instrument == null) {
             return null;
         }
-        Long token = instrument.getInstrumentToken();
-        if (token == null) {
-            logger.warning("Skipping fundamentals upsert: instrument token is null");
+        Long instrumentId = instrument.getId();
+        if (instrumentId == null) {
+            logger.warning("Skipping fundamentals upsert: instrument id is null");
             return null;
         }
         String symbol = instrument.getSymbol();
 
-        Optional<StockFundamentals> existing = fundamentalsRepository.findById(token);
+        Optional<StockFundamentals> existing = fundamentalsRepository.findByInstrumentId(instrumentId);
 
         if (existing.isPresent()) {
             StockFundamentals row = existing.get();
@@ -65,7 +65,7 @@ public class StockFundamentalsService {
             }
             return refreshFromNse(row, symbol);
         } else {
-            StockFundamentals row = new StockFundamentals(token);
+            StockFundamentals row = new StockFundamentals(instrument);
             row.setSymbol(symbol);
             return refreshFromNse(row, symbol);
         }
@@ -76,8 +76,8 @@ public class StockFundamentalsService {
     // ------------------------------------------------------------------
 
     private BigDecimal refreshFromNse(StockFundamentals row, String symbol) {
-        if (row.getInstrumentToken() == null) {
-            logger.warning("Skipping fundamentals save: null instrument token for symbol=" + symbol);
+        if (row.getInstrumentId() == null) {
+            logger.warning("Skipping fundamentals save: null instrument id for symbol=" + symbol);
             return null;
         }
 
