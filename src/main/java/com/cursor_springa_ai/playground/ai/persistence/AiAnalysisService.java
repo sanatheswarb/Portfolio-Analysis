@@ -25,9 +25,9 @@ public class AiAnalysisService {
     private final AiAnalysisRepository aiAnalysisRepository;
     private final ObjectMapper objectMapper;
 
-    public AiAnalysisService(AiAnalysisRepository aiAnalysisRepository) {
+    public AiAnalysisService(AiAnalysisRepository aiAnalysisRepository, ObjectMapper objectMapper) {
         this.aiAnalysisRepository = aiAnalysisRepository;
-        this.objectMapper = new ObjectMapper();
+        this.objectMapper = objectMapper;
     }
 
     /**

@@ -93,7 +93,7 @@ public class PortfolioOverviewBuilder {
 
     private List<Map<String, Object>> largestHoldingsSummary(PortfolioReasoningContext context) {
         return context.enrichedHoldings().stream()
-                .sorted((left, right) -> compareByAllocation(right, left))
+                .sorted(HoldingClassifier.BY_ALLOCATION_DESC)
                 .limit(3)
                 .map(holding -> {
                     Map<String, Object> payload = new LinkedHashMap<>();
@@ -289,19 +289,6 @@ public class PortfolioOverviewBuilder {
 
     private String formatWithoutTrailingZeros(BigDecimal value) {
         return value == null ? null : value.stripTrailingZeros().toPlainString();
-    }
-
-    private int compareByAllocation(EnrichedHoldingData left, EnrichedHoldingData right) {
-        if (left.allocationPercent() == null && right.allocationPercent() == null) {
-            return 0;
-        }
-        if (left.allocationPercent() == null) {
-            return -1;
-        }
-        if (right.allocationPercent() == null) {
-            return 1;
-        }
-        return left.allocationPercent().compareTo(right.allocationPercent());
     }
 
     private record SectorExposure(String sector, BigDecimal allocationPercent) {

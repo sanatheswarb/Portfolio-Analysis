@@ -1,14 +1,11 @@
 package com.cursor_springa_ai.playground.ai.advisor;
 
-import com.cursor_springa_ai.playground.dto.EnrichedHoldingData;
 import com.cursor_springa_ai.playground.ai.reasoning.PortfolioReasoningContext;
 import com.cursor_springa_ai.playground.model.RiskFlag;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.stereotype.Component;
 
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 
 @Component
 public class PortfolioAdvisorPromptBuilder {
@@ -138,27 +135,4 @@ public class PortfolioAdvisorPromptBuilder {
     private List<String> portfolioRiskFlags(PortfolioReasoningContext reasoningContext) {
         return reasoningContext.portfolioRiskFlags();
     }
-
-    public String buildEnrichedHoldingsJson(List<EnrichedHoldingData> enrichedHoldings) {
-        try {
-            List<Map<String, Object>> simplifiedHoldings = enrichedHoldings.stream()
-                    .map(holding -> {
-                        Map<String, Object> map = new HashMap<>();
-                        map.put("symbol", holding.symbol());
-                        map.put("allocation", holding.allocationPercent() != null
-                                ? holding.allocationPercent().setScale(1, java.math.RoundingMode.HALF_UP)
-                                : null);
-                        map.put("sector", holding.sector());
-                        map.put("riskFlags", holding.riskFlags());
-                        map.put("profitPercent", holding.profitPercent());
-                        return map;
-                    })
-                    .toList();
-
-            return objectMapper.writeValueAsString(simplifiedHoldings);
-        } catch (Exception e) {
-            throw new RuntimeException("Failed to serialize enriched holdings", e);
-        }
-    }
-
 }
