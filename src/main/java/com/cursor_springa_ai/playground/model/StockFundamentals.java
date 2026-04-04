@@ -3,6 +3,8 @@ package com.cursor_springa_ai.playground.model;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.OneToOne;
@@ -13,7 +15,7 @@ import java.time.LocalDateTime;
 
 /**
  * Fundamental financial ratios for a single instrument.
- * Uses instrument_token as both PK and FK to {@link Instrument}.
+ * Uses its own surrogate primary key and a unique instrument_id foreign key.
  *
  * <p>pe, market_cap, and sector are populated from the NSE quote API.
  * pb, roe, and debt_to_equity require financial-statement data not available from
@@ -25,11 +27,15 @@ import java.time.LocalDateTime;
 public class StockFundamentals {
 
     @Id
-    @Column(name = "instrument_token", nullable = false)
-    private Long instrumentToken;
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Column(name = "id", nullable = false)
+    private Long id;
+
+    @Column(name = "instrument_id", nullable = false, unique = true)
+    private Long instrumentId;
 
     @OneToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "instrument_token", nullable = false, insertable = false, updatable = false)
+    @JoinColumn(name = "instrument_id", nullable = false, insertable = false, updatable = false)
     private Instrument instrument;
 
     /** Trading symbol for readability (denormalized from instrument). */
@@ -78,16 +84,26 @@ public class StockFundamentals {
     protected StockFundamentals() {
     }
 
-    public StockFundamentals(Long instrumentToken) {
-        this.instrumentToken = instrumentToken;
+    public StockFundamentals(Instrument instrument) {
+        this.instrument = instrument;
+        this.instrumentId = instrument != null ? instrument.getId() : null;
     }
 
-    public Long getInstrumentToken() {
-        return instrumentToken;
+    public Long getId() {
+        return id;
+    }
+
+    public Long getInstrumentId() {
+        return instrumentId;
     }
 
     public Instrument getInstrument() {
         return instrument;
+    }
+
+    public void setInstrument(Instrument instrument) {
+        this.instrument = instrument;
+        this.instrumentId = instrument != null ? instrument.getId() : null;
     }
 
     public String getSymbol() {

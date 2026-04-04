@@ -4,7 +4,7 @@ import com.cursor_springa_ai.playground.ai.tools.FlaggedHoldingsBuilder;
 import com.cursor_springa_ai.playground.ai.tools.HoldingDetailsBuilder;
 import com.cursor_springa_ai.playground.ai.tools.HoldingsListBuilder;
 import com.cursor_springa_ai.playground.ai.tools.PortfolioOverviewBuilder;
-import com.cursor_springa_ai.playground.dto.ai.HoldingListItemDto;
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.ai.tool.annotation.Tool;
@@ -21,6 +21,7 @@ import java.util.logging.Logger;
 public class PortfolioReasoningTools {
 
     private static final Logger logger = Logger.getLogger(PortfolioReasoningTools.class.getName());
+    private static final TypeReference<Map<String, Object>> STRING_OBJECT_MAP = new TypeReference<>() { };
 
     private final PortfolioReasoningContext context;
     private final ObjectMapper objectMapper;
@@ -92,7 +93,7 @@ public class PortfolioReasoningTools {
             String normalizedSymbol = symbol.trim().toUpperCase(Locale.ROOT);
             if (holdingDetailsCache.containsKey(normalizedSymbol)) {
                 try {
-                    results.add(objectMapper.readValue(holdingDetailsCache.get(normalizedSymbol), Map.class));
+                    results.add(objectMapper.readValue(holdingDetailsCache.get(normalizedSymbol), STRING_OBJECT_MAP));
                 } catch (Exception e) {
                     results.add(Map.of("error", "failed to deserialize cached details for " + normalizedSymbol));
                 }

@@ -4,7 +4,6 @@ import com.cursor_springa_ai.playground.ai.reasoning.PortfolioReasoningContext;
 import com.cursor_springa_ai.playground.dto.EnrichedHoldingData;
 import com.cursor_springa_ai.playground.dto.ai.HoldingListItemDto;
 
-import java.math.BigDecimal;
 import java.util.List;
 
 public class HoldingsListBuilder {
