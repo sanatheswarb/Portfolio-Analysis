@@ -1,5 +1,7 @@
-package com.cursor_springa_ai.playground.service;
+package com.cursor_springa_ai.playground.ai.advisor;
 
+import com.cursor_springa_ai.playground.ai.reasoning.PortfolioReasoningContext;
+import com.cursor_springa_ai.playground.ai.reasoning.PortfolioReasoningTools;
 import com.cursor_springa_ai.playground.dto.PortfolioAdviceResponse;
 import com.cursor_springa_ai.playground.dto.EnrichedHoldingData;
 import com.cursor_springa_ai.playground.dto.PortfolioSummary;
@@ -22,7 +24,7 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-class AiPortfolioAdvisorServiceTest {
+class PortfolioAdvisorAgentTest {
 
     @Test
         void generateInsights_usesToolCallingWithCompactPrompt() {
@@ -52,7 +54,7 @@ class AiPortfolioAdvisorServiceTest {
         when(promptBuilder.buildReasoningRequest(eq(reasoningContext)))
                 .thenReturn("user");
 
-        AiPortfolioAdvisorService service = new AiPortfolioAdvisorService(builder, objectMapper, promptBuilder);
+        PortfolioAdvisorAgent service = new PortfolioAdvisorAgent(builder, objectMapper, promptBuilder);
         PortfolioAdviceResponse response = service.generateInsights(reasoningContext);
 
         verify(promptBuilder).buildSystemPrompt();
@@ -94,7 +96,7 @@ class AiPortfolioAdvisorServiceTest {
                 when(promptBuilder.buildReasoningRequest(eq(reasoningContext))).thenReturn("user");
                 when(promptBuilder.buildRetryReasoningRequest(anyString())).thenReturn("retry-user");
 
-                AiPortfolioAdvisorService service = new AiPortfolioAdvisorService(builder, objectMapper, promptBuilder);
+                PortfolioAdvisorAgent service = new PortfolioAdvisorAgent(builder, objectMapper, promptBuilder);
                 PortfolioAdviceResponse response = service.generateInsights(reasoningContext);
 
                 verify(chatClient, times(2)).prompt();
@@ -129,7 +131,7 @@ class AiPortfolioAdvisorServiceTest {
                 when(promptBuilder.buildSystemPrompt()).thenReturn("system");
                 when(promptBuilder.buildReasoningRequest(eq(reasoningContext))).thenReturn("user");
 
-                AiPortfolioAdvisorService service = new AiPortfolioAdvisorService(builder, objectMapper, promptBuilder);
+                PortfolioAdvisorAgent service = new PortfolioAdvisorAgent(builder, objectMapper, promptBuilder);
 
                 IllegalStateException exception = assertThrows(IllegalStateException.class,
                                 () -> service.generateInsights(reasoningContext));

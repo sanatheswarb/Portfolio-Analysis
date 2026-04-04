@@ -1,10 +1,16 @@
-package com.cursor_springa_ai.playground.service;
+package com.cursor_springa_ai.playground.importer;
 
 import com.cursor_springa_ai.playground.dto.ZerodhaImportResponse;
 import com.cursor_springa_ai.playground.integration.zerodha.ZerodhaHoldingsClient;
 import com.cursor_springa_ai.playground.integration.zerodha.dto.ZerodhaHoldingItem;
 import com.cursor_springa_ai.playground.model.Instrument;
 import com.cursor_springa_ai.playground.model.User;
+import com.cursor_springa_ai.playground.model.UserHolding;
+import com.cursor_springa_ai.playground.service.InstrumentEnrichmentService;
+import com.cursor_springa_ai.playground.service.PortfolioStatsBatchService;
+import com.cursor_springa_ai.playground.service.StockFundamentalsService;
+import com.cursor_springa_ai.playground.service.UserHoldingSyncService;
+import com.cursor_springa_ai.playground.service.ZerodhaAuthService;
 import org.junit.jupiter.api.Test;
 import org.mockito.InOrder;
 
@@ -33,13 +39,19 @@ class ZerodhaImportServiceTest {
         StockFundamentalsService fundamentalsService = mock(StockFundamentalsService.class);
         UserHoldingSyncService userHoldingSyncService = mock(UserHoldingSyncService.class);
         PortfolioStatsBatchService portfolioStatsBatchService = mock(PortfolioStatsBatchService.class);
+        HoldingPreparationService holdingPreparationService = new HoldingPreparationService(
+            enrichmentService,
+            fundamentalsService,
+            new HoldingValueCalculator()
+        );
+        HoldingMergeService holdingMergeService = new HoldingMergeService();
         ZerodhaImportService service = new ZerodhaImportService(
                 holdingsClient,
                 authService,
-                enrichmentService,
-                fundamentalsService,
             userHoldingSyncService,
-            portfolioStatsBatchService
+            portfolioStatsBatchService,
+            holdingPreparationService,
+            holdingMergeService
         );
 
         User user = new User("ZERODHA", "portfolio-1");
@@ -71,13 +83,19 @@ class ZerodhaImportServiceTest {
         StockFundamentalsService fundamentalsService = mock(StockFundamentalsService.class);
         UserHoldingSyncService userHoldingSyncService = mock(UserHoldingSyncService.class);
         PortfolioStatsBatchService portfolioStatsBatchService = mock(PortfolioStatsBatchService.class);
+        HoldingPreparationService holdingPreparationService = new HoldingPreparationService(
+            enrichmentService,
+            fundamentalsService,
+            new HoldingValueCalculator()
+        );
+        HoldingMergeService holdingMergeService = new HoldingMergeService();
         ZerodhaImportService service = new ZerodhaImportService(
                 holdingsClient,
                 authService,
-                enrichmentService,
-                fundamentalsService,
             userHoldingSyncService,
-            portfolioStatsBatchService
+            portfolioStatsBatchService,
+            holdingPreparationService,
+            holdingMergeService
         );
 
         User user = new User("ZERODHA", "portfolio-1");
@@ -94,6 +112,75 @@ class ZerodhaImportServiceTest {
         verify(portfolioStatsBatchService, never()).calculateForUserAsync(any());
         assertEquals("Import aborted; failed holdings: INFY", exception.getMessage());
         assertEquals("boom", exception.getCause().getMessage());
+    }
+
+    @Test
+    void importHoldings_mergesPreparedHoldingsThatResolveToSameInstrument() throws Exception {
+        ZerodhaHoldingsClient holdingsClient = mock(ZerodhaHoldingsClient.class);
+        ZerodhaAuthService authService = mock(ZerodhaAuthService.class);
+        InstrumentEnrichmentService enrichmentService = mock(InstrumentEnrichmentService.class);
+        StockFundamentalsService fundamentalsService = mock(StockFundamentalsService.class);
+        UserHoldingSyncService userHoldingSyncService = mock(UserHoldingSyncService.class);
+        PortfolioStatsBatchService portfolioStatsBatchService = mock(PortfolioStatsBatchService.class);
+        HoldingPreparationService holdingPreparationService = new HoldingPreparationService(
+            enrichmentService,
+            fundamentalsService,
+            new HoldingValueCalculator()
+        );
+        HoldingMergeService holdingMergeService = new HoldingMergeService();
+        ZerodhaImportService service = new ZerodhaImportService(
+                holdingsClient,
+                authService,
+                userHoldingSyncService,
+            portfolioStatsBatchService,
+            holdingPreparationService,
+            holdingMergeService
+        );
+
+        User user = new User("ZERODHA", "portfolio-1");
+        setField(user, "id", 1L);
+        Instrument instrument = new Instrument(123L, "INFY", "NSE", "INE009A01021");
+        setField(instrument, "id", 10L);
+
+        ZerodhaHoldingItem first = holdingItem(
+                123L,
+                "INFY",
+                BigDecimal.TEN,
+                BigDecimal.valueOf(1500),
+                BigDecimal.valueOf(1600)
+        );
+        ZerodhaHoldingItem second = holdingItem(
+                456L,
+                "INFY",
+                BigDecimal.valueOf(5),
+                BigDecimal.valueOf(1500),
+                BigDecimal.valueOf(1600)
+        );
+
+        when(authService.getCurrentUser()).thenReturn(user);
+        when(holdingsClient.fetchHoldings()).thenReturn(List.of(first, second));
+        when(enrichmentService.upsertAndEnrich(first)).thenReturn(instrument);
+        when(enrichmentService.upsertAndEnrich(second)).thenReturn(instrument);
+        when(fundamentalsService.upsertIfStale(instrument)).thenReturn(BigDecimal.valueOf(1550));
+
+        ZerodhaImportResponse response = service.importHoldings();
+
+        verify(userHoldingSyncService).replaceHoldings(eq(1L), argThat(list -> {
+            if (!(list instanceof List<?> holdings) || holdings.size() != 1) {
+                return false;
+            }
+            Object value = holdings.getFirst();
+            if (!(value instanceof UserHolding holding)) {
+                return false;
+            }
+            return holding.getInstrument().getId().equals(10L)
+                    && holding.getQuantity() == 15
+                    && holding.getInvestedValue().compareTo(BigDecimal.valueOf(22500)) == 0
+                    && holding.getCurrentValue().compareTo(BigDecimal.valueOf(24000)) == 0;
+        }));
+        verify(portfolioStatsBatchService).calculateForUserAsync(1L);
+        assertEquals(1, response.importedHoldings());
+        assertEquals(List.of("INFY"), response.symbols());
     }
 
     private ZerodhaHoldingItem holdingItem(Long token,

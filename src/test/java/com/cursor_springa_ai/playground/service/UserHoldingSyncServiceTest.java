@@ -42,6 +42,7 @@ class UserHoldingSyncServiceTest {
         service.replaceHoldings(1L, List.of(holding));
 
         verify(repository).deleteByUserId(1L);
+        verify(repository).flush();
         verify(repository).saveAll(List.of(holding));
     }
 

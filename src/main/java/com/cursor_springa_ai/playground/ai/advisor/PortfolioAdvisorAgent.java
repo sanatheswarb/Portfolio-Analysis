@@ -1,5 +1,7 @@
-package com.cursor_springa_ai.playground.service;
+package com.cursor_springa_ai.playground.ai.advisor;
 
+import com.cursor_springa_ai.playground.ai.reasoning.PortfolioReasoningContext;
+import com.cursor_springa_ai.playground.ai.reasoning.PortfolioReasoningTools;
 import com.cursor_springa_ai.playground.dto.PortfolioAdviceResponse;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.ai.chat.client.ChatClient;
@@ -11,9 +13,9 @@ import java.util.List;
 import java.util.logging.Logger;
 
 @Service
-public class AiPortfolioAdvisorService {
+public class PortfolioAdvisorAgent {
 
-        private static final Logger logger = Logger.getLogger(AiPortfolioAdvisorService.class.getName());
+        private static final Logger logger = Logger.getLogger(PortfolioAdvisorAgent.class.getName());
         private final ChatClient chatClient;
         private final ObjectMapper objectMapper;
         private final PortfolioAdvisorPromptBuilder promptBuilder;
@@ -36,7 +38,7 @@ public class AiPortfolioAdvisorService {
         @Value("${portfolio.advisor.thinking-enabled:false}")
         private boolean thinkingEnabled;
 
-        public AiPortfolioAdvisorService(ChatClient.Builder chatClientBuilder,
+        public PortfolioAdvisorAgent(ChatClient.Builder chatClientBuilder,
                         ObjectMapper objectMapper,
                         PortfolioAdvisorPromptBuilder promptBuilder) {
                 this.chatClient = chatClientBuilder.build();

@@ -19,6 +19,7 @@ public class UserHoldingSyncService {
     @Transactional
     public void replaceHoldings(Long userId, List<UserHolding> holdings) {
         userHoldingRepository.deleteByUserId(userId);
+        userHoldingRepository.flush();
         userHoldingRepository.saveAll(holdings);
     }
 }

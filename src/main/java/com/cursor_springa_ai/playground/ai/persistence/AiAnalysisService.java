@@ -1,4 +1,4 @@
-package com.cursor_springa_ai.playground.service;
+package com.cursor_springa_ai.playground.ai.persistence;
 
 import com.cursor_springa_ai.playground.dto.PortfolioAdviceResponse;
 import com.cursor_springa_ai.playground.model.AiAnalysis;
