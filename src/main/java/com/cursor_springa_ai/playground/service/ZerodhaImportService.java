@@ -13,6 +13,7 @@ import java.math.RoundingMode;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
+import java.util.logging.Level;
 import java.util.logging.Logger;
 
 @Service
@@ -59,22 +60,32 @@ public class ZerodhaImportService {
         List<String> importedSymbols = new ArrayList<>();
         List<UserHolding> holdingsToPersist = new ArrayList<>();
         List<String> failedSymbols = new ArrayList<>();
+        List<RuntimeException> failedExceptions = new ArrayList<>();
         for (ZerodhaHoldingItem item : activeHoldings) {
 
             try {
-            PreparedHolding preparedHolding = prepareHolding(currentUser, item, totalCurrentValue);
-            String symbol = preparedHolding.symbol();
+                PreparedHolding preparedHolding = prepareHolding(currentUser, item, totalCurrentValue);
+                String symbol = preparedHolding.symbol();
                 importedSymbols.add(symbol);
-            holdingsToPersist.add(preparedHolding.userHolding());
+                holdingsToPersist.add(preparedHolding.userHolding());
             } catch (RuntimeException ex) {
-                logger.warning("Failed to import holding "
-                        + item.getTradingSymbol() + ": " + ex.getMessage());
+                logger.log(Level.WARNING,
+                        "Failed to import holding " + item.getTradingSymbol() + ": " + ex.getMessage(),
+                        ex);
                 failedSymbols.add(item.getTradingSymbol().toUpperCase(Locale.ROOT));
+                failedExceptions.add(ex);
             }
         }
 
         if (!failedSymbols.isEmpty()) {
-            throw new IllegalStateException("Import aborted; failed holdings: " + String.join(", ", failedSymbols));
+            IllegalStateException importFailure = new IllegalStateException(
+                    "Import aborted; failed holdings: " + String.join(", ", failedSymbols),
+                    failedExceptions.getFirst()
+            );
+            failedExceptions.stream()
+                    .skip(1)
+                    .forEach(importFailure::addSuppressed);
+            throw importFailure;
         }
 
         userHoldingSyncService.replaceHoldings(currentUser.getId(), holdingsToPersist);

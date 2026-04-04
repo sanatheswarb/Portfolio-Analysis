@@ -93,6 +93,7 @@ class ZerodhaImportServiceTest {
         verify(userHoldingSyncService, never()).replaceHoldings(any(), any());
         verify(portfolioStatsBatchService, never()).calculateForUserAsync(any());
         assertEquals("Import aborted; failed holdings: INFY", exception.getMessage());
+        assertEquals("boom", exception.getCause().getMessage());
     }
 
     private ZerodhaHoldingItem holdingItem(Long token,
