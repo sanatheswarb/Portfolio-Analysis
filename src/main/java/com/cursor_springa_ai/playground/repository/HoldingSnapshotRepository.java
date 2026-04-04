@@ -11,8 +11,8 @@ import java.util.List;
 @Repository
 public interface HoldingSnapshotRepository extends JpaRepository<HoldingSnapshot, HoldingSnapshotId> {
 
-    boolean existsByPkUserIdAndPkInstrumentTokenAndPkSnapshotDate(
-            Long userId, Long instrumentToken, LocalDate snapshotDate);
+        boolean existsByPkUserIdAndPkInstrumentIdAndPkSnapshotDate(
+            Long userId, Long instrumentId, LocalDate snapshotDate);
 
     List<HoldingSnapshot> findByPkUserIdAndPkSnapshotDate(Long userId, LocalDate snapshotDate);
 }

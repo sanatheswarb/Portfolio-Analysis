@@ -6,7 +6,6 @@ import com.cursor_springa_ai.playground.integration.zerodha.dto.ZerodhaHoldingIt
 import com.cursor_springa_ai.playground.model.Instrument;
 import com.cursor_springa_ai.playground.model.User;
 import com.cursor_springa_ai.playground.model.UserHolding;
-import com.cursor_springa_ai.playground.repository.UserHoldingRepository;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
@@ -14,6 +13,7 @@ import java.math.RoundingMode;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
+import java.util.logging.Level;
 import java.util.logging.Logger;
 
 @Service
@@ -25,8 +25,7 @@ public class ZerodhaImportService {
     private final ZerodhaAuthService zerodhaAuthService;
     private final InstrumentEnrichmentService instrumentEnrichmentService;
     private final StockFundamentalsService stockFundamentalsService;
-    private final StockMetricsCalculationService stockMetricsCalculationService;
-    private final UserHoldingRepository userHoldingRepository;
+    private final UserHoldingSyncService userHoldingSyncService;
     private final PortfolioStatsBatchService portfolioStatsBatchService;
 
     public ZerodhaImportService(
@@ -34,16 +33,14 @@ public class ZerodhaImportService {
             ZerodhaAuthService zerodhaAuthService,
             InstrumentEnrichmentService instrumentEnrichmentService,
             StockFundamentalsService stockFundamentalsService,
-            StockMetricsCalculationService stockMetricsCalculationService,
-            UserHoldingRepository userHoldingRepository,
+            UserHoldingSyncService userHoldingSyncService,
             PortfolioStatsBatchService portfolioStatsBatchService
     ) {
         this.zerodhaHoldingsClient = zerodhaHoldingsClient;
         this.zerodhaAuthService = zerodhaAuthService;
         this.instrumentEnrichmentService = instrumentEnrichmentService;
         this.stockFundamentalsService = stockFundamentalsService;
-        this.stockMetricsCalculationService = stockMetricsCalculationService;
-        this.userHoldingRepository = userHoldingRepository;
+        this.userHoldingSyncService = userHoldingSyncService;
         this.portfolioStatsBatchService = portfolioStatsBatchService;
     }
 
@@ -54,28 +51,44 @@ public class ZerodhaImportService {
         }
 
         List<ZerodhaHoldingItem> incoming = zerodhaHoldingsClient.fetchHoldings();
+        List<ZerodhaHoldingItem> activeHoldings = incoming.stream()
+                .filter(this::isImportableHolding)
+                .toList();
 
-        BigDecimal totalCurrentValue = computeTotalCurrentValue(incoming);
+        BigDecimal totalCurrentValue = computeTotalCurrentValue(activeHoldings);
 
         List<String> importedSymbols = new ArrayList<>();
-        for (ZerodhaHoldingItem item : incoming) {
-            if (item.getTradingSymbol() == null
-                    || item.getQuantity() == null
-                    || item.getQuantity().compareTo(BigDecimal.ZERO) <= 0) {
-                continue;
-            }
+        List<UserHolding> holdingsToPersist = new ArrayList<>();
+        List<String> failedSymbols = new ArrayList<>();
+        List<RuntimeException> failedExceptions = new ArrayList<>();
+        for (ZerodhaHoldingItem item : activeHoldings) {
 
             try {
-                String symbol = importSingleHolding(currentUser, item, totalCurrentValue);
+                PreparedHolding preparedHolding = prepareHolding(currentUser, item, totalCurrentValue);
+                String symbol = preparedHolding.symbol();
                 importedSymbols.add(symbol);
+                holdingsToPersist.add(preparedHolding.userHolding());
             } catch (RuntimeException ex) {
-                logger.warning("Failed to import holding "
-                        + item.getTradingSymbol() + ": " + ex.getMessage());
+                logger.log(Level.WARNING,
+                        "Failed to import holding " + item.getTradingSymbol() + ": " + ex.getMessage(),
+                        ex);
+                failedSymbols.add(item.getTradingSymbol().toUpperCase(Locale.ROOT));
+                failedExceptions.add(ex);
             }
         }
-        // We can revisit this if we need to store stock metrics anytime in future
-       // stockMetricsCalculationService.calculateForUser(currentUser);
 
+        if (!failedSymbols.isEmpty()) {
+            IllegalStateException importFailure = new IllegalStateException(
+                    "Import aborted; failed holdings: " + String.join(", ", failedSymbols),
+                    failedExceptions.getFirst()
+            );
+            failedExceptions.stream()
+                    .skip(1)
+                    .forEach(importFailure::addSuppressed);
+            throw importFailure;
+        }
+
+        userHoldingSyncService.replaceHoldings(currentUser.getId(), holdingsToPersist);
         portfolioStatsBatchService.calculateForUserAsync(currentUser.getId());
 
         return new ZerodhaImportResponse(
@@ -95,20 +108,28 @@ public class ZerodhaImportService {
      *
      * @return the upper-cased trading symbol, or throws on fatal error
      */
-    private String importSingleHolding(User currentUser, ZerodhaHoldingItem item,
-                                       BigDecimal totalCurrentValue) {
+    private PreparedHolding prepareHolding(User currentUser, ZerodhaHoldingItem item,
+                                           BigDecimal totalCurrentValue) {
         String symbol = item.getTradingSymbol().toUpperCase(Locale.ROOT);
         Instrument instrument = instrumentEnrichmentService.upsertAndEnrich(item);
-        if (instrument != null) {
-            BigDecimal previousClose = stockFundamentalsService.upsertIfStale(instrument);
-            upsertUserHolding(currentUser, instrument, item, totalCurrentValue, previousClose);
+        if (instrument == null) {
+            throw new IllegalStateException("Instrument resolution failed for symbol " + symbol);
         }
-        return symbol;
+
+        BigDecimal previousClose = stockFundamentalsService.upsertIfStale(instrument);
+        UserHolding userHolding = buildUserHolding(currentUser, instrument, item, totalCurrentValue, previousClose);
+        return new PreparedHolding(symbol, userHolding);
     }
 
-    private void upsertUserHolding(User user, Instrument instrument, ZerodhaHoldingItem item,
-                       BigDecimal totalCurrentValue,
-                       BigDecimal nsePreviousClose) {
+    private boolean isImportableHolding(ZerodhaHoldingItem item) {
+        return item.getTradingSymbol() != null
+                && item.getQuantity() != null
+                && item.getQuantity().compareTo(BigDecimal.ZERO) > 0;
+    }
+
+    private UserHolding buildUserHolding(User user, Instrument instrument, ZerodhaHoldingItem item,
+                                         BigDecimal totalCurrentValue,
+                                         BigDecimal nsePreviousClose) {
         BigDecimal qty = item.getQuantity();
         // Indian equity markets do not support fractional shares; round to the nearest
         // whole number defensively before storing as Integer.
@@ -130,37 +151,16 @@ public class ZerodhaImportService {
                         .multiply(BigDecimal.valueOf(100))
                 : BigDecimal.ZERO;
 
-        userHoldingRepository
-                .findByUserIdAndInstrumentInstrumentToken(user.getId(), instrument.getInstrumentToken())
-                .ifPresentOrElse(
-                        existing -> {
-                            existing.setQuantity(qtyInt);
-                            existing.setAvgPrice(avgPrice);
-                            existing.setClosePrice(closePrice);
-                            existing.setLastPrice(lastPrice);
-                            existing.setInvestedValue(investedValue);
-                            existing.setCurrentValue(currentValue);
-                            existing.setPnl(pnl);
-                            existing.setPnlPercent(pnlPercent);
-                            existing.setDayChange(dayChange);
-                            existing.setDayChangePercent(dayChangePct);
-                            existing.setWeightPercent(weightPercent);
-                            existing.setSymbol(symbol);
-                            userHoldingRepository.save(existing);
-                        },
-                        () -> {
-                            UserHolding newHolding = new UserHolding(
-                                    user, instrument, qtyInt,
-                                    avgPrice, closePrice, lastPrice,
-                                    investedValue, currentValue,
-                                    pnl, pnlPercent,
-                                    dayChange, dayChangePct
-                            );
-                            newHolding.setWeightPercent(weightPercent);
-                            newHolding.setSymbol(symbol);
-                            userHoldingRepository.save(newHolding);
-                        }
-                );
+        UserHolding userHolding = new UserHolding(
+            user, instrument, qtyInt,
+            avgPrice, closePrice, lastPrice,
+            investedValue, currentValue,
+            pnl, pnlPercent,
+            dayChange, dayChangePct
+        );
+        userHolding.setWeightPercent(weightPercent);
+        userHolding.setSymbol(symbol);
+        return userHolding;
     }
 
     private BigDecimal computeTotalCurrentValue(List<ZerodhaHoldingItem> items) {
@@ -198,6 +198,9 @@ public class ZerodhaImportService {
 
     private BigDecimal nvl(BigDecimal value) {
         return value != null ? value : BigDecimal.ZERO;
+    }
+
+    private record PreparedHolding(String symbol, UserHolding userHolding) {
     }
 
 }

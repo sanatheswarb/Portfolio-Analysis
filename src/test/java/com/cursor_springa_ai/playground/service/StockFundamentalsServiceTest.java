@@ -8,6 +8,7 @@ import com.cursor_springa_ai.playground.repository.StockFundamentalsRepository;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 
+import java.lang.reflect.Field;
 import java.math.BigDecimal;
 import java.util.Optional;
 
@@ -21,11 +22,12 @@ import static org.mockito.Mockito.when;
 class StockFundamentalsServiceTest {
 
     @Test
-    void upsertIfStale_storesEtfSectorFromQuoteWhenMetricsAreUnavailable() {
+    void upsertIfStale_storesEtfSectorFromQuoteWhenMetricsAreUnavailable() throws Exception {
         StockFundamentalsRepository repository = mock(StockFundamentalsRepository.class);
         NseApiClient nseApiClient = mock(NseApiClient.class);
         StockFundamentalsService service = new StockFundamentalsService(repository, nseApiClient);
         Instrument instrument = new Instrument(1L, "NIFTYBEES", "NSE", "INF204KB14I2");
+        setField(instrument, "id", 10L);
         NseQuoteResponse quote = new NseQuoteResponse(
                 new NseQuoteResponse.Info("NIFTYBEES", "Nippon India ETF Nifty 50 BeES", true),
                 null,
@@ -34,7 +36,7 @@ class StockFundamentalsServiceTest {
                 new NseQuoteResponse.SecurityInfo(2235366385L)
         );
 
-        when(repository.findById(1L)).thenReturn(Optional.empty());
+        when(repository.findByInstrumentId(10L)).thenReturn(Optional.empty());
         when(nseApiClient.fetchQuote("NIFTYBEES")).thenReturn(Optional.of(quote));
         when(nseApiClient.fetchMetricsForSymbol("NIFTYBEES")).thenReturn(null);
         when(nseApiClient.resolveSector(quote)).thenReturn("ETF");
@@ -46,6 +48,14 @@ class StockFundamentalsServiceTest {
         verify(repository).save(savedFundamentals.capture());
         assertNotNull(previousClose);
         assertEquals(BigDecimal.valueOf(258.89), previousClose);
+        assertEquals(null, savedFundamentals.getValue().getId());
         assertEquals("ETF", savedFundamentals.getValue().getSector());
+        assertEquals(10L, savedFundamentals.getValue().getInstrumentId());
+    }
+
+    private void setField(Object target, String fieldName, Object value) throws Exception {
+        Field field = target.getClass().getDeclaredField(fieldName);
+        field.setAccessible(true);
+        field.set(target, value);
     }
 }
