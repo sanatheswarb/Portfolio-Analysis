@@ -2,7 +2,6 @@ package com.cursor_springa_ai.playground.ai.advisor;
 
 import com.cursor_springa_ai.playground.ai.reasoning.PortfolioReasoningContext;
 import com.cursor_springa_ai.playground.ai.reasoning.PortfolioReasoningTools;
-import com.cursor_springa_ai.playground.ai.advisor.PortfolioAdvisorPromptBuilder;
 import com.cursor_springa_ai.playground.dto.PortfolioAdviceResponse;
 import com.cursor_springa_ai.playground.dto.EnrichedHoldingData;
 import com.cursor_springa_ai.playground.dto.PortfolioSummary;
