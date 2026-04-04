@@ -12,6 +12,8 @@ import java.util.Optional;
 @Repository
 public interface UserHoldingRepository extends JpaRepository<UserHolding, Long> {
 
+    void deleteByUserId(Long userId);
+
     Optional<UserHolding> findByUserIdAndInstrumentId(Long userId, Long instrumentId);
 
     Optional<UserHolding> findByUserIdAndInstrumentSymbolIgnoreCase(Long userId, String symbol);
