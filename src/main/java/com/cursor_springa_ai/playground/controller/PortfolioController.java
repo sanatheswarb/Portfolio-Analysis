@@ -7,7 +7,7 @@ import com.cursor_springa_ai.playground.model.User;
 import com.cursor_springa_ai.playground.ai.orchestration.PortfolioAnalysisService;
 import com.cursor_springa_ai.playground.service.PortfolioService;
 import com.cursor_springa_ai.playground.service.ZerodhaAuthService;
-import com.cursor_springa_ai.playground.service.ZerodhaImportService;
+import com.cursor_springa_ai.playground.importer.ZerodhaImportService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;

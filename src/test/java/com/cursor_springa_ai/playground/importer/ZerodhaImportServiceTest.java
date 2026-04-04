@@ -1,10 +1,15 @@
-package com.cursor_springa_ai.playground.service;
+package com.cursor_springa_ai.playground.importer;
 
 import com.cursor_springa_ai.playground.dto.ZerodhaImportResponse;
 import com.cursor_springa_ai.playground.integration.zerodha.ZerodhaHoldingsClient;
 import com.cursor_springa_ai.playground.integration.zerodha.dto.ZerodhaHoldingItem;
 import com.cursor_springa_ai.playground.model.Instrument;
 import com.cursor_springa_ai.playground.model.User;
+import com.cursor_springa_ai.playground.service.InstrumentEnrichmentService;
+import com.cursor_springa_ai.playground.service.PortfolioStatsBatchService;
+import com.cursor_springa_ai.playground.service.StockFundamentalsService;
+import com.cursor_springa_ai.playground.service.UserHoldingSyncService;
+import com.cursor_springa_ai.playground.service.ZerodhaAuthService;
 import org.junit.jupiter.api.Test;
 import org.mockito.InOrder;
 
