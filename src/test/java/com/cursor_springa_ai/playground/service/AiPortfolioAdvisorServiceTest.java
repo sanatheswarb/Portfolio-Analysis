@@ -118,7 +118,7 @@ class AiPortfolioAdvisorServiceTest {
                 when(requestSpec.user(any(String.class))).thenReturn(requestSpec);
                 when(requestSpec.tools(any(Object[].class))).thenAnswer(invocation -> {
                         PortfolioReasoningTools tools = invocation.getArgument(0, PortfolioReasoningTools.class);
-                        tools.holdingDetails("INFY");
+                        tools.holdingDetails(List.of("INFY"));
                         return requestSpec;
                 });
                 when(requestSpec.options(any())).thenReturn(requestSpec);

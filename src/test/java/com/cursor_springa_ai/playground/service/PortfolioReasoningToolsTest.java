@@ -18,6 +18,7 @@ import java.math.BigDecimal;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class PortfolioReasoningToolsTest {
@@ -50,13 +51,129 @@ class PortfolioReasoningToolsTest {
     }
 
     @Test
-    void holdingDetails_isCaseInsensitive() {
+    void holdingsList_returnsSummaryForAllHoldingsSortedByAllocation() throws Exception {
         PortfolioReasoningTools tools = new PortfolioReasoningTools(sampleContext(), objectMapper);
 
-        String json = tools.holdingDetails("infy");
+        String json = tools.holdingsList();
+        JsonNode payload = objectMapper.readTree(json);
 
-        assertTrue(json.contains("\"symbol\":\"INFY\""));
-        assertTrue(json.contains(RiskFlag.HIGH_CONCENTRATION.name()));
+        assertEquals(3, payload.size());
+        // sorted by allocation descending
+        assertEquals("INFY", payload.get(0).path("symbol").asText());
+        assertEquals(35, payload.get(0).path("allocation_percent").asInt());
+        assertEquals("TCS", payload.get(1).path("symbol").asText());
+        assertEquals("HDFCBANK", payload.get(2).path("symbol").asText());
+        // minimal fields only — no sector, no pe, etc.
+        assertFalse(payload.get(0).has("sector"));
+        assertFalse(payload.get(0).has("pe"));
+    }
+
+    @Test
+    void holdingsList_includesValuationAndRiskFlags() throws Exception {
+        PortfolioReasoningTools tools = new PortfolioReasoningTools(sampleContext(), objectMapper);
+
+        String json = tools.holdingsList();
+        JsonNode infy = objectMapper.readTree(json).get(0);
+
+        assertEquals("OVERVALUED", infy.path("valuation_flag").asText());
+        assertTrue(infy.path("risk_flags").toString().contains(RiskFlag.HIGH_CONCENTRATION.name()));
+        // pnl_percent field is present
+        assertTrue(infy.has("pnl_percent"));
+    }
+
+    @Test
+    void holdingDetails_isCaseInsensitiveAndReturnsStructuredSections() throws Exception {
+        PortfolioReasoningTools tools = new PortfolioReasoningTools(sampleContext(), objectMapper);
+
+        String json = tools.holdingDetails(List.of("infy"));
+        JsonNode payload = objectMapper.readTree(json);
+
+        JsonNode infy = payload.get(0);
+        assertEquals("INFY", infy.path("holding_identity").path("symbol").asText());
+        assertEquals("technology", infy.path("holding_identity").path("sector").asText());
+        assertEquals("largecap", infy.path("holding_identity").path("market_cap_type").asText());
+        assertTrue(infy.has("portfolio_context"));
+        assertTrue(infy.has("valuation_context"));
+        assertTrue(infy.has("performance_context"));
+        assertTrue(infy.has("risk_context"));
+        assertTrue(infy.has("signals"));
+    }
+
+    @Test
+    void holdingDetails_portfolioContextHasCorrectFields() throws Exception {
+        PortfolioReasoningTools tools = new PortfolioReasoningTools(sampleContext(), objectMapper);
+
+        String json = tools.holdingDetails(List.of("INFY"));
+        JsonNode portfolioCtx = objectMapper.readTree(json).get(0).path("portfolio_context");
+
+        assertEquals(35, portfolioCtx.path("allocation_percent").asInt());
+        assertEquals("CORE", portfolioCtx.path("importance").asText());
+        assertEquals(1, portfolioCtx.path("portfolio_rank").asInt());
+        assertTrue(portfolioCtx.path("concentration_risk").asBoolean());
+    }
+
+    @Test
+    void holdingDetails_valuationContextHasGapPercent() throws Exception {
+        PortfolioReasoningTools tools = new PortfolioReasoningTools(sampleContext(), objectMapper);
+
+        // INFY: pe=28, sectorPe=22 → gap = (28-22)/22 * 100 ≈ 27.27
+        String json = tools.holdingDetails(List.of("INFY"));
+        JsonNode valuationCtx = objectMapper.readTree(json).get(0).path("valuation_context");
+
+        assertEquals("OVERVALUED", valuationCtx.path("valuation_flag").asText());
+        assertEquals(28, valuationCtx.path("pe").asInt());
+        assertEquals(22, valuationCtx.path("sector_pe").asInt());
+        assertTrue(valuationCtx.path("valuation_gap_percent").asDouble() > 0);
+    }
+
+    @Test
+    void holdingDetails_performanceContextHasTrendAndStatus() throws Exception {
+        PortfolioReasoningTools tools = new PortfolioReasoningTools(sampleContext(), objectMapper);
+
+        // INFY: distanceFromHigh=-7.89 → NEAR_HIGH, profitPercent=16.67 → PROFIT
+        String json = tools.holdingDetails(List.of("INFY"));
+        JsonNode perfCtx = objectMapper.readTree(json).get(0).path("performance_context");
+
+        assertEquals("PROFIT", perfCtx.path("performance_status").asText());
+        assertEquals("NEAR_HIGH", perfCtx.path("trend").asText());
+        assertTrue(perfCtx.has("momentum_score"));
+    }
+
+    @Test
+    void holdingDetails_riskContextAndSignals() throws Exception {
+        PortfolioReasoningTools tools = new PortfolioReasoningTools(sampleContext(), objectMapper);
+
+        String json = tools.holdingDetails(List.of("INFY"));
+        JsonNode infy = objectMapper.readTree(json).get(0);
+        JsonNode riskCtx = infy.path("risk_context");
+        JsonNode signals = infy.path("signals");
+
+        assertTrue(riskCtx.path("risk_flags").toString().contains(RiskFlag.HIGH_CONCENTRATION.name()));
+        assertEquals(RiskFlag.HIGH_CONCENTRATION.name(), riskCtx.path("primary_risk").asText());
+        assertTrue(signals.toString().contains("Largest portfolio holding"));
+        assertTrue(signals.toString().contains("Trading near 52 week high"));
+    }
+
+    @Test
+    void holdingDetails_supportsMultipleSymbols() throws Exception {
+        PortfolioReasoningTools tools = new PortfolioReasoningTools(sampleContext(), objectMapper);
+
+        String json = tools.holdingDetails(List.of("INFY", "TCS"));
+        JsonNode payload = objectMapper.readTree(json);
+
+        assertEquals(2, payload.size());
+        assertEquals("INFY", payload.get(0).path("holding_identity").path("symbol").asText());
+        assertEquals("TCS", payload.get(1).path("holding_identity").path("symbol").asText());
+    }
+
+    @Test
+    void holdingDetails_returnsErrorForUnknownSymbol() throws Exception {
+        PortfolioReasoningTools tools = new PortfolioReasoningTools(sampleContext(), objectMapper);
+
+        String json = tools.holdingDetails(List.of("UNKNOWN"));
+        JsonNode payload = objectMapper.readTree(json);
+
+        assertTrue(payload.get(0).has("error"));
     }
 
     @Test
