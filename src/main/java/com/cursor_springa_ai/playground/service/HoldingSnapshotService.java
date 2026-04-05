@@ -15,6 +15,7 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Objects;
 import java.util.logging.Logger;
 
 /**
@@ -106,7 +107,7 @@ public class HoldingSnapshotService {
         BigDecimal totalMarketValue = holdings.stream()
                 .map(h -> h.getClosePrice() != null && h.getClosePrice().compareTo(BigDecimal.ZERO) > 0
                         ? BigDecimal.valueOf(h.getQuantity()).multiply(h.getClosePrice())
-                        : BigDecimal.valueOf(h.getQuantity()).multiply(nvl(h.getLastPrice())))
+                        : BigDecimal.valueOf(h.getQuantity()).multiply(Objects.requireNonNullElse(h.getLastPrice(), BigDecimal.ZERO)))
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
 
         int written = 0;
@@ -125,10 +126,10 @@ public class HoldingSnapshotService {
             BigDecimal closePrice = holding.getClosePrice() != null
                     && holding.getClosePrice().compareTo(BigDecimal.ZERO) > 0
                     ? holding.getClosePrice()
-                    : nvl(holding.getLastPrice());
+                    : Objects.requireNonNullElse(holding.getLastPrice(), BigDecimal.ZERO);
 
             int quantity = holding.getQuantity();
-            BigDecimal avgPrice = nvl(holding.getAvgPrice());
+            BigDecimal avgPrice = Objects.requireNonNullElse(holding.getAvgPrice(), BigDecimal.ZERO);
             BigDecimal investedValue = BigDecimal.valueOf(quantity).multiply(avgPrice);
             BigDecimal marketValue = BigDecimal.valueOf(quantity).multiply(closePrice);
             BigDecimal pnl = marketValue.subtract(investedValue);
@@ -146,13 +147,5 @@ public class HoldingSnapshotService {
         }
 
         return written;
-    }
-
-    // ------------------------------------------------------------------
-    // private helpers
-    // ------------------------------------------------------------------
-
-    private BigDecimal nvl(BigDecimal value) {
-        return value != null ? value : BigDecimal.ZERO;
     }
 }

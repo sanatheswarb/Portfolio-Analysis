@@ -12,6 +12,7 @@ import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
 import java.util.List;
+import java.util.Objects;
 
 @Service
 public class PortfolioClassificationService {
@@ -41,8 +42,8 @@ public class PortfolioClassificationService {
     }
 
     private PortfolioRiskLevel classifyRisk(PortfolioStats stats, List<EnrichedHoldingData> holdings) {
-        BigDecimal largest = nvl(stats.getLargestWeight());
-        BigDecimal top3 = nvl(stats.getTop3HoldingPercent());
+        BigDecimal largest = Objects.requireNonNullElse(stats.getLargestWeight(), BigDecimal.ZERO);
+        BigDecimal top3 = Objects.requireNonNullElse(stats.getTop3HoldingPercent(), BigDecimal.ZERO);
         BigDecimal smallCap = calculateSmallCapExposure(holdings);
 
         if (largest.compareTo(BigDecimal.valueOf(30)) > 0
@@ -74,7 +75,7 @@ public class PortfolioClassificationService {
     }
 
     private ConcentrationLevel classifyConcentration(PortfolioStats stats) {
-        BigDecimal largest = nvl(stats.getLargestWeight());
+        BigDecimal largest = Objects.requireNonNullElse(stats.getLargestWeight(), BigDecimal.ZERO);
 
         if (largest.compareTo(BigDecimal.valueOf(25)) > 0) {
             return ConcentrationLevel.CONCENTRATED;
@@ -88,7 +89,7 @@ public class PortfolioClassificationService {
     }
 
     private PerformanceLevel classifyPerformance(PortfolioStats stats) {
-        BigDecimal pnl = nvl(stats.getPnlPercent());
+        BigDecimal pnl = Objects.requireNonNullElse(stats.getPnlPercent(), BigDecimal.ZERO);
 
         if (pnl.compareTo(BigDecimal.ZERO) < 0) {
             return PerformanceLevel.WEAK;
@@ -147,15 +148,11 @@ public class PortfolioClassificationService {
 
         for (EnrichedHoldingData h : holdings) {
             if ("SMALL".equalsIgnoreCase(h.marketCapType())) {
-                total = total.add(nvl(h.allocationPercent()));
+                total = total.add(Objects.requireNonNullElse(h.allocationPercent(), BigDecimal.ZERO));
             }
         }
 
         return total;
-    }
-
-    private BigDecimal nvl(BigDecimal v) {
-        return v == null ? BigDecimal.ZERO : v;
     }
 
     private PortfolioClassification emptyClassification() {

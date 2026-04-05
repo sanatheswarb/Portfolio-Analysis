@@ -14,9 +14,6 @@ import java.util.List;
  */
 public class FlaggedHoldingsBuilder {
 
-    private static final BigDecimal CORE_THRESHOLD = BigDecimal.valueOf(20);
-    private static final BigDecimal SIGNIFICANT_THRESHOLD = BigDecimal.valueOf(10);
-    private static final BigDecimal SUPPORTING_THRESHOLD = BigDecimal.valueOf(5);
     private static final BigDecimal ALLOCATION_FILTER_THRESHOLD = BigDecimal.valueOf(10);
     private static final BigDecimal NEAR_HIGH_THRESHOLD = BigDecimal.valueOf(-10);
     private static final BigDecimal DEEP_CORRECTION_THRESHOLD = BigDecimal.valueOf(-25);
@@ -25,7 +22,7 @@ public class FlaggedHoldingsBuilder {
     public List<FlaggedHoldingDto> build(PortfolioReasoningContext context) {
         return context.enrichedHoldings().stream()
                 .filter(this::requiresAttention)
-                .sorted((left, right) -> compareByAllocationDesc(right, left))
+                .sorted(HoldingClassifier.BY_ALLOCATION_DESC)
                 .limit(MAX_FLAGGED_HOLDINGS)
                 .map(this::toFlaggedHoldingDto)
                 .toList();
@@ -49,87 +46,24 @@ public class FlaggedHoldingsBuilder {
         return new FlaggedHoldingDto(
                 holding.symbol(),
                 holding.allocationPercent(),
-                classifyImportance(holding.allocationPercent()),
-                classifyPerformance(holding.profitPercent()),
+                HoldingClassifier.classifyImportance(holding.allocationPercent()),
+                HoldingClassifier.classifyPerformance(holding.profitPercent()),
                 holding.valuationFlag(),
                 holding.momentumScore(),
                 holding.distanceFromHigh(),
                 holding.marketCapType(),
-                classifyRiskSeverity(riskFlags),
-                determinePrimaryConcern(riskFlags),
+                HoldingClassifier.classifyRiskSeverity(riskFlags),
+                HoldingClassifier.determinePrimaryRisk(riskFlags),
                 riskFlags,
                 buildAttentionReasons(holding)
         );
-    }
-
-    private String classifyImportance(BigDecimal allocationPercent) {
-        if (allocationPercent == null) {
-            return "MINOR";
-        }
-        if (allocationPercent.compareTo(CORE_THRESHOLD) > 0) {
-            return "CORE";
-        }
-        if (allocationPercent.compareTo(SIGNIFICANT_THRESHOLD) > 0) {
-            return "SIGNIFICANT";
-        }
-        if (allocationPercent.compareTo(SUPPORTING_THRESHOLD) > 0) {
-            return "SUPPORTING";
-        }
-        return "MINOR";
-    }
-
-    private String classifyPerformance(BigDecimal profitPercent) {
-        if (profitPercent == null) {
-            return null;
-        }
-        int comparison = profitPercent.compareTo(BigDecimal.ZERO);
-        if (comparison > 0) {
-            return "PROFIT";
-        }
-        if (comparison < 0) {
-            return "LOSS";
-        }
-        return "BREAKEVEN";
-    }
-
-    private String classifyRiskSeverity(List<String> riskFlags) {
-        if (riskFlags.isEmpty()) {
-            return "LOW";
-        }
-        int count = riskFlags.size();
-        if (count >= 3) {
-            return "HIGH";
-        }
-        if (count == 2) {
-            return "MODERATE";
-        }
-        return "LOW";
-    }
-
-    private String determinePrimaryConcern(List<String> riskFlags) {
-        if (riskFlags.isEmpty()) {
-            return null;
-        }
-        List<String> priority = List.of(
-                "HIGH_CONCENTRATION",
-                "DEEP_CORRECTION",
-                "HIGH_VALUATION",
-                "PROFIT_BOOKING_ZONE",
-                "SMALL_CAP_RISK"
-        );
-        for (String flag : priority) {
-            if (riskFlags.contains(flag)) {
-                return flag;
-            }
-        }
-        return riskFlags.getFirst();
     }
 
     private List<String> buildAttentionReasons(EnrichedHoldingData holding) {
         List<String> reasons = new ArrayList<>();
 
         if (holding.allocationPercent() != null
-                && holding.allocationPercent().compareTo(CORE_THRESHOLD) > 0) {
+                && holding.allocationPercent().compareTo(HoldingClassifier.CORE_THRESHOLD) > 0) {
             reasons.add("Largest portfolio allocation");
         }
 
@@ -157,18 +91,5 @@ public class FlaggedHoldingsBuilder {
         }
 
         return List.copyOf(reasons);
-    }
-
-    private int compareByAllocationDesc(EnrichedHoldingData left, EnrichedHoldingData right) {
-        if (left.allocationPercent() == null && right.allocationPercent() == null) {
-            return 0;
-        }
-        if (left.allocationPercent() == null) {
-            return -1;
-        }
-        if (right.allocationPercent() == null) {
-            return 1;
-        }
-        return left.allocationPercent().compareTo(right.allocationPercent());
     }
 }
