@@ -30,9 +30,9 @@ public class AiAnalysisService {
     private final String advisorModel;
 
     public AiAnalysisService(AiAnalysisRepository aiAnalysisRepository,
-                             @Value("${portfolio.advisor.model:qwen2.5:7b-instruct}") String advisorModel) {
+                             @Value("${portfolio.advisor.model:qwen2.5:7b-instruct}") String advisorModel, ObjectMapper objectMapper) {
         this.aiAnalysisRepository = aiAnalysisRepository;
-        this.objectMapper = new ObjectMapper();
+        this.objectMapper = objectMapper;
         this.advisorModel = advisorModel;
     }
 

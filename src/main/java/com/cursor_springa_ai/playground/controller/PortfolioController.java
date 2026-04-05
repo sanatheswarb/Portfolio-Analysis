@@ -68,7 +68,7 @@ public class PortfolioController {
     private User requireAuthenticatedUser() {
         User currentUser = zerodhaAuthService.getCurrentUser();
         if (currentUser == null) {
-            throw new IllegalStateException("No authenticated Zerodha user found. Please complete login first.");
+            throw new NotAuthenticatedException("No authenticated Zerodha user found. Please complete login first.");
         }
         return currentUser;
     }

@@ -17,21 +17,9 @@ import java.util.Map;
  */
 public class HoldingDetailsBuilder {
 
-    private static final BigDecimal CORE_THRESHOLD = BigDecimal.valueOf(20);
-    private static final BigDecimal SIGNIFICANT_THRESHOLD = BigDecimal.valueOf(10);
-    private static final BigDecimal SUPPORTING_THRESHOLD = BigDecimal.valueOf(5);
-    private static final BigDecimal CONCENTRATION_THRESHOLD = BigDecimal.valueOf(20);
     private static final BigDecimal NEAR_HIGH_THRESHOLD = BigDecimal.valueOf(-10);
     private static final BigDecimal PULLBACK_THRESHOLD = BigDecimal.valueOf(-30);
     private static final BigDecimal HIGH_MOMENTUM_THRESHOLD = BigDecimal.valueOf(70);
-
-    private static final List<String> RISK_PRIORITY = List.of(
-            "HIGH_CONCENTRATION",
-            "DEEP_CORRECTION",
-            "HIGH_VALUATION",
-            "PROFIT_BOOKING_ZONE",
-            "SMALL_CAP_RISK"
-    );
 
     /**
      * Builds a structured details map for the given holding within the full portfolio context.
@@ -66,7 +54,7 @@ public class HoldingDetailsBuilder {
     private Map<String, Object> portfolioContext(EnrichedHoldingData holding, int rank) {
         Map<String, Object> context = new LinkedHashMap<>();
         context.put("allocation_percent", holding.allocationPercent());
-        context.put("importance", classifyImportance(holding.allocationPercent()));
+        context.put("importance", HoldingClassifier.classifyImportance(holding.allocationPercent()));
         context.put("portfolio_rank", rank);
         context.put("concentration_risk", isConcentrationRisk(holding.allocationPercent()));
         return context;
@@ -84,7 +72,7 @@ public class HoldingDetailsBuilder {
     private Map<String, Object> performanceContext(EnrichedHoldingData holding) {
         Map<String, Object> context = new LinkedHashMap<>();
         context.put("pnl_percent", holding.profitPercent());
-        context.put("performance_status", classifyPerformance(holding.profitPercent()));
+        context.put("performance_status", HoldingClassifier.classifyPerformance(holding.profitPercent()));
         context.put("distance_from_52w_high", holding.distanceFromHigh());
         context.put("momentum_score", holding.momentumScore());
         context.put("trend", classifyTrend(holding.distanceFromHigh()));
@@ -94,8 +82,8 @@ public class HoldingDetailsBuilder {
     private Map<String, Object> riskContext(List<String> riskFlags) {
         Map<String, Object> context = new LinkedHashMap<>();
         context.put("risk_flags", riskFlags);
-        context.put("risk_severity", classifyRiskSeverity(riskFlags));
-        context.put("primary_risk", determinePrimaryRisk(riskFlags));
+        context.put("risk_severity", HoldingClassifier.classifyRiskSeverity(riskFlags));
+        context.put("primary_risk", HoldingClassifier.determinePrimaryRisk(riskFlags));
         return context;
     }
 
@@ -155,24 +143,8 @@ public class HoldingDetailsBuilder {
         return sorted.size() + 1;
     }
 
-    private String classifyImportance(BigDecimal allocationPercent) {
-        if (allocationPercent == null) {
-            return "MINOR";
-        }
-        if (allocationPercent.compareTo(CORE_THRESHOLD) > 0) {
-            return "CORE";
-        }
-        if (allocationPercent.compareTo(SIGNIFICANT_THRESHOLD) > 0) {
-            return "SIGNIFICANT";
-        }
-        if (allocationPercent.compareTo(SUPPORTING_THRESHOLD) > 0) {
-            return "SUPPORTING";
-        }
-        return "MINOR";
-    }
-
     private boolean isConcentrationRisk(BigDecimal allocationPercent) {
-        return allocationPercent != null && allocationPercent.compareTo(CONCENTRATION_THRESHOLD) > 0;
+        return allocationPercent != null && allocationPercent.compareTo(HoldingClassifier.CONCENTRATION_THRESHOLD) > 0;
     }
 
     private BigDecimal computeValuationGap(BigDecimal pe, BigDecimal sectorPe) {
@@ -183,20 +155,6 @@ public class HoldingDetailsBuilder {
                 .divide(sectorPe, 4, RoundingMode.HALF_UP)
                 .multiply(BigDecimal.valueOf(100))
                 .setScale(2, RoundingMode.HALF_UP);
-    }
-
-    private String classifyPerformance(BigDecimal profitPercent) {
-        if (profitPercent == null) {
-            return null;
-        }
-        int comparison = profitPercent.compareTo(BigDecimal.ZERO);
-        if (comparison > 0) {
-            return "PROFIT";
-        }
-        if (comparison < 0) {
-            return "LOSS";
-        }
-        return "BREAKEVEN";
     }
 
     private String classifyTrend(BigDecimal distanceFromHigh) {
@@ -210,31 +168,5 @@ public class HoldingDetailsBuilder {
             return "PULLBACK";
         }
         return "DEEP_CORRECTION";
-    }
-
-    private String classifyRiskSeverity(List<String> riskFlags) {
-        int count = riskFlags.size();
-        if (count >= 3) {
-            return "HIGH";
-        }
-        if (count == 2) {
-            return "MODERATE";
-        }
-        if (count == 1) {
-            return "LOW";
-        }
-        return "NONE";
-    }
-
-    private String determinePrimaryRisk(List<String> riskFlags) {
-        if (riskFlags.isEmpty()) {
-            return null;
-        }
-        for (String flag : RISK_PRIORITY) {
-            if (riskFlags.contains(flag)) {
-                return flag;
-            }
-        }
-        return riskFlags.getFirst();
     }
 }

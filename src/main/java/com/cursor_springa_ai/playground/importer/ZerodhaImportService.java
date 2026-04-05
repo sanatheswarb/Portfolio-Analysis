@@ -1,5 +1,6 @@
 package com.cursor_springa_ai.playground.importer;
 
+import com.cursor_springa_ai.playground.controller.NotAuthenticatedException;
 import com.cursor_springa_ai.playground.dto.ZerodhaImportResponse;
 import com.cursor_springa_ai.playground.integration.zerodha.ZerodhaHoldingsClient;
 import com.cursor_springa_ai.playground.integration.zerodha.dto.ZerodhaHoldingItem;
@@ -65,7 +66,7 @@ public class ZerodhaImportService {
     public ZerodhaImportResponse importHoldings() {
         User currentUser = zerodhaAuthService.getCurrentUser();
         if (currentUser == null) {
-            throw new IllegalStateException(
+            throw new NotAuthenticatedException(
                     "No authenticated Zerodha user found. Please complete login first.");
         }
 

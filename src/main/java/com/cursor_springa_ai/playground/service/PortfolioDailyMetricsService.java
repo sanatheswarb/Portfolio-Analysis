@@ -15,6 +15,7 @@ import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Objects;
 import java.util.logging.Logger;
 
 /**
@@ -110,9 +111,9 @@ public class PortfolioDailyMetricsService {
         BigDecimal largestWeight = BigDecimal.ZERO;
 
         for (UserHolding h : holdings) {
-            totalInvested = totalInvested.add(nvl(h.getInvestedValue()));
-            totalValue = totalValue.add(nvl(h.getCurrentValue()));
-            BigDecimal w = nvl(h.getWeightPercent());
+            totalInvested = totalInvested.add(Objects.requireNonNullElse(h.getInvestedValue(), BigDecimal.ZERO));
+            totalValue = totalValue.add(Objects.requireNonNullElse(h.getCurrentValue(), BigDecimal.ZERO));
+            BigDecimal w = Objects.requireNonNullElse(h.getWeightPercent(), BigDecimal.ZERO);
             if (w.compareTo(largestWeight) > 0) {
                 largestWeight = w;
             }
@@ -134,13 +135,5 @@ public class PortfolioDailyMetricsService {
         logger.info("portfolio_daily_metrics saved: user=" + user.getId() + " date=" + date
                 + " totalValue=" + totalValue + " pnl=" + totalPnl);
         return true;
-    }
-
-    // ------------------------------------------------------------------
-    // private helpers
-    // ------------------------------------------------------------------
-
-    private BigDecimal nvl(BigDecimal v) {
-        return v != null ? v : BigDecimal.ZERO;
     }
 }

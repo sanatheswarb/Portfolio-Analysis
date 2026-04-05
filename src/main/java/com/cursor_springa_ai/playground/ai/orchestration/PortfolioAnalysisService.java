@@ -1,5 +1,6 @@
 package com.cursor_springa_ai.playground.ai.orchestration;
 
+import com.cursor_springa_ai.playground.controller.NotAuthenticatedException;
 import com.cursor_springa_ai.playground.dto.EnrichedHoldingData;
 import com.cursor_springa_ai.playground.dto.PortfolioAdviceResponse;
 import com.cursor_springa_ai.playground.dto.PortfolioAnalysisResponse;
@@ -56,7 +57,7 @@ public class PortfolioAnalysisService {
     public PortfolioAnalysisResponse analyzeCurrentUserPortfolio() {
         User currentUser = zerodhaAuthService.getCurrentUser();
         if (currentUser == null) {
-            throw new IllegalStateException(
+            throw new NotAuthenticatedException(
                     "No authenticated Zerodha user found. Please complete login first.");
         }
 

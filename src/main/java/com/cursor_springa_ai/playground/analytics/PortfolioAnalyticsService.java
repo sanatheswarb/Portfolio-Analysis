@@ -17,6 +17,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Objects;
 
 @Service
 public class PortfolioAnalyticsService {
@@ -35,10 +36,10 @@ public class PortfolioAnalyticsService {
         BigDecimal sumWeightSquared = BigDecimal.ZERO;
 
         for (UserHolding holding : safeHoldings) {
-            totalInvested = totalInvested.add(nvl(holding.getInvestedValue()));
-            totalValue = totalValue.add(nvl(holding.getCurrentValue()));
-            dayChange = dayChange.add(nvl(holding.getDayChange()));
-            BigDecimal weight = nvl(holding.getWeightPercent());
+            totalInvested = totalInvested.add(Objects.requireNonNullElse(holding.getInvestedValue(), BigDecimal.ZERO));
+            totalValue = totalValue.add(Objects.requireNonNullElse(holding.getCurrentValue(), BigDecimal.ZERO));
+            dayChange = dayChange.add(Objects.requireNonNullElse(holding.getDayChange(), BigDecimal.ZERO));
+            BigDecimal weight = Objects.requireNonNullElse(holding.getWeightPercent(), BigDecimal.ZERO);
             if (weight.compareTo(largestWeight) > 0) {
                 largestWeight = weight;
             }
@@ -57,12 +58,12 @@ public class PortfolioAnalyticsService {
                 : BigDecimal.ZERO;
 
         BigDecimal top3HoldingPercent = safeHoldings.stream()
-                .map(holding -> nvl(holding.getWeightPercent()))
+                .map(holding -> Objects.requireNonNullElse(holding.getWeightPercent(), BigDecimal.ZERO))
                 .sorted(Comparator.reverseOrder())
                 .limit(3)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
 
-		BigDecimal diversificationScore = calculateDiversificationScore(safeHoldings.size(), sumWeightSquared);
+        BigDecimal diversificationScore = calculateDiversificationScore(safeHoldings.size(), sumWeightSquared);
 
         return new PortfolioStats(
                 user.getId(),
@@ -80,88 +81,84 @@ public class PortfolioAnalyticsService {
         );
     }
 
-	public PortfolioSummary toPortfolioSummary(PortfolioStats portfolioStats) {
-		if (portfolioStats == null) {
-			return new PortfolioSummary(BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO, 0);
-		}
-		return new PortfolioSummary(
-				scale(portfolioStats.getTotalInvested()),
-				scale(portfolioStats.getTotalValue()),
-				scale(portfolioStats.getTotalPnl()),
-				scale(portfolioStats.getPnlPercent()),
-				portfolioStats.getStockCount() != null ? portfolioStats.getStockCount() : 0
-		);
-	}
+    public PortfolioSummary toPortfolioSummary(PortfolioStats portfolioStats) {
+        if (portfolioStats == null) {
+            return new PortfolioSummary(BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO, 0);
+        }
+        return new PortfolioSummary(
+                scale(portfolioStats.getTotalInvested()),
+                scale(portfolioStats.getTotalValue()),
+                scale(portfolioStats.getTotalPnl()),
+                scale(portfolioStats.getPnlPercent()),
+                portfolioStats.getStockCount() != null ? portfolioStats.getStockCount() : 0
+        );
+    }
 
-	public List<String> calculatePortfolioRiskFlags(PortfolioStats stats, List<EnrichedHoldingData> enrichedHoldings) {
-		if (stats == null || enrichedHoldings == null || enrichedHoldings.isEmpty()) {
-			return List.of();
-		}
+    public List<String> calculatePortfolioRiskFlags(PortfolioStats stats, List<EnrichedHoldingData> enrichedHoldings) {
+        if (stats == null || enrichedHoldings == null || enrichedHoldings.isEmpty()) {
+            return List.of();
+        }
 
-		List<String> flags = new ArrayList<>();
-		BigDecimal largestWeight = nvl(stats.getLargestWeight());
-		BigDecimal top3HoldingPercent = nvl(stats.getTop3HoldingPercent());
-		int stockCount = stats.getStockCount() != null ? stats.getStockCount() : enrichedHoldings.size();
+        List<String> flags = new ArrayList<>();
+        BigDecimal largestWeight = Objects.requireNonNullElse(stats.getLargestWeight(), BigDecimal.ZERO);
+        BigDecimal top3HoldingPercent = Objects.requireNonNullElse(stats.getTop3HoldingPercent(), BigDecimal.ZERO);
+        int stockCount = stats.getStockCount() != null ? stats.getStockCount() : enrichedHoldings.size();
 
-		if (largestWeight.compareTo(HIGH_CONCENTRATION_THRESHOLD) > 0) {
-			flags.add(RiskFlag.HIGH_CONCENTRATION.name());
-		}
-		if (top3HoldingPercent.compareTo(TOP_HEAVY_THRESHOLD) > 0) {
-			flags.add(RiskFlag.TOP_HEAVY_PORTFOLIO.name());
-		}
+        if (largestWeight.compareTo(HIGH_CONCENTRATION_THRESHOLD) > 0) {
+            flags.add(RiskFlag.HIGH_CONCENTRATION.name());
+        }
+        if (top3HoldingPercent.compareTo(TOP_HEAVY_THRESHOLD) > 0) {
+            flags.add(RiskFlag.TOP_HEAVY_PORTFOLIO.name());
+        }
 
-		calculateSectorExposure(enrichedHoldings).forEach((sector, exposure) -> {
-			if (exposure.compareTo(SECTOR_CONCENTRATION_THRESHOLD) > 0) {
-				flags.add("SECTOR_CONCENTRATION_" + sector.toUpperCase(Locale.ROOT).replace(" ", "_"));
-			}
-		});
+        calculateSectorExposure(enrichedHoldings).forEach((sector, exposure) -> {
+            if (exposure.compareTo(SECTOR_CONCENTRATION_THRESHOLD) > 0) {
+                flags.add("SECTOR_CONCENTRATION_" + sector.toUpperCase(Locale.ROOT).replace(" ", "_"));
+            }
+        });
 
-		if (stockCount < MIN_DIVERSIFIED_HOLDINGS) {
-			flags.add(RiskFlag.UNDER_DIVERSIFIED.name());
-		}
+        if (stockCount < MIN_DIVERSIFIED_HOLDINGS) {
+            flags.add(RiskFlag.UNDER_DIVERSIFIED.name());
+        }
 
-		return List.copyOf(flags);
-	}
+        return List.copyOf(flags);
+    }
 
-	private Map<String, BigDecimal> calculateSectorExposure(List<EnrichedHoldingData> enrichedHoldings) {
-		Map<String, BigDecimal> sectorExposure = new LinkedHashMap<>();
-		for (EnrichedHoldingData holding : enrichedHoldings) {
-			String sector = holding.sector();
-			if (sector == null || sector.isBlank()) {
-				sector = "UNKNOWN";
-			}
-			sectorExposure.merge(sector, nvl(holding.allocationPercent()), BigDecimal::add);
-		}
-		return sectorExposure;
-	}
+    private Map<String, BigDecimal> calculateSectorExposure(List<EnrichedHoldingData> enrichedHoldings) {
+        Map<String, BigDecimal> sectorExposure = new LinkedHashMap<>();
+        for (EnrichedHoldingData holding : enrichedHoldings) {
+            String sector = holding.sector();
+            if (sector == null || sector.isBlank()) {
+                sector = "UNKNOWN";
+            }
+            sectorExposure.merge(sector, Objects.requireNonNullElse(holding.allocationPercent(), BigDecimal.ZERO), BigDecimal::add);
+        }
+        return sectorExposure;
+    }
 
-	private BigDecimal calculateDiversificationScore(int holdingCount, BigDecimal sumWeightSquared) {
-		if (holdingCount <= 1) {
-			return BigDecimal.ZERO;
-		}
+    private BigDecimal calculateDiversificationScore(int holdingCount, BigDecimal sumWeightSquared) {
+        if (holdingCount <= 1) {
+            return BigDecimal.ZERO;
+        }
 
-		BigDecimal rawScore = BigDecimal.ONE.subtract(sumWeightSquared);
-		BigDecimal maxPossibleScore = BigDecimal.ONE.subtract(
-				BigDecimal.ONE.divide(BigDecimal.valueOf(holdingCount), 6, RoundingMode.HALF_UP));
+        BigDecimal rawScore = BigDecimal.ONE.subtract(sumWeightSquared);
+        BigDecimal maxPossibleScore = BigDecimal.ONE.subtract(
+                BigDecimal.ONE.divide(BigDecimal.valueOf(holdingCount), 6, RoundingMode.HALF_UP));
 
-		if (maxPossibleScore.compareTo(BigDecimal.ZERO) <= 0) {
-			return BigDecimal.ZERO;
-		}
+        if (maxPossibleScore.compareTo(BigDecimal.ZERO) <= 0) {
+            return BigDecimal.ZERO;
+        }
 
-		return rawScore
-				.divide(maxPossibleScore, 4, RoundingMode.HALF_UP)
-				.max(BigDecimal.ZERO)
-				.min(BigDecimal.ONE);
-	}
+        return rawScore
+                .divide(maxPossibleScore, 4, RoundingMode.HALF_UP)
+                .max(BigDecimal.ZERO)
+                .min(BigDecimal.ONE);
+    }
 
-	private BigDecimal scale(BigDecimal value) {
-		if (value == null) {
-			return BigDecimal.ZERO;
-		}
-		return value.setScale(2, RoundingMode.HALF_UP);
-	}
-
-	private BigDecimal nvl(BigDecimal value) {
-		return value != null ? value : BigDecimal.ZERO;
-	}
+    private BigDecimal scale(BigDecimal value) {
+        if (value == null) {
+            return BigDecimal.ZERO;
+        }
+        return value.setScale(2, RoundingMode.HALF_UP);
+    }
 }
