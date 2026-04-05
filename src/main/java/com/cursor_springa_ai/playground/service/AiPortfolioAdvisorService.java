@@ -1,6 +1,7 @@
 package com.cursor_springa_ai.playground.service;
 
 import com.cursor_springa_ai.playground.dto.PortfolioAdviceResponse;
+import com.cursor_springa_ai.playground.model.AiAnalysis;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.ollama.api.OllamaChatOptions;
@@ -17,6 +18,7 @@ public class AiPortfolioAdvisorService {
         private final ChatClient chatClient;
         private final ObjectMapper objectMapper;
         private final PortfolioAdvisorPromptBuilder promptBuilder;
+        private final PortfolioChatPromptBuilder chatPromptBuilder;
 
         @Value("${portfolio.advisor.model:qwen2.5:7b-instruct}")
         private String advisorModel;
@@ -38,10 +40,12 @@ public class AiPortfolioAdvisorService {
 
         public AiPortfolioAdvisorService(ChatClient.Builder chatClientBuilder,
                         ObjectMapper objectMapper,
-                        PortfolioAdvisorPromptBuilder promptBuilder) {
+                        PortfolioAdvisorPromptBuilder promptBuilder,
+                        PortfolioChatPromptBuilder chatPromptBuilder) {
                 this.chatClient = chatClientBuilder.build();
                 this.objectMapper = objectMapper;
                 this.promptBuilder = promptBuilder;
+                this.chatPromptBuilder = chatPromptBuilder;
         }
 
         public PortfolioAdviceResponse generateInsights(PortfolioReasoningContext reasoningContext) {
@@ -71,6 +75,26 @@ public class AiPortfolioAdvisorService {
                 }
 
                 return fallbackAdviceResponse(secondAttempt.aiResponse());
+        }
+
+        public String answerQuestion(AnalysisSnapshot snapshot, List<AiAnalysis> chats, String question) {
+                String systemPrompt = promptBuilder.buildSystemPrompt();
+                String userPrompt = chatPromptBuilder.buildPrompt(snapshot, chats, question);
+                PortfolioReasoningContext reasoningContext = snapshot.toReasoningContext();
+                PortfolioReasoningTools reasoningTools = new PortfolioReasoningTools(reasoningContext, objectMapper);
+
+                String response = chatClient.prompt()
+                                .system(systemPrompt)
+                                .user(userPrompt)
+                                .tools(reasoningTools)
+                                .options(buildOptions(Math.max(numPredict, 256), Math.min(temperature, 0.2d)))
+                                .call()
+                                .content();
+
+                if (response == null || response.isBlank()) {
+                        return "I could not generate an answer from the saved portfolio analysis.";
+                }
+                return response.trim();
         }
 
         private AdvisorCallResult callAdvisor(

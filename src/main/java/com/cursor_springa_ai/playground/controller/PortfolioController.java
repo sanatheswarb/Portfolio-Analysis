@@ -1,10 +1,13 @@
 package com.cursor_springa_ai.playground.controller;
 
+import com.cursor_springa_ai.playground.dto.ChatRequest;
+import com.cursor_springa_ai.playground.dto.ChatResponse;
 import com.cursor_springa_ai.playground.dto.PortfolioAnalysisResponse;
 import com.cursor_springa_ai.playground.dto.UserHoldingDto;
 import com.cursor_springa_ai.playground.dto.ZerodhaImportResponse;
 import com.cursor_springa_ai.playground.model.User;
 import com.cursor_springa_ai.playground.service.PortfolioAnalysisService;
+import com.cursor_springa_ai.playground.service.PortfolioChatService;
 import com.cursor_springa_ai.playground.service.PortfolioService;
 import com.cursor_springa_ai.playground.service.ZerodhaAuthService;
 import com.cursor_springa_ai.playground.service.ZerodhaImportService;
@@ -13,6 +16,7 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -25,17 +29,20 @@ public class PortfolioController {
 
     private final PortfolioService portfolioService;
     private final PortfolioAnalysisService portfolioAnalysisService;
+    private final PortfolioChatService portfolioChatService;
     private final ZerodhaImportService zerodhaImportService;
     private final ZerodhaAuthService zerodhaAuthService;
 
     public PortfolioController(
             PortfolioService portfolioService,
             PortfolioAnalysisService portfolioAnalysisService,
+            PortfolioChatService portfolioChatService,
             ZerodhaImportService zerodhaImportService,
             ZerodhaAuthService zerodhaAuthService
     ) {
         this.portfolioService = portfolioService;
         this.portfolioAnalysisService = portfolioAnalysisService;
+        this.portfolioChatService = portfolioChatService;
         this.zerodhaImportService = zerodhaImportService;
         this.zerodhaAuthService = zerodhaAuthService;
     }
@@ -63,6 +70,15 @@ public class PortfolioController {
     @GetMapping("/analysis")
     public PortfolioAnalysisResponse analyzePortfolio() {
         return portfolioAnalysisService.analyzeCurrentUserPortfolio();
+    }
+
+    @Operation(summary = "Ask a follow-up portfolio question",
+            description = "Answers a portfolio question using the latest saved analysis context and recent chat history.",
+            responses = @ApiResponse(responseCode = "200", description = "Chat response returned"))
+    @PostMapping("/chat")
+    public ChatResponse askQuestion(@RequestBody ChatRequest request) {
+        User user = requireAuthenticatedUser();
+        return portfolioChatService.askQuestion(user, request.getQuestion());
     }
 
     private User requireAuthenticatedUser() {

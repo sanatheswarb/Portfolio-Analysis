@@ -44,6 +44,9 @@ public class AiAnalysis {
     @Column(name = "analysis_type", nullable = false, length = 50)
     private String analysisType;
 
+    @Column(name = "question")
+    private String question;
+
     /**
      * Full AI response payload serialised as JSON.
      * Stored as JSONB in PostgreSQL for efficient querying.
@@ -51,6 +54,19 @@ public class AiAnalysis {
     @Column(name = "analysis_data", nullable = false)
     @JdbcTypeCode(SqlTypes.JSON)
     private String analysisData;
+
+    @Column(name = "analysis_context")
+    @JdbcTypeCode(SqlTypes.JSON)
+    private String analysisContext;
+
+    @Column(name = "parent_analysis_id")
+    private Long parentAnalysisId;
+
+    @Column(name = "model_used", length = 100)
+    private String modelUsed;
+
+    @Column(name = "analysis_version", length = 50)
+    private String analysisVersion;
 
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
@@ -60,9 +76,27 @@ public class AiAnalysis {
     }
 
     public AiAnalysis(User user, String analysisType, String analysisData) {
+        this(user, analysisType, null, analysisData, null, null, null, null);
+    }
+
+    public AiAnalysis(
+            User user,
+            String analysisType,
+            String question,
+            String analysisData,
+            String analysisContext,
+            Long parentAnalysisId,
+            String modelUsed,
+            String analysisVersion
+    ) {
         this.user = user;
         this.analysisType = analysisType;
+        this.question = question;
         this.analysisData = analysisData;
+        this.analysisContext = analysisContext;
+        this.parentAnalysisId = parentAnalysisId;
+        this.modelUsed = modelUsed;
+        this.analysisVersion = analysisVersion;
     }
 
     public Long getId() { return id; }
@@ -71,7 +105,17 @@ public class AiAnalysis {
 
     public String getAnalysisType() { return analysisType; }
 
+    public String getQuestion() { return question; }
+
     public String getAnalysisData() { return analysisData; }
+
+    public String getAnalysisContext() { return analysisContext; }
+
+    public Long getParentAnalysisId() { return parentAnalysisId; }
+
+    public String getModelUsed() { return modelUsed; }
+
+    public String getAnalysisVersion() { return analysisVersion; }
 
     public LocalDateTime getCreatedAt() { return createdAt; }
 }

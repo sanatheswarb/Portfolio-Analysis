@@ -77,7 +77,7 @@ public class PortfolioAnalysisService {
         PortfolioAdviceResponse aiInsights = aiPortfolioAdvisorService.generateInsights(reasoningContext);
 
         // Persist the AI response to ai_analysis (append-only audit log)
-        aiAnalysisService.savePortfolioAdvice(currentUser, aiInsights);
+        aiAnalysisService.savePortfolioAdvice(currentUser, aiInsights, reasoningContext);
 
         return new PortfolioAnalysisResponse(
                 portfolioUserId,

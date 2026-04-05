@@ -31,6 +31,7 @@ class AiPortfolioAdvisorServiceTest {
         ChatClient.ChatClientRequestSpec requestSpec = mock(ChatClient.ChatClientRequestSpec.class);
         ChatClient.CallResponseSpec responseSpec = mock(ChatClient.CallResponseSpec.class);
         PortfolioAdvisorPromptBuilder promptBuilder = mock(PortfolioAdvisorPromptBuilder.class);
+        PortfolioChatPromptBuilder chatPromptBuilder = mock(PortfolioChatPromptBuilder.class);
         ObjectMapper objectMapper = new ObjectMapper();
         PortfolioReasoningContext reasoningContext = reasoningContext();
 
@@ -52,7 +53,7 @@ class AiPortfolioAdvisorServiceTest {
         when(promptBuilder.buildReasoningRequest(eq(reasoningContext)))
                 .thenReturn("user");
 
-        AiPortfolioAdvisorService service = new AiPortfolioAdvisorService(builder, objectMapper, promptBuilder);
+        AiPortfolioAdvisorService service = new AiPortfolioAdvisorService(builder, objectMapper, promptBuilder, chatPromptBuilder);
         PortfolioAdviceResponse response = service.generateInsights(reasoningContext);
 
         verify(promptBuilder).buildSystemPrompt();
@@ -69,6 +70,7 @@ class AiPortfolioAdvisorServiceTest {
                 ChatClient.ChatClientRequestSpec requestSpec = mock(ChatClient.ChatClientRequestSpec.class);
                 ChatClient.CallResponseSpec responseSpec = mock(ChatClient.CallResponseSpec.class);
                 PortfolioAdvisorPromptBuilder promptBuilder = mock(PortfolioAdvisorPromptBuilder.class);
+                PortfolioChatPromptBuilder chatPromptBuilder = mock(PortfolioChatPromptBuilder.class);
                 ObjectMapper objectMapper = new ObjectMapper();
                 PortfolioReasoningContext reasoningContext = reasoningContext();
 
@@ -94,7 +96,7 @@ class AiPortfolioAdvisorServiceTest {
                 when(promptBuilder.buildReasoningRequest(eq(reasoningContext))).thenReturn("user");
                 when(promptBuilder.buildRetryReasoningRequest(anyString())).thenReturn("retry-user");
 
-                AiPortfolioAdvisorService service = new AiPortfolioAdvisorService(builder, objectMapper, promptBuilder);
+                AiPortfolioAdvisorService service = new AiPortfolioAdvisorService(builder, objectMapper, promptBuilder, chatPromptBuilder);
                 PortfolioAdviceResponse response = service.generateInsights(reasoningContext);
 
                 verify(chatClient, times(2)).prompt();
@@ -109,6 +111,7 @@ class AiPortfolioAdvisorServiceTest {
                 ChatClient.ChatClientRequestSpec requestSpec = mock(ChatClient.ChatClientRequestSpec.class);
                 ChatClient.CallResponseSpec responseSpec = mock(ChatClient.CallResponseSpec.class);
                 PortfolioAdvisorPromptBuilder promptBuilder = mock(PortfolioAdvisorPromptBuilder.class);
+                PortfolioChatPromptBuilder chatPromptBuilder = mock(PortfolioChatPromptBuilder.class);
                 ObjectMapper objectMapper = new ObjectMapper();
                 PortfolioReasoningContext reasoningContext = reasoningContext();
 
@@ -129,12 +132,43 @@ class AiPortfolioAdvisorServiceTest {
                 when(promptBuilder.buildSystemPrompt()).thenReturn("system");
                 when(promptBuilder.buildReasoningRequest(eq(reasoningContext))).thenReturn("user");
 
-                AiPortfolioAdvisorService service = new AiPortfolioAdvisorService(builder, objectMapper, promptBuilder);
+                AiPortfolioAdvisorService service = new AiPortfolioAdvisorService(builder, objectMapper, promptBuilder, chatPromptBuilder);
 
                 IllegalStateException exception = assertThrows(IllegalStateException.class,
                                 () -> service.generateInsights(reasoningContext));
 
                 assertEquals("Advisor response rejected because no portfolio_overview tool call was made.", exception.getMessage());
+        }
+
+        @Test
+        void answerQuestion_usesSavedSnapshotPrompt() {
+                ChatClient.Builder builder = mock(ChatClient.Builder.class);
+                ChatClient chatClient = mock(ChatClient.class);
+                ChatClient.ChatClientRequestSpec requestSpec = mock(ChatClient.ChatClientRequestSpec.class);
+                ChatClient.CallResponseSpec responseSpec = mock(ChatClient.CallResponseSpec.class);
+                PortfolioAdvisorPromptBuilder promptBuilder = mock(PortfolioAdvisorPromptBuilder.class);
+                PortfolioChatPromptBuilder chatPromptBuilder = mock(PortfolioChatPromptBuilder.class);
+                ObjectMapper objectMapper = new ObjectMapper();
+                PortfolioReasoningContext reasoningContext = reasoningContext();
+                AnalysisSnapshot snapshot = AnalysisSnapshot.from(reasoningContext);
+
+                when(builder.build()).thenReturn(chatClient);
+                when(chatClient.prompt()).thenReturn(requestSpec);
+                when(requestSpec.system(any(String.class))).thenReturn(requestSpec);
+                when(requestSpec.user(any(String.class))).thenReturn(requestSpec);
+                when(requestSpec.tools(any(Object[].class))).thenReturn(requestSpec);
+                when(requestSpec.options(any())).thenReturn(requestSpec);
+                when(requestSpec.call()).thenReturn(responseSpec);
+                when(responseSpec.content()).thenReturn("The concentration risk remains high.");
+                when(promptBuilder.buildSystemPrompt()).thenReturn("system");
+                when(chatPromptBuilder.buildPrompt(eq(snapshot), eq(List.of()), eq("What is my biggest risk?")))
+                        .thenReturn("chat-user");
+
+                AiPortfolioAdvisorService service = new AiPortfolioAdvisorService(builder, objectMapper, promptBuilder, chatPromptBuilder);
+                String response = service.answerQuestion(snapshot, List.of(), "What is my biggest risk?");
+
+                verify(chatPromptBuilder).buildPrompt(eq(snapshot), eq(List.of()), eq("What is my biggest risk?"));
+                assertEquals("The concentration risk remains high.", response);
         }
 
     private PortfolioReasoningContext reasoningContext() {
