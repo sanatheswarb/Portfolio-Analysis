@@ -17,6 +17,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Objects;
 
 @Service
 public class PortfolioAnalyticsService {
@@ -35,10 +36,10 @@ public class PortfolioAnalyticsService {
         BigDecimal sumWeightSquared = BigDecimal.ZERO;
 
         for (UserHolding holding : safeHoldings) {
-            totalInvested = totalInvested.add(nvl(holding.getInvestedValue()));
-            totalValue = totalValue.add(nvl(holding.getCurrentValue()));
-            dayChange = dayChange.add(nvl(holding.getDayChange()));
-            BigDecimal weight = nvl(holding.getWeightPercent());
+            totalInvested = totalInvested.add(Objects.requireNonNullElse(holding.getInvestedValue(), BigDecimal.ZERO));
+            totalValue = totalValue.add(Objects.requireNonNullElse(holding.getCurrentValue(), BigDecimal.ZERO));
+            dayChange = dayChange.add(Objects.requireNonNullElse(holding.getDayChange(), BigDecimal.ZERO));
+            BigDecimal weight = Objects.requireNonNullElse(holding.getWeightPercent(), BigDecimal.ZERO);
             if (weight.compareTo(largestWeight) > 0) {
                 largestWeight = weight;
             }
@@ -57,7 +58,7 @@ public class PortfolioAnalyticsService {
                 : BigDecimal.ZERO;
 
         BigDecimal top3HoldingPercent = safeHoldings.stream()
-                .map(holding -> nvl(holding.getWeightPercent()))
+                .map(holding -> Objects.requireNonNullElse(holding.getWeightPercent(), BigDecimal.ZERO))
                 .sorted(Comparator.reverseOrder())
                 .limit(3)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
@@ -99,8 +100,8 @@ public class PortfolioAnalyticsService {
         }
 
         List<String> flags = new ArrayList<>();
-        BigDecimal largestWeight = nvl(stats.getLargestWeight());
-        BigDecimal top3HoldingPercent = nvl(stats.getTop3HoldingPercent());
+        BigDecimal largestWeight = Objects.requireNonNullElse(stats.getLargestWeight(), BigDecimal.ZERO);
+        BigDecimal top3HoldingPercent = Objects.requireNonNullElse(stats.getTop3HoldingPercent(), BigDecimal.ZERO);
         int stockCount = stats.getStockCount() != null ? stats.getStockCount() : enrichedHoldings.size();
 
         if (largestWeight.compareTo(HIGH_CONCENTRATION_THRESHOLD) > 0) {
@@ -130,7 +131,7 @@ public class PortfolioAnalyticsService {
             if (sector == null || sector.isBlank()) {
                 sector = "UNKNOWN";
             }
-            sectorExposure.merge(sector, nvl(holding.allocationPercent()), BigDecimal::add);
+            sectorExposure.merge(sector, Objects.requireNonNullElse(holding.allocationPercent(), BigDecimal.ZERO), BigDecimal::add);
         }
         return sectorExposure;
     }
@@ -159,9 +160,5 @@ public class PortfolioAnalyticsService {
             return BigDecimal.ZERO;
         }
         return value.setScale(2, RoundingMode.HALF_UP);
-    }
-
-    private BigDecimal nvl(BigDecimal value) {
-        return value != null ? value : BigDecimal.ZERO;
     }
 }
