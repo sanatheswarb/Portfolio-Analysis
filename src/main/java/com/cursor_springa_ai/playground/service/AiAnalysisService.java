@@ -67,7 +67,7 @@ public class AiAnalysisService {
             logger.info("ai_analysis saved: type=" + TYPE_PORTFOLIO_ANALYSIS
                     + (user != null ? " user=" + user.getId() : " (no user)"));
         } catch (JsonProcessingException e) {
-            logger.warning("Failed to serialise PortfolioAdviceResponse for ai_analysis: " + e.getMessage());
+            logger.warning("Failed to serialize PortfolioAdviceResponse for ai_analysis: " + e.getMessage());
         }
     }
 
