@@ -89,7 +89,10 @@ public class AiAnalysisService {
                     advisorModel,
                     ANALYSIS_VERSION));
         } catch (JsonProcessingException e) {
-            throw new RuntimeException(e);
+            throw new IllegalStateException(
+                    "Failed to serialize chat answer for ai_analysis: parentAnalysisId=" + parentAnalysisId
+                            + (user != null ? ", userId=" + user.getId() : ", userId=null"),
+                    e);
         }
     }
 }
