@@ -15,7 +15,6 @@ import org.springframework.stereotype.Service;
 import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Locale;
 import java.util.regex.Pattern;
 import java.util.regex.PatternSyntaxException;
 import java.util.logging.Level;
@@ -77,7 +76,10 @@ public class ZerodhaImportService {
         }
 
         List<ZerodhaHoldingItem> incoming = zerodhaHoldingsClient.fetchHoldings();
-        List<ZerodhaHoldingItem> filteredIncoming = incoming.stream()
+        List<ZerodhaHoldingItem> normalizedIncoming = incoming.stream()
+            .map(this::normalizeTradingSymbol)
+            .toList();
+        List<ZerodhaHoldingItem> filteredIncoming = normalizedIncoming.stream()
             .filter(this::hasSupportedTradingSymbol)
             .toList();
         List<ZerodhaHoldingItem> activeHoldings = filteredIncoming.stream()
@@ -114,7 +116,7 @@ public class ZerodhaImportService {
                         holdingPreparationService.prepareHolding(currentUser, item, totalCurrentValue)
                 );
             } catch (RuntimeException ex) {
-                String symbol = normalizeTradingSymbol(item.getTradingSymbol());
+                String symbol = TradingSymbolNormalizer.normalize(item.getTradingSymbol());
                 logger.log(Level.WARNING,
                         "Failed to import holding " + symbol + ": " + ex.getMessage(),
                         ex);
@@ -144,13 +146,12 @@ public class ZerodhaImportService {
             return false;
         }
 
-        String normalizedSymbol = normalizeTradingSymbol(symbol);
+        String normalizedSymbol = TradingSymbolNormalizer.normalize(symbol);
         boolean supported = importableSymbolPattern.matcher(normalizedSymbol).matches();
         if (!supported) {
             logger.info("Skipping Zerodha holding with unsupported symbol: " + symbol);
             return false;
         }
-        item.setTradingSymbol(normalizedSymbol);
         return true;
     }
 
@@ -165,7 +166,10 @@ public class ZerodhaImportService {
         }
     }
 
-    private String normalizeTradingSymbol(String symbol) {
-        return symbol == null ? null : symbol.trim().toUpperCase(Locale.ROOT);
+    private ZerodhaHoldingItem normalizeTradingSymbol(ZerodhaHoldingItem item) {
+        if (item.getTradingSymbol() != null) {
+            item.setTradingSymbol(TradingSymbolNormalizer.normalize(item.getTradingSymbol()));
+        }
+        return item;
     }
 }

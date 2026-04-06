@@ -9,8 +9,6 @@ import com.cursor_springa_ai.playground.service.StockFundamentalsService;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
-import java.util.Locale;
-
 @Service
 public class HoldingPreparationService {
 
@@ -41,7 +39,7 @@ public class HoldingPreparationService {
     PreparedHolding prepareHolding(User currentUser,
                                    ZerodhaHoldingItem item,
                                    BigDecimal totalCurrentValue) {
-        String symbol = normalizeTradingSymbol(item.getTradingSymbol());
+        String symbol = TradingSymbolNormalizer.normalize(item.getTradingSymbol());
         Instrument instrument = instrumentEnrichmentService.upsertAndEnrich(item);
         if (instrument == null) {
             throw new IllegalStateException("Instrument resolution failed for symbol " + symbol);
@@ -55,10 +53,6 @@ public class HoldingPreparationService {
         );
         UserHolding userHolding = buildUserHolding(currentUser, instrument, values);
         return new PreparedHolding(symbol, userHolding);
-    }
-
-    private String normalizeTradingSymbol(String symbol) {
-        return symbol == null ? null : symbol.trim().toUpperCase(Locale.ROOT);
     }
 
     private UserHolding buildUserHolding(User user, Instrument instrument, HoldingComputedValues values) {
