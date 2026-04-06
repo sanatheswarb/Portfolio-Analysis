@@ -47,7 +47,7 @@ public class PortfolioChatPromptBuilder {
 
     private String formatSnapshot(AnalysisSnapshot snapshot) {
         try {
-            return objectMapper.writerWithDefaultPrettyPrinter().writeValueAsString(snapshot);
+            return objectMapper.writeValueAsString(snapshot);
         } catch (Exception e) {
             return String.valueOf(snapshot);
         }
