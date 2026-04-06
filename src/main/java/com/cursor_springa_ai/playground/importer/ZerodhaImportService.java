@@ -114,7 +114,7 @@ public class ZerodhaImportService {
                         holdingPreparationService.prepareHolding(currentUser, item, totalCurrentValue)
                 );
             } catch (RuntimeException ex) {
-                String symbol = item.getTradingSymbol().toUpperCase(Locale.ROOT);
+                String symbol = normalizeTradingSymbol(item.getTradingSymbol());
                 logger.log(Level.WARNING,
                         "Failed to import holding " + symbol + ": " + ex.getMessage(),
                         ex);
@@ -144,12 +144,14 @@ public class ZerodhaImportService {
             return false;
         }
 
-        String normalizedSymbol = symbol.trim().toUpperCase(Locale.ROOT);
+        String normalizedSymbol = normalizeTradingSymbol(symbol);
         boolean supported = importableSymbolPattern.matcher(normalizedSymbol).matches();
         if (!supported) {
             logger.info("Skipping Zerodha holding with unsupported symbol: " + symbol);
+            return false;
         }
-        return supported;
+        item.setTradingSymbol(normalizedSymbol);
+        return true;
     }
 
     private Pattern compileImportableSymbolPattern(String importableSymbolPattern) {
@@ -161,5 +163,9 @@ public class ZerodhaImportService {
                     exception
             );
         }
+    }
+
+    private String normalizeTradingSymbol(String symbol) {
+        return symbol == null ? null : symbol.trim().toUpperCase(Locale.ROOT);
     }
 }

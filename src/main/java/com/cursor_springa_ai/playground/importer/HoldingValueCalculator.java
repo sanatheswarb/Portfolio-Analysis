@@ -54,7 +54,7 @@ public class HoldingValueCalculator {
         BigDecimal avgPrice = Objects.requireNonNullElse(item.getAveragePrice(), BigDecimal.ZERO);
         BigDecimal lastPrice = Objects.requireNonNullElse(item.getLastPrice(), BigDecimal.ZERO);
         BigDecimal closePrice = resolveClosePrice(item.getClosePrice(), nsePreviousClose);
-        String symbol = item.getTradingSymbol().toUpperCase(Locale.ROOT);
+        String symbol = normalizeTradingSymbol(item.getTradingSymbol());
 
         BigDecimal investedValue = qty.multiply(avgPrice);
         BigDecimal currentValue = qty.multiply(lastPrice);
@@ -105,5 +105,9 @@ public class HoldingValueCalculator {
                     .multiply(BigDecimal.valueOf(100));
         }
         return Objects.requireNonNullElse(fallbackPct, BigDecimal.ZERO);
+    }
+
+    private String normalizeTradingSymbol(String symbol) {
+        return symbol == null ? null : symbol.trim().toUpperCase(Locale.ROOT);
     }
 }

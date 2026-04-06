@@ -233,6 +233,56 @@ class ZerodhaImportServiceTest {
     }
 
     @Test
+    void importHoldings_normalizesTradingSymbolBeforePreparingAndPersisting() throws Exception {
+        ZerodhaHoldingsClient holdingsClient = mock(ZerodhaHoldingsClient.class);
+        ZerodhaAuthService authService = mock(ZerodhaAuthService.class);
+        InstrumentEnrichmentService enrichmentService = mock(InstrumentEnrichmentService.class);
+        StockFundamentalsService fundamentalsService = mock(StockFundamentalsService.class);
+        UserHoldingSyncService userHoldingSyncService = mock(UserHoldingSyncService.class);
+        PortfolioStatsBatchService portfolioStatsBatchService = mock(PortfolioStatsBatchService.class);
+        HoldingPreparationService holdingPreparationService = new HoldingPreparationService(
+                enrichmentService,
+                fundamentalsService,
+                new HoldingValueCalculator()
+        );
+        HoldingMergeService holdingMergeService = new HoldingMergeService();
+        ZerodhaImportService service = new ZerodhaImportService(
+                holdingsClient,
+                authService,
+                userHoldingSyncService,
+                portfolioStatsBatchService,
+                holdingPreparationService,
+                holdingMergeService,
+                "^[A-Z0-9]+$"
+        );
+
+        User user = new User("ZERODHA", "portfolio-1");
+        setField(user, "id", 1L);
+        Instrument instrument = new Instrument(123L, "INFY", "NSE", "INE009A01021");
+        setField(instrument, "id", 10L);
+        ZerodhaHoldingItem item = holdingItem(123L, " infy ", BigDecimal.TEN, BigDecimal.valueOf(1500), BigDecimal.valueOf(1600));
+
+        when(authService.getCurrentUser()).thenReturn(user);
+        when(holdingsClient.fetchHoldings()).thenReturn(List.of(item));
+        when(enrichmentService.upsertAndEnrich(argThat(holding -> "INFY".equals(holding.getTradingSymbol()))))
+                .thenReturn(instrument);
+        when(fundamentalsService.upsertIfStale(instrument)).thenReturn(BigDecimal.valueOf(1550));
+
+        ZerodhaImportResponse response = service.importHoldings();
+
+        verify(enrichmentService).upsertAndEnrich(argThat(holding -> "INFY".equals(holding.getTradingSymbol())));
+        verify(userHoldingSyncService).replaceHoldings(eq(1L), argThat(list -> {
+            if (!(list instanceof List<?> holdings) || holdings.size() != 1) {
+                return false;
+            }
+            Object value = holdings.getFirst();
+            return value instanceof UserHolding holding && "INFY".equals(holding.getSymbol());
+        }));
+        assertEquals("INFY", item.getTradingSymbol());
+        assertEquals(List.of("INFY"), response.symbols());
+    }
+
+    @Test
     void constructor_rethrowsInvalidSymbolPatternWithConfigContext() {
         IllegalStateException exception = assertThrows(IllegalStateException.class, () -> new ZerodhaImportService(
                 mock(ZerodhaHoldingsClient.class),

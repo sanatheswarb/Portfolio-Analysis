@@ -41,7 +41,7 @@ public class HoldingPreparationService {
     PreparedHolding prepareHolding(User currentUser,
                                    ZerodhaHoldingItem item,
                                    BigDecimal totalCurrentValue) {
-        String symbol = item.getTradingSymbol().toUpperCase(Locale.ROOT);
+        String symbol = normalizeTradingSymbol(item.getTradingSymbol());
         Instrument instrument = instrumentEnrichmentService.upsertAndEnrich(item);
         if (instrument == null) {
             throw new IllegalStateException("Instrument resolution failed for symbol " + symbol);
@@ -55,6 +55,10 @@ public class HoldingPreparationService {
         );
         UserHolding userHolding = buildUserHolding(currentUser, instrument, values);
         return new PreparedHolding(symbol, userHolding);
+    }
+
+    private String normalizeTradingSymbol(String symbol) {
+        return symbol == null ? null : symbol.trim().toUpperCase(Locale.ROOT);
     }
 
     private UserHolding buildUserHolding(User user, Instrument instrument, HoldingComputedValues values) {
