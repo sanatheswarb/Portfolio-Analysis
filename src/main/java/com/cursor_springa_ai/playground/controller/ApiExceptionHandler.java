@@ -49,13 +49,15 @@ public class ApiExceptionHandler {
 
     @ExceptionHandler(ResponseStatusException.class)
     public ResponseEntity<Map<String, Object>> handleResponseStatus(ResponseStatusException ex) {
-        HttpStatus status = HttpStatus.valueOf(ex.getStatusCode().value());
+        int statusCode = ex.getStatusCode().value();
+        HttpStatus status = HttpStatus.resolve(statusCode);
+        String reasonPhrase = status != null ? status.getReasonPhrase() : "Unknown Status";
         Map<String, Object> body = new LinkedHashMap<>();
         body.put("timestamp", Instant.now());
-        body.put("status", status.value());
-        body.put("error", status.getReasonPhrase());
-        body.put("message", ex.getReason() != null ? ex.getReason() : status.getReasonPhrase());
-        return ResponseEntity.status(status).body(body);
+        body.put("status", statusCode);
+        body.put("error", reasonPhrase);
+        body.put("message", ex.getReason() != null ? ex.getReason() : reasonPhrase);
+        return ResponseEntity.status(ex.getStatusCode()).body(body);
     }
 
     @ExceptionHandler(ZerodhaClientException.class)
