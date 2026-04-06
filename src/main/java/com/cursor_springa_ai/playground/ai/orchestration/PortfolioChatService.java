@@ -46,7 +46,7 @@ public class PortfolioChatService {
         ).orElseThrow(() -> new IllegalStateException("Run portfolio analysis first"));
 
         if (analysis.getAnalysisContext() == null || analysis.getAnalysisContext().isBlank()) {
-            throw new IllegalStateException("Run portfolio analysis first");
+            throw new IllegalStateException("Portfolio analysis is incomplete or corrupted");
         }
 
         AnalysisSnapshot snapshot;

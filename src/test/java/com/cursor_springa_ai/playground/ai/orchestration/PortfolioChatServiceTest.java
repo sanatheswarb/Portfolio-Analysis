@@ -59,6 +59,29 @@ class PortfolioChatServiceTest {
     }
 
     @Test
+    void askQuestion_rejectsIncompleteSavedAnalysis() {
+        User user = user();
+        AiAnalysis analysis = new AiAnalysis(
+                user,
+                AnalysisType.PORTFOLIO_ANALYSIS,
+                null,
+                "{\"risk_overview\":\"high\"}",
+                null,
+                null,
+                "model",
+                "V1"
+        );
+        ReflectionTestUtils.setField(analysis, "id", 5L);
+        when(repo.findTopByUserIdAndAnalysisTypeOrderByCreatedAtDesc(7L, AnalysisType.PORTFOLIO_ANALYSIS))
+                .thenReturn(Optional.of(analysis));
+
+        IllegalStateException exception = assertThrows(IllegalStateException.class,
+                () -> service.askQuestion(user, "What changed?"));
+
+        assertEquals("Portfolio analysis is incomplete or corrupted", exception.getMessage());
+    }
+
+    @Test
     void askQuestion_loadsSnapshotHistoryAndPersistsChat() throws Exception {
         User user = user();
         AnalysisSnapshot snapshot = sampleSnapshot();
