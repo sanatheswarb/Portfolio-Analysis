@@ -18,7 +18,9 @@ import com.cursor_springa_ai.playground.model.enums.PortfolioStyle;
 import com.cursor_springa_ai.playground.repository.AiAnalysisRepository;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
+import org.springframework.http.HttpStatus;
 import org.springframework.test.util.ReflectionTestUtils;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.math.BigDecimal;
 import java.util.List;
@@ -45,7 +47,11 @@ class PortfolioChatServiceTest {
     void askQuestion_rejectsBlankQuestion() {
         User user = user();
 
-        assertThrows(IllegalArgumentException.class, () -> service.askQuestion(user, "  "));
+        ResponseStatusException exception = assertThrows(ResponseStatusException.class,
+                () -> service.askQuestion(user, "  "));
+
+        assertEquals(HttpStatus.BAD_REQUEST, exception.getStatusCode());
+        assertEquals("Question cannot be empty", exception.getReason());
     }
 
     @Test
@@ -54,10 +60,11 @@ class PortfolioChatServiceTest {
         when(repo.findTopByUserIdAndAnalysisTypeOrderByCreatedAtDesc(7L, AnalysisType.PORTFOLIO_ANALYSIS))
                 .thenReturn(Optional.empty());
 
-        IllegalStateException exception = assertThrows(IllegalStateException.class,
+        ResponseStatusException exception = assertThrows(ResponseStatusException.class,
                 () -> service.askQuestion(user, "What changed?"));
 
-        assertEquals("Run portfolio analysis first", exception.getMessage());
+        assertEquals(HttpStatus.CONFLICT, exception.getStatusCode());
+        assertEquals("Run portfolio analysis first", exception.getReason());
     }
 
     @Test
@@ -77,10 +84,11 @@ class PortfolioChatServiceTest {
         when(repo.findTopByUserIdAndAnalysisTypeOrderByCreatedAtDesc(7L, AnalysisType.PORTFOLIO_ANALYSIS))
                 .thenReturn(Optional.of(analysis));
 
-        IllegalStateException exception = assertThrows(IllegalStateException.class,
+        ResponseStatusException exception = assertThrows(ResponseStatusException.class,
                 () -> service.askQuestion(user, "What changed?"));
 
-        assertEquals("Portfolio analysis is incomplete or corrupted", exception.getMessage());
+        assertEquals(HttpStatus.CONFLICT, exception.getStatusCode());
+        assertEquals("Portfolio analysis is incomplete or corrupted", exception.getReason());
     }
 
     @Test

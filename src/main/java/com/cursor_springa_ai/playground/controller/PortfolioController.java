@@ -14,6 +14,7 @@ import com.cursor_springa_ai.playground.importer.ZerodhaImportService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -76,9 +77,9 @@ public class PortfolioController {
             description = "Uses the latest saved AI portfolio analysis and recent chat history to answer a follow-up question.",
             responses = @ApiResponse(responseCode = "200", description = "Chat answer returned"))
     @PostMapping("/chat")
-    public ChatResponse askQuestion(@RequestBody ChatRequest request) {
+    public ChatResponse askQuestion(@Valid @RequestBody ChatRequest request) {
         User user = requireAuthenticatedUser();
-        return portfolioChatService.askQuestion(user, request == null ? null : request.getQuestion());
+        return portfolioChatService.askQuestion(user, request.getQuestion());
     }
 
     private User requireAuthenticatedUser() {

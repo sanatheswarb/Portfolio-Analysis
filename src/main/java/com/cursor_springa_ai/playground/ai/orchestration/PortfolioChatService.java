@@ -11,7 +11,8 @@ import com.cursor_springa_ai.playground.model.User;
 import com.cursor_springa_ai.playground.repository.AiAnalysisRepository;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
+import org.springframework.http.HttpStatus;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
 
@@ -38,26 +39,25 @@ public class PortfolioChatService {
         this.reasoningContextFactory = reasoningContextFactory;
     }
 
-    @Transactional
     public ChatResponse askQuestion(User user, String question) {
         if (question == null || question.isBlank()) {
-            throw new IllegalArgumentException("Question cannot be empty");
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Question cannot be empty");
         }
 
         AiAnalysis analysis = repo.findTopByUserIdAndAnalysisTypeOrderByCreatedAtDesc(
                 user.getId(),
                 AnalysisType.PORTFOLIO_ANALYSIS
-        ).orElseThrow(() -> new IllegalStateException("Run portfolio analysis first"));
+        ).orElseThrow(() -> new ResponseStatusException(HttpStatus.CONFLICT, "Run portfolio analysis first"));
 
         if (analysis.getAnalysisContext() == null || analysis.getAnalysisContext().isBlank()) {
-            throw new IllegalStateException("Portfolio analysis is incomplete or corrupted");
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Portfolio analysis is incomplete or corrupted");
         }
 
         AnalysisSnapshot snapshot;
         try {
             snapshot = objectMapper.readValue(analysis.getAnalysisContext(), AnalysisSnapshot.class);
         } catch (Exception e) {
-            throw new IllegalStateException("Failed to read saved portfolio analysis context", e);
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Failed to read saved portfolio analysis context", e);
         }
 
         List<AiAnalysis> chats = repo.findTop3ByParentAnalysisIdAndAnalysisTypeOrderByCreatedAtDesc(
