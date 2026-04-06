@@ -17,6 +17,7 @@ import org.mockito.InOrder;
 import java.lang.reflect.Field;
 import java.math.BigDecimal;
 import java.util.List;
+import java.util.regex.PatternSyntaxException;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -229,6 +230,22 @@ class ZerodhaImportServiceTest {
         verify(enrichmentService, never()).upsertAndEnrich(unsupported);
         assertEquals(1, response.importedHoldings());
         assertEquals(List.of("INFY"), response.symbols());
+    }
+
+    @Test
+    void constructor_rethrowsInvalidSymbolPatternWithConfigContext() {
+        IllegalStateException exception = assertThrows(IllegalStateException.class, () -> new ZerodhaImportService(
+                mock(ZerodhaHoldingsClient.class),
+                mock(ZerodhaAuthService.class),
+                mock(UserHoldingSyncService.class),
+                mock(PortfolioStatsBatchService.class),
+                mock(HoldingPreparationService.class),
+                mock(HoldingMergeService.class),
+                "[A-Z"
+        ));
+
+        assertEquals("Invalid configuration for zerodha.import.symbol-pattern: [A-Z", exception.getMessage());
+        assertEquals(PatternSyntaxException.class, exception.getCause().getClass());
     }
 
     private ZerodhaHoldingItem holdingItem(Long token,

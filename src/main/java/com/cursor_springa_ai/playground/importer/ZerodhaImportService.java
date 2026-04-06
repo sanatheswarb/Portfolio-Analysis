@@ -17,6 +17,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 import java.util.regex.Pattern;
+import java.util.regex.PatternSyntaxException;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -65,7 +66,7 @@ public class ZerodhaImportService {
         this.portfolioStatsBatchService = portfolioStatsBatchService;
         this.holdingPreparationService = holdingPreparationService;
         this.holdingMergeService = holdingMergeService;
-        this.importableSymbolPattern = Pattern.compile(importableSymbolPattern);
+        this.importableSymbolPattern = compileImportableSymbolPattern(importableSymbolPattern);
     }
 
     public ZerodhaImportResponse importHoldings() {
@@ -150,5 +151,15 @@ public class ZerodhaImportService {
         }
         return supported;
     }
-}
 
+    private Pattern compileImportableSymbolPattern(String importableSymbolPattern) {
+        try {
+            return Pattern.compile(importableSymbolPattern);
+        } catch (PatternSyntaxException exception) {
+            throw new IllegalStateException(
+                    "Invalid configuration for zerodha.import.symbol-pattern: " + importableSymbolPattern,
+                    exception
+            );
+        }
+    }
+}
