@@ -11,6 +11,7 @@ import com.cursor_springa_ai.playground.model.enums.DiversificationLevel;
 import com.cursor_springa_ai.playground.model.enums.PerformanceLevel;
 import com.cursor_springa_ai.playground.model.enums.PortfolioRiskLevel;
 import com.cursor_springa_ai.playground.model.enums.PortfolioStyle;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.cursor_springa_ai.playground.repository.AiAnalysisRepository;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
@@ -31,7 +32,7 @@ import static org.mockito.Mockito.when;
 class AiAnalysisServiceTest {
 
     private final AiAnalysisRepository repository = mock(AiAnalysisRepository.class);
-    private final AiAnalysisService service = new AiAnalysisService(repository, "qwen2.5:7b-instruct");
+    private final AiAnalysisService service = new AiAnalysisService(repository, "qwen2.5:7b-instruct", new ObjectMapper());
 
     @Test
     void savePortfolioAdvice_persistsRowWithCorrectType() {
@@ -61,6 +62,18 @@ class AiAnalysisServiceTest {
 
         assertEquals("qwen2.5:7b-instruct", saved.getModelUsed());
         assertEquals(AiAnalysisService.ANALYSIS_VERSION, saved.getAnalysisVersion());
+    }
+
+    @Test
+    void saveChat_persistsChatWithParentAnalysisId() {
+        when(repository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+        AiAnalysis saved = service.saveChat(null, "What changed?", "Risk is concentrated.", 42L);
+
+        assertEquals(AnalysisType.PORTFOLIO_CHAT, saved.getAnalysisType());
+        assertEquals("What changed?", saved.getQuestion());
+        assertEquals(42L, saved.getParentAnalysisId());
+        assertTrue(saved.getAnalysisData().contains("Risk is concentrated."));
     }
 
     @Test

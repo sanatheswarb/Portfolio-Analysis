@@ -1,5 +1,7 @@
 package com.cursor_springa_ai.playground.ai.advisor;
 
+import com.cursor_springa_ai.playground.dto.ai.AnalysisSnapshot;
+import com.cursor_springa_ai.playground.model.AiAnalysis;
 import com.cursor_springa_ai.playground.ai.reasoning.PortfolioReasoningContext;
 import com.cursor_springa_ai.playground.ai.reasoning.PortfolioReasoningTools;
 import com.cursor_springa_ai.playground.dto.PortfolioAdviceResponse;
@@ -19,6 +21,7 @@ public class PortfolioAdvisorAgent {
         private final ChatClient chatClient;
         private final ObjectMapper objectMapper;
         private final PortfolioAdvisorPromptBuilder promptBuilder;
+        private final PortfolioChatPromptBuilder chatPromptBuilder;
 
         @Value("${portfolio.advisor.model:qwen2.5:7b-instruct}")
         private String advisorModel;
@@ -40,10 +43,12 @@ public class PortfolioAdvisorAgent {
 
         public PortfolioAdvisorAgent(ChatClient.Builder chatClientBuilder,
                         ObjectMapper objectMapper,
-                        PortfolioAdvisorPromptBuilder promptBuilder) {
+                        PortfolioAdvisorPromptBuilder promptBuilder,
+                        PortfolioChatPromptBuilder chatPromptBuilder) {
                 this.chatClient = chatClientBuilder.build();
                 this.objectMapper = objectMapper;
                 this.promptBuilder = promptBuilder;
+                this.chatPromptBuilder = chatPromptBuilder;
         }
 
         public PortfolioAdviceResponse generateInsights(PortfolioReasoningContext reasoningContext) {
@@ -73,6 +78,20 @@ public class PortfolioAdvisorAgent {
                 }
 
                 return fallbackAdviceResponse(secondAttempt.aiResponse());
+        }
+
+        public String answerQuestion(AnalysisSnapshot snapshot, List<AiAnalysis> chats, String question) {
+                String prompt = chatPromptBuilder.buildPrompt(snapshot, chats, question);
+                String aiResponse = chatClient.prompt()
+                                .user(prompt)
+                                .options(buildOptions(numPredict, temperature))
+                                .call()
+                                .content();
+
+                if (aiResponse == null || aiResponse.isBlank()) {
+                        return "I could not generate a follow-up answer from the saved portfolio analysis.";
+                }
+                return aiResponse.trim();
         }
 
         private AdvisorCallResult callAdvisor(
