@@ -22,6 +22,7 @@ public class PortfolioChatReasoningTools {
     private final AnalysisSnapshot snapshot;
     private final List<AiAnalysis> chats;
     private final ObjectMapper objectMapper;
+    private final ToolInvocationRecorder toolInvocationRecorder;
     private final List<String> toolInvocationOrder = new ArrayList<>();
     private final Map<String, Integer> toolInvocationCounts = new LinkedHashMap<>();
     private String snapshotOverviewCache;
@@ -30,9 +31,17 @@ public class PortfolioChatReasoningTools {
     private String recentChatsCache;
 
     public PortfolioChatReasoningTools(AnalysisSnapshot snapshot, List<AiAnalysis> chats, ObjectMapper objectMapper) {
+        this(snapshot, chats, objectMapper, null);
+    }
+
+    public PortfolioChatReasoningTools(AnalysisSnapshot snapshot,
+                                       List<AiAnalysis> chats,
+                                       ObjectMapper objectMapper,
+                                       ToolInvocationRecorder toolInvocationRecorder) {
         this.snapshot = snapshot;
         this.chats = chats == null ? List.of() : List.copyOf(chats);
         this.objectMapper = objectMapper;
+        this.toolInvocationRecorder = toolInvocationRecorder;
     }
 
     @Tool(name = "snapshot_overview", description = "Returns the saved portfolio snapshot overview including classification, portfolio stats, and risk flags. Call this first.")
@@ -119,6 +128,9 @@ public class PortfolioChatReasoningTools {
     private void recordToolInvocation(String toolName) {
         String safeToolName = Objects.requireNonNull(toolName, "toolName must not be null");
         toolInvocationOrder.add(safeToolName);
+        if (toolInvocationRecorder != null) {
+            toolInvocationRecorder.record(safeToolName);
+        }
         logger.info("Chat advisor tool invoked: " + safeToolName);
 
         Integer currentCount = toolInvocationCounts.get(safeToolName);

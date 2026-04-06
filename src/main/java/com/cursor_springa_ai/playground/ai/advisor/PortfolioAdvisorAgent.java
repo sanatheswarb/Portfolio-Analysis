@@ -5,6 +5,7 @@ import com.cursor_springa_ai.playground.model.AiAnalysis;
 import com.cursor_springa_ai.playground.ai.reasoning.PortfolioChatReasoningTools;
 import com.cursor_springa_ai.playground.ai.reasoning.PortfolioReasoningContext;
 import com.cursor_springa_ai.playground.ai.reasoning.PortfolioReasoningTools;
+import com.cursor_springa_ai.playground.ai.reasoning.ToolInvocationRecorder;
 import com.cursor_springa_ai.playground.dto.PortfolioAdviceResponse;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.ai.chat.client.ChatClient;
@@ -83,8 +84,16 @@ public class PortfolioAdvisorAgent {
 
         public String answerQuestion(AnalysisSnapshot snapshot, PortfolioReasoningContext reasoningContext, List<AiAnalysis> chats, String question) {
                 String prompt = chatPromptBuilder.buildPrompt(snapshot, chats, question);
-                PortfolioChatReasoningTools reasoningTools = new PortfolioChatReasoningTools(snapshot, chats, objectMapper);
-                PortfolioReasoningTools portfolioReasoningTools = new PortfolioReasoningTools(reasoningContext, objectMapper);
+                ToolInvocationRecorder toolInvocationRecorder = new ToolInvocationRecorder();
+                PortfolioChatReasoningTools reasoningTools = new PortfolioChatReasoningTools(
+                                snapshot,
+                                chats,
+                                objectMapper,
+                                toolInvocationRecorder);
+                PortfolioReasoningTools portfolioReasoningTools = new PortfolioReasoningTools(
+                                reasoningContext,
+                                objectMapper,
+                                toolInvocationRecorder);
 
                 long startTime = System.currentTimeMillis();
                 String aiResponse = chatClient.prompt()
@@ -94,7 +103,7 @@ public class PortfolioAdvisorAgent {
                                 .call()
                                 .content();
                 long llmTime = System.currentTimeMillis() - startTime;
-                String firstTool = firstTool(reasoningTools, portfolioReasoningTools);
+                String firstTool = toolInvocationRecorder.firstInvokedTool();
                 java.util.Map<String, Integer> invocationCounts = mergeInvocationCounts(reasoningTools, portfolioReasoningTools);
                 int totalCalls = reasoningTools.invocationCount() + portfolioReasoningTools.invocationCount();
                 logger.info("Chat LLM time: " + llmTime + " ms");
@@ -103,7 +112,7 @@ public class PortfolioAdvisorAgent {
                                 + ", totalCalls=" + totalCalls
                                 + ", counts=" + invocationCounts);
 
-                if (!hasRequiredChatToolUsage(reasoningTools, portfolioReasoningTools)) {
+                if (!hasRequiredChatToolUsage(reasoningTools, toolInvocationRecorder)) {
                         logger.warning("Rejecting chat advisor response because required tool usage was missing or misordered: firstTool="
                                         + firstTool + ", totalCalls=" + totalCalls + ", counts=" + invocationCounts);
                         return "I could not generate a follow-up answer from the saved portfolio analysis.";
@@ -117,18 +126,13 @@ public class PortfolioAdvisorAgent {
 
         private boolean hasRequiredChatToolUsage(
                         PortfolioChatReasoningTools chatTools,
-                        PortfolioReasoningTools portfolioTools) {
+                        ToolInvocationRecorder toolInvocationRecorder) {
                 final String requiredFirstTool = "snapshot_overview";
                 Integer requiredToolCalls = chatTools.invocationCounts().get(requiredFirstTool);
                 if (requiredToolCalls == null || requiredToolCalls.intValue() <= 0) {
                         return false;
                 }
-                return requiredFirstTool.equals(chatTools.firstInvokedTool())
-                                && requiredFirstTool.equals(firstTool(chatTools, portfolioTools));
-        }
-        private String firstTool(PortfolioChatReasoningTools chatTools, PortfolioReasoningTools portfolioTools) {
-                String chatFirst = chatTools.firstInvokedTool();
-                return chatFirst != null ? chatFirst : portfolioTools.firstInvokedTool();
+                return requiredFirstTool.equals(toolInvocationRecorder.firstInvokedTool());
         }
 
         private java.util.Map<String, Integer> mergeInvocationCounts(

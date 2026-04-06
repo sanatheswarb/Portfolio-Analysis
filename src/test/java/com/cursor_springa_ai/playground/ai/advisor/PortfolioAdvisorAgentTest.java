@@ -1,5 +1,6 @@
 package com.cursor_springa_ai.playground.ai.advisor;
 
+import com.cursor_springa_ai.playground.ai.reasoning.PortfolioChatReasoningTools;
 import com.cursor_springa_ai.playground.ai.reasoning.PortfolioReasoningContext;
 import com.cursor_springa_ai.playground.ai.reasoning.PortfolioReasoningTools;
 import com.cursor_springa_ai.playground.dto.PortfolioAdviceResponse;
@@ -193,6 +194,46 @@ class PortfolioAdvisorAgentTest {
                 verify(requestSpec).user("chat-prompt");
                 verify(requestSpec).tools(any(Object[].class));
                 verify(requestSpec, never()).system(anyString());
+        }
+
+        @Test
+        void answerQuestion_rejectsResponseWhenPortfolioToolRunsBeforeSnapshotOverview() {
+                ChatClient.Builder builder = mock(ChatClient.Builder.class);
+                ChatClient chatClient = mock(ChatClient.class);
+                ChatClient.ChatClientRequestSpec requestSpec = mock(ChatClient.ChatClientRequestSpec.class);
+                ChatClient.CallResponseSpec responseSpec = mock(ChatClient.CallResponseSpec.class);
+                PortfolioAdvisorPromptBuilder promptBuilder = mock(PortfolioAdvisorPromptBuilder.class);
+                PortfolioChatPromptBuilder chatPromptBuilder = mock(PortfolioChatPromptBuilder.class);
+                ObjectMapper objectMapper = new ObjectMapper();
+
+                when(builder.build()).thenReturn(chatClient);
+                when(chatClient.prompt()).thenReturn(requestSpec);
+                when(requestSpec.user(any(String.class))).thenReturn(requestSpec);
+                when(requestSpec.tools(any(Object[].class))).thenAnswer(invocation -> {
+                        PortfolioChatReasoningTools chatTools = null;
+                        PortfolioReasoningTools portfolioTools = null;
+                        for (Object tools : invocation.getArguments()) {
+                                if (tools instanceof PortfolioChatReasoningTools typedChatTools) {
+                                        chatTools = typedChatTools;
+                                }
+                                if (tools instanceof PortfolioReasoningTools typedPortfolioTools) {
+                                        portfolioTools = typedPortfolioTools;
+                                }
+                        }
+                        portfolioTools.portfolioOverview();
+                        chatTools.snapshotOverview();
+                        return requestSpec;
+                });
+                when(requestSpec.options(any())).thenReturn(requestSpec);
+                when(requestSpec.call()).thenReturn(responseSpec);
+                when(responseSpec.content()).thenReturn("answer");
+                when(chatPromptBuilder.buildPrompt(any(), any(), anyString())).thenReturn("chat-prompt");
+
+                PortfolioAdvisorAgent service = new PortfolioAdvisorAgent(builder, objectMapper, promptBuilder, chatPromptBuilder);
+
+                String answer = service.answerQuestion(sampleSnapshot(), reasoningContext(), List.of(sampleChat()), "Why is risk high?");
+
+                assertEquals("I could not generate a follow-up answer from the saved portfolio analysis.", answer);
         }
 
     private PortfolioReasoningContext reasoningContext() {
