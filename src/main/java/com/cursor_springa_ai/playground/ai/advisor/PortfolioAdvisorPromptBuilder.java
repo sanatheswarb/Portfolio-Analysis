@@ -2,18 +2,13 @@ package com.cursor_springa_ai.playground.ai.advisor;
 
 import com.cursor_springa_ai.playground.ai.reasoning.PortfolioReasoningContext;
 import com.cursor_springa_ai.playground.model.RiskFlag;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
 
 @Component
 public class PortfolioAdvisorPromptBuilder {
-    private final ObjectMapper objectMapper;
-
-    public PortfolioAdvisorPromptBuilder(ObjectMapper objectMapper) {
-        this.objectMapper = objectMapper;
-    }
+    
 
     public String buildSystemPrompt() {
         return """

@@ -32,7 +32,10 @@ public class PortfolioChatPromptBuilder {
                 %s
 
                 TOOL RULES:
-                Use snapshot first. Use tools only if needed.
+                Call snapshot_overview first. Use tools only if needed after that.
+                Available chat tools: snapshot_overview, top_holdings, sector_exposure, recent_chat_history.
+                Available portfolio tools: portfolio_overview, holdings_list, flagged_holdings, holding_details.
+                Use portfolio tools when you need current full-portfolio detail beyond the saved snapshot.
 
                 QUESTION:
                 %s

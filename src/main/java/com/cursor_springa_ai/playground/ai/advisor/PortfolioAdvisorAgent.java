@@ -2,6 +2,7 @@ package com.cursor_springa_ai.playground.ai.advisor;
 
 import com.cursor_springa_ai.playground.dto.ai.AnalysisSnapshot;
 import com.cursor_springa_ai.playground.model.AiAnalysis;
+import com.cursor_springa_ai.playground.ai.reasoning.PortfolioChatReasoningTools;
 import com.cursor_springa_ai.playground.ai.reasoning.PortfolioReasoningContext;
 import com.cursor_springa_ai.playground.ai.reasoning.PortfolioReasoningTools;
 import com.cursor_springa_ai.playground.dto.PortfolioAdviceResponse;
@@ -80,18 +81,44 @@ public class PortfolioAdvisorAgent {
                 return fallbackAdviceResponse(secondAttempt.aiResponse());
         }
 
-        public String answerQuestion(AnalysisSnapshot snapshot, List<AiAnalysis> chats, String question) {
+        public String answerQuestion(AnalysisSnapshot snapshot, PortfolioReasoningContext reasoningContext, List<AiAnalysis> chats, String question) {
                 String prompt = chatPromptBuilder.buildPrompt(snapshot, chats, question);
+                PortfolioChatReasoningTools reasoningTools = new PortfolioChatReasoningTools(snapshot, chats, objectMapper);
+                PortfolioReasoningTools portfolioReasoningTools = new PortfolioReasoningTools(reasoningContext, objectMapper);
+
+                long startTime = System.currentTimeMillis();
                 String aiResponse = chatClient.prompt()
                                 .user(prompt)
+                                .tools(reasoningTools, portfolioReasoningTools)
                                 .options(buildOptions(numPredict, temperature))
                                 .call()
                                 .content();
+                long llmTime = System.currentTimeMillis() - startTime;
+                logger.info("Chat LLM time: " + llmTime + " ms");
+                logger.info("Chat advisor tool usage summary: firstTool="
+                                + firstTool(reasoningTools, portfolioReasoningTools)
+                                + ", totalCalls=" + (reasoningTools.invocationCount() + portfolioReasoningTools.invocationCount())
+                                + ", counts=" + mergeInvocationCounts(reasoningTools, portfolioReasoningTools));
 
                 if (aiResponse == null || aiResponse.isBlank()) {
                         return "I could not generate a follow-up answer from the saved portfolio analysis.";
                 }
                 return aiResponse.trim();
+        }
+
+        private String firstTool(PortfolioChatReasoningTools chatTools, PortfolioReasoningTools portfolioTools) {
+                String chatFirst = chatTools.firstInvokedTool();
+                return chatFirst != null ? chatFirst : portfolioTools.firstInvokedTool();
+        }
+
+        private java.util.Map<String, Integer> mergeInvocationCounts(
+                        PortfolioChatReasoningTools chatTools,
+                        PortfolioReasoningTools portfolioTools) {
+                java.util.LinkedHashMap<String, Integer> merged = new java.util.LinkedHashMap<>();
+                merged.putAll(chatTools.invocationCounts());
+                portfolioTools.invocationCounts().forEach((tool, count) -> merged.merge(tool, count,
+                                (existingCount, newCount) -> existingCount + newCount));
+                return java.util.Map.copyOf(merged);
         }
 
         private AdvisorCallResult callAdvisor(

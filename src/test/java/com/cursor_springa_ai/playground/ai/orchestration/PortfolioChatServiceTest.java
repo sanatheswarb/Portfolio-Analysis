@@ -9,6 +9,7 @@ import com.cursor_springa_ai.playground.model.AiAnalysis;
 import com.cursor_springa_ai.playground.model.AnalysisType;
 import com.cursor_springa_ai.playground.model.PortfolioClassification;
 import com.cursor_springa_ai.playground.model.User;
+import com.cursor_springa_ai.playground.ai.reasoning.PortfolioReasoningContext;
 import com.cursor_springa_ai.playground.model.enums.ConcentrationLevel;
 import com.cursor_springa_ai.playground.model.enums.DiversificationLevel;
 import com.cursor_springa_ai.playground.model.enums.PerformanceLevel;
@@ -37,7 +38,8 @@ class PortfolioChatServiceTest {
     private final PortfolioAdvisorAgent advisor = mock(PortfolioAdvisorAgent.class);
     private final AiAnalysisService aiAnalysisService = mock(AiAnalysisService.class);
     private final ObjectMapper objectMapper = new ObjectMapper();
-    private final PortfolioChatService service = new PortfolioChatService(repo, advisor, aiAnalysisService, objectMapper);
+        private final PortfolioReasoningContextFactory reasoningContextFactory = mock(PortfolioReasoningContextFactory.class);
+        private final PortfolioChatService service = new PortfolioChatService(repo, advisor, aiAnalysisService, objectMapper, reasoningContextFactory);
 
     @Test
     void askQuestion_rejectsBlankQuestion() {
@@ -122,7 +124,8 @@ class PortfolioChatServiceTest {
                 .thenReturn(Optional.of(analysis));
         when(repo.findTop3ByParentAnalysisIdAndAnalysisTypeOrderByCreatedAtDesc(5L, AnalysisType.PORTFOLIO_CHAT))
                 .thenReturn(List.of(priorChat));
-        when(advisor.answerQuestion(any(), any(), eq("What changed?")))
+        when(reasoningContextFactory.build(user)).thenReturn(mock(PortfolioReasoningContext.class));
+        when(advisor.answerQuestion(any(), any(), any(), eq("What changed?")))
                 .thenReturn("Risk remains concentrated.");
         when(aiAnalysisService.saveChat(user, "What changed?", "Risk remains concentrated.", 5L))
                 .thenReturn(savedChat);
@@ -132,7 +135,7 @@ class PortfolioChatServiceTest {
         assertEquals("Risk remains concentrated.", response.getAnswer());
         assertEquals(savedChat.getId(), response.getChatId());
         assertEquals(analysis.getId(), response.getAnalysisId());
-        verify(advisor).answerQuestion(any(), eq(List.of(priorChat)), eq("What changed?"));
+                verify(advisor).answerQuestion(any(), any(), eq(List.of(priorChat)), eq("What changed?"));
         verify(aiAnalysisService).saveChat(user, "What changed?", "Risk remains concentrated.", analysis.getId());
     }
 

@@ -166,6 +166,19 @@ class PortfolioAdvisorAgentTest {
                 when(builder.build()).thenReturn(chatClient);
                 when(chatClient.prompt()).thenReturn(requestSpec);
                 when(requestSpec.user(any(String.class))).thenReturn(requestSpec);
+                when(requestSpec.tools(any(Object[].class))).thenAnswer(invocation -> {
+                        for (Object tools : invocation.getArguments()) {
+                                try {
+                                        tools.getClass().getMethod("snapshotOverview").invoke(tools);
+                                } catch (NoSuchMethodException ignored) {
+                                }
+                                try {
+                                        tools.getClass().getMethod("portfolioOverview").invoke(tools);
+                                } catch (NoSuchMethodException ignored) {
+                                }
+                        }
+                        return requestSpec;
+                });
                 when(requestSpec.options(any())).thenReturn(requestSpec);
                 when(requestSpec.call()).thenReturn(responseSpec);
                 when(responseSpec.content()).thenReturn("  Snapshot-based answer  ");
@@ -173,11 +186,12 @@ class PortfolioAdvisorAgentTest {
 
                 PortfolioAdvisorAgent service = new PortfolioAdvisorAgent(builder, objectMapper, promptBuilder, chatPromptBuilder);
 
-                String answer = service.answerQuestion(sampleSnapshot(), List.of(sampleChat()), "Why is risk high?");
+                String answer = service.answerQuestion(sampleSnapshot(), reasoningContext(), List.of(sampleChat()), "Why is risk high?");
 
                 assertEquals("Snapshot-based answer", answer);
                 verify(chatPromptBuilder).buildPrompt(any(), any(), eq("Why is risk high?"));
                 verify(requestSpec).user("chat-prompt");
+                verify(requestSpec).tools(any(Object[].class));
                 verify(requestSpec, never()).system(anyString());
         }
 

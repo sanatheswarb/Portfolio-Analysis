@@ -2,6 +2,7 @@ package com.cursor_springa_ai.playground.ai.orchestration;
 
 import com.cursor_springa_ai.playground.ai.advisor.PortfolioAdvisorAgent;
 import com.cursor_springa_ai.playground.ai.persistence.AiAnalysisService;
+import com.cursor_springa_ai.playground.ai.reasoning.PortfolioReasoningContext;
 import com.cursor_springa_ai.playground.dto.ChatResponse;
 import com.cursor_springa_ai.playground.dto.ai.AnalysisSnapshot;
 import com.cursor_springa_ai.playground.model.AiAnalysis;
@@ -21,17 +22,20 @@ public class PortfolioChatService {
     private final PortfolioAdvisorAgent advisor;
     private final AiAnalysisService aiAnalysisService;
     private final ObjectMapper objectMapper;
+    private final PortfolioReasoningContextFactory reasoningContextFactory;
 
     public PortfolioChatService(
             AiAnalysisRepository repo,
             PortfolioAdvisorAgent advisor,
             AiAnalysisService aiAnalysisService,
-            ObjectMapper objectMapper
+            ObjectMapper objectMapper,
+            PortfolioReasoningContextFactory reasoningContextFactory
     ) {
         this.repo = repo;
         this.advisor = advisor;
         this.aiAnalysisService = aiAnalysisService;
         this.objectMapper = objectMapper;
+        this.reasoningContextFactory = reasoningContextFactory;
     }
 
     @Transactional
@@ -61,7 +65,9 @@ public class PortfolioChatService {
                 AnalysisType.PORTFOLIO_CHAT
         );
 
-        String answer = advisor.answerQuestion(snapshot, chats, question);
+        PortfolioReasoningContext reasoningContext = reasoningContextFactory.build(user);
+
+        String answer = advisor.answerQuestion(snapshot, reasoningContext, chats, question);
         AiAnalysis chatRow = aiAnalysisService.saveChat(user, question, answer, analysis.getId());
 
         return new ChatResponse(answer, chatRow.getId(), analysis.getId());
