@@ -1,4 +1,4 @@
-package com.cursor_springa_ai.playground.ai.advisor;
+package com.cursor_springa_ai.playground.ai.reasoning;
 
 import com.cursor_springa_ai.playground.dto.ai.AnalysisSnapshot;
 import com.cursor_springa_ai.playground.dto.ai.PortfolioStatsSummary;
@@ -10,35 +10,36 @@ import com.cursor_springa_ai.playground.model.enums.DiversificationLevel;
 import com.cursor_springa_ai.playground.model.enums.PerformanceLevel;
 import com.cursor_springa_ai.playground.model.enums.PortfolioRiskLevel;
 import com.cursor_springa_ai.playground.model.enums.PortfolioStyle;
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
 
 import java.math.BigDecimal;
 import java.util.List;
+import java.util.Map;
 
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 
-class PortfolioChatPromptBuilderTest {
+class PortfolioChatReasoningToolsTest {
 
-    private final PortfolioChatPromptBuilder builder = new PortfolioChatPromptBuilder(new ObjectMapper());
+    private static final TypeReference<List<Map<String, String>>> CHAT_HISTORY_TYPE = new TypeReference<>() { };
+    private final ObjectMapper objectMapper = new ObjectMapper();
 
     @Test
-    void buildPrompt_includesSnapshotQuestionAndNewestFirstChats() {
-        String prompt = builder.buildPrompt(
+    void recentChatHistory_keepsNewestFirstOrdering() throws Exception {
+        PortfolioChatReasoningTools tools = new PortfolioChatReasoningTools(
                 sampleSnapshot(),
                 List.of(
                         new AiAnalysis(null, AnalysisType.PORTFOLIO_CHAT, "Latest question", "{\"answer\":\"Latest answer\"}", null, 10L, "model", "V1"),
                         new AiAnalysis(null, AnalysisType.PORTFOLIO_CHAT, "Earlier question", "{\"answer\":\"Earlier answer\"}", null, 10L, "model", "V1")
                 ),
-                "What should I do next?"
+                objectMapper
         );
 
-        assertTrue(prompt.contains("PORTFOLIO SNAPSHOT"));
-        assertTrue(prompt.contains("QUESTION:\nWhat should I do next?"));
-        assertTrue(prompt.indexOf("User: Latest question") < prompt.indexOf("User: Earlier question"));
-        assertTrue(prompt.contains("AI: Latest answer"));
-        assertTrue(prompt.contains("AI: Earlier answer"));
-        assertTrue(prompt.contains("HIGH_CONCENTRATION"));
+        List<Map<String, String>> history = objectMapper.readValue(tools.recentChatHistory(), CHAT_HISTORY_TYPE);
+
+        assertEquals("Latest question", history.getFirst().get("question"));
+        assertEquals("Earlier question", history.get(1).get("question"));
     }
 
     private AnalysisSnapshot sampleSnapshot() {

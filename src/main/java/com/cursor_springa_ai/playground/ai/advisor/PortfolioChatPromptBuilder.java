@@ -6,7 +6,6 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.stereotype.Component;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
@@ -59,9 +58,7 @@ public class PortfolioChatPromptBuilder {
         }
 
         StringBuilder sb = new StringBuilder();
-        List<AiAnalysis> orderedChats = new ArrayList<>(chats);
-        java.util.Collections.reverse(orderedChats);
-        for (AiAnalysis chat : orderedChats) {
+        for (AiAnalysis chat : chats) {
             sb.append("User: ").append(chat.getQuestion() == null ? "" : chat.getQuestion()).append("\n");
             sb.append("AI: ").append(extractAnswer(chat)).append("\n");
         }
