@@ -167,9 +167,19 @@ public class ZerodhaImportService {
     }
 
     private ZerodhaHoldingItem normalizeTradingSymbol(ZerodhaHoldingItem item) {
-        if (item.getTradingSymbol() != null) {
-            item.setTradingSymbol(TradingSymbolNormalizer.normalize(item.getTradingSymbol()));
-        }
-        return item;
+        ZerodhaHoldingItem normalizedItem = new ZerodhaHoldingItem();
+        normalizedItem.setInstrumentToken(item.getInstrumentToken());
+        normalizedItem.setTradingSymbol(TradingSymbolNormalizer.normalize(item.getTradingSymbol()));
+        normalizedItem.setExchange(item.getExchange());
+        normalizedItem.setIsin(item.getIsin());
+        normalizedItem.setQuantity(item.getQuantity());
+        normalizedItem.setAveragePrice(item.getAveragePrice());
+        normalizedItem.setLastPrice(item.getLastPrice());
+        normalizedItem.setClosePrice(item.getClosePrice());
+        normalizedItem.setPnl(item.getPnl());
+        normalizedItem.setDayChange(item.getDayChange());
+        normalizedItem.setDayChangePercentage(item.getDayChangePercentage());
+        normalizedItem.setProfitLoss(item.getProfitLoss());
+        return normalizedItem;
     }
 }
