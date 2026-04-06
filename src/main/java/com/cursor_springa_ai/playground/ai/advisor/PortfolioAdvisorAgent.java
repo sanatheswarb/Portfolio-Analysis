@@ -94,11 +94,20 @@ public class PortfolioAdvisorAgent {
                                 .call()
                                 .content();
                 long llmTime = System.currentTimeMillis() - startTime;
+                String firstTool = firstTool(reasoningTools, portfolioReasoningTools);
+                java.util.Map<String, Integer> invocationCounts = mergeInvocationCounts(reasoningTools, portfolioReasoningTools);
+                int totalCalls = reasoningTools.invocationCount() + portfolioReasoningTools.invocationCount();
                 logger.info("Chat LLM time: " + llmTime + " ms");
                 logger.info("Chat advisor tool usage summary: firstTool="
-                                + firstTool(reasoningTools, portfolioReasoningTools)
-                                + ", totalCalls=" + (reasoningTools.invocationCount() + portfolioReasoningTools.invocationCount())
-                                + ", counts=" + mergeInvocationCounts(reasoningTools, portfolioReasoningTools));
+                                + firstTool
+                                + ", totalCalls=" + totalCalls
+                                + ", counts=" + invocationCounts);
+
+                if (!hasRequiredChatToolUsage(reasoningTools, portfolioReasoningTools)) {
+                        logger.warning("Rejecting chat advisor response because required tool usage was missing or misordered: firstTool="
+                                        + firstTool + ", totalCalls=" + totalCalls + ", counts=" + invocationCounts);
+                        return "I could not generate a follow-up answer from the saved portfolio analysis.";
+                }
 
                 if (aiResponse == null || aiResponse.isBlank()) {
                         return "I could not generate a follow-up answer from the saved portfolio analysis.";
@@ -106,6 +115,17 @@ public class PortfolioAdvisorAgent {
                 return aiResponse.trim();
         }
 
+        private boolean hasRequiredChatToolUsage(
+                        PortfolioChatReasoningTools chatTools,
+                        PortfolioReasoningTools portfolioTools) {
+                final String requiredFirstTool = "snapshot_overview";
+                Integer requiredToolCalls = chatTools.invocationCounts().get(requiredFirstTool);
+                if (requiredToolCalls == null || requiredToolCalls.intValue() <= 0) {
+                        return false;
+                }
+                return requiredFirstTool.equals(chatTools.firstInvokedTool())
+                                && requiredFirstTool.equals(firstTool(chatTools, portfolioTools));
+        }
         private String firstTool(PortfolioChatReasoningTools chatTools, PortfolioReasoningTools portfolioTools) {
                 String chatFirst = chatTools.firstInvokedTool();
                 return chatFirst != null ? chatFirst : portfolioTools.firstInvokedTool();
