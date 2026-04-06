@@ -7,7 +7,6 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.ai.tool.annotation.Tool;
 
-import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -23,8 +22,9 @@ public class PortfolioChatReasoningTools {
     private final List<AiAnalysis> chats;
     private final ObjectMapper objectMapper;
     private final ToolInvocationRecorder toolInvocationRecorder;
-    private final List<String> toolInvocationOrder = new ArrayList<>();
     private final Map<String, Integer> toolInvocationCounts = new LinkedHashMap<>();
+    private int invocationCount;
+    private String firstInvokedTool;
     private String snapshotOverviewCache;
     private String topHoldingsCache;
     private String sectorExposureCache;
@@ -96,7 +96,7 @@ public class PortfolioChatReasoningTools {
     }
 
     public int invocationCount() {
-        return toolInvocationOrder.size();
+        return invocationCount;
     }
 
     public Map<String, Integer> invocationCounts() {
@@ -104,7 +104,7 @@ public class PortfolioChatReasoningTools {
     }
 
     public String firstInvokedTool() {
-        return toolInvocationOrder.isEmpty() ? null : toolInvocationOrder.getFirst();
+        return firstInvokedTool;
     }
 
     private String extractAnswer(AiAnalysis chat) {
@@ -127,7 +127,10 @@ public class PortfolioChatReasoningTools {
 
     private void recordToolInvocation(String toolName) {
         String safeToolName = Objects.requireNonNull(toolName, "toolName must not be null");
-        toolInvocationOrder.add(safeToolName);
+        invocationCount++;
+        if (firstInvokedTool == null) {
+            firstInvokedTool = safeToolName;
+        }
         if (toolInvocationRecorder != null) {
             toolInvocationRecorder.record(safeToolName);
         }

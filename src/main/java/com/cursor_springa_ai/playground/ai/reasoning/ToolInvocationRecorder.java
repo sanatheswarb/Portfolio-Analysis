@@ -1,18 +1,19 @@
 package com.cursor_springa_ai.playground.ai.reasoning;
 
-import java.util.ArrayList;
-import java.util.List;
 import java.util.Objects;
 
 public class ToolInvocationRecorder {
 
-    private final List<String> toolInvocationOrder = new ArrayList<>();
+    private String firstInvokedTool;
 
     public void record(String toolName) {
-        toolInvocationOrder.add(Objects.requireNonNull(toolName, "toolName must not be null"));
+        String safeToolName = Objects.requireNonNull(toolName, "toolName must not be null");
+        if (firstInvokedTool == null) {
+            firstInvokedTool = safeToolName;
+        }
     }
 
     public String firstInvokedTool() {
-        return toolInvocationOrder.isEmpty() ? null : toolInvocationOrder.getFirst();
+        return firstInvokedTool;
     }
 }

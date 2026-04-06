@@ -30,8 +30,9 @@ public class PortfolioReasoningTools {
     private final PortfolioOverviewBuilder overviewBuilder;
     private final HoldingsListBuilder holdingsListBuilder;
     private final ToolInvocationRecorder toolInvocationRecorder;
-    private final List<String> toolInvocationOrder = new ArrayList<>();
     private final Map<String, Integer> toolInvocationCounts = new LinkedHashMap<>();
+    private int invocationCount;
+    private String firstInvokedTool;
     private String portfolioOverviewCache;
     private String flaggedHoldingsCache;
     private String holdingsListCache;
@@ -121,7 +122,7 @@ public class PortfolioReasoningTools {
     }
 
     public int invocationCount() {
-        return toolInvocationOrder.size();
+        return invocationCount;
     }
 
     public Map<String, Integer> invocationCounts() {
@@ -129,7 +130,7 @@ public class PortfolioReasoningTools {
     }
 
     public String firstInvokedTool() {
-        return toolInvocationOrder.isEmpty() ? null : toolInvocationOrder.getFirst();
+        return firstInvokedTool;
     }
 
     public boolean hasInvokedTool(String toolName) {
@@ -146,7 +147,10 @@ public class PortfolioReasoningTools {
 
     private void recordToolInvocation(String toolName) {
         String safeToolName = Objects.requireNonNull(toolName, "toolName must not be null");
-        toolInvocationOrder.add(safeToolName);
+        invocationCount++;
+        if (firstInvokedTool == null) {
+            firstInvokedTool = safeToolName;
+        }
         if (toolInvocationRecorder != null) {
             toolInvocationRecorder.record(safeToolName);
         }
