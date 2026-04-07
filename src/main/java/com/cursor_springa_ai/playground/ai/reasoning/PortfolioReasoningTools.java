@@ -54,7 +54,13 @@ public class PortfolioReasoningTools {
         this.toolInvocationRecorder = toolInvocationRecorder;
     }
 
-    @Tool(name = "portfolio_overview", description = "Returns deterministic portfolio summary, diversification metrics, sector exposure, portfolio risk flags, and the largest holdings. Call this first.")
+    @Tool(name = "portfolio_overview", description = """
+            Purpose: Provides the high-level portfolio big picture including classification, risk level, diversification, concentration, performance, and structure metrics.
+            When to use: Use first to assess overall portfolio health, classification, risk drivers, diversification, and structure before giving recommendations.
+            When NOT to use: Do not use for individual holding deep dives, fundamental analysis, or detailed stock-by-stock reasoning.
+            Returns: Deterministic portfolio-level summary data that is usually sufficient for overall portfolio advice; use flagged_holdings only when deeper risk evidence is needed.
+            Constraints: This tool provides factual portfolio data. Do not reinterpret or recompute values. Do not assume missing data. It already summarizes portfolio risks, so avoid calling other tools unless deeper evidence is required.
+            """)
     public String portfolioOverview() {
         recordToolInvocation("portfolio_overview");
         if (portfolioOverviewCache != null) {
@@ -64,7 +70,13 @@ public class PortfolioReasoningTools {
         return portfolioOverviewCache;
     }
 
-    @Tool(name = "flagged_holdings", description = "Returns holdings requiring attention, enriched with importance classification, performance status, valuation, risk severity, and human-readable attention reasons. Sorted by allocation descending. Use this for actionable, evidence-backed recommendations.")
+    @Tool(name = "flagged_holdings", description = """
+            Purpose: Returns the small set of holdings that materially drive portfolio risk.
+            When to use: Use when you need evidence for risk explanations, justification for recommendations, or identification of major concentration/valuation/diversification risk drivers.
+            When NOT to use: Do not use for full portfolio listing, general exploration, or when portfolio_overview already provides sufficient risk explanation.
+            Returns: Risk-driving holdings with importance, performance status, valuation, risk severity, and human-readable attention reasons.
+            Constraints: This tool provides factual portfolio data. Do not reinterpret or recompute values. Do not assume missing data.
+            """)
     public String flaggedHoldings() {
         recordToolInvocation("flagged_holdings");
         if (flaggedHoldingsCache != null) {
@@ -74,7 +86,13 @@ public class PortfolioReasoningTools {
         return flaggedHoldingsCache;
     }
 
-    @Tool(name = "holdings_list", description = "Returns a minimal summary of all holdings: symbol, allocation, PnL, valuation flag, and risk flags. Use this to scan the full portfolio before deciding which symbols to inspect in detail.")
+    @Tool(name = "holdings_list", description = """
+            Purpose: Acts as a lightweight portfolio index for discovery.
+            When to use: Use to identify which symbols exist, scan composition, and select holdings for deeper inspection.
+            When NOT to use: Do not use for deep analysis, valuation reasoning, or recommendation justification.
+            Returns: A lightweight list of all holdings with basic context like allocation, performance status, valuation flag, and risk tags.
+            Constraints: This tool provides factual portfolio data. Do not reinterpret or recompute values. Do not assume missing data. Use holding_details after selecting symbols.
+            """)
     public String holdingsList() {
         recordToolInvocation("holdings_list");
         if (holdingsListCache != null) {
@@ -84,9 +102,15 @@ public class PortfolioReasoningTools {
         return holdingsListCache;
     }
 
-    @Tool(name = "holding_details", description = "Returns structured, context-rich details for the given stock symbols: identity, portfolio role, valuation story, performance story, risk analysis, and human-readable signals. Call this to explain why a stock is risky or important.")
+    @Tool(name = "holding_details", description = """
+            Purpose: Provides deep reasoning evidence and detailed portfolio plus valuation context for specific holdings.
+            When to use: Use for detailed reasoning about selected stocks, valuation context, performance interpretation, and evidence that supports advice.
+            When NOT to use: Do not use to explore all holdings, as a first analysis step, or before identifying relevant symbols from portfolio_overview or holdings_list.
+            Returns: Structured detailed context per selected symbol including identity, portfolio role, valuation context, performance context, risk context, and signals.
+            Constraints: Maximum 5 symbols per call; prioritize the most important holdings. This tool provides factual portfolio data. Do not reinterpret or recompute values. Do not assume missing data.
+            """)
     public String holdingDetails(
-            @ToolParam(description = "List of stock symbols to inspect, for example [\"INFY\",\"TCS\"]", required = true)
+            @ToolParam(description = "List of stock symbols to inspect (maximum 5), for example [\"INFY\",\"TCS\"]", required = true)
             List<String> symbols
     ) {
         recordToolInvocation("holding_details");
