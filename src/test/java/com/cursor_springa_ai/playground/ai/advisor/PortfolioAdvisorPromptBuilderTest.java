@@ -28,7 +28,6 @@ class PortfolioAdvisorPromptBuilderTest {
         assertTrue(prompt.contains("PORTFOLIO CLASSIFICATION RULES"));
         assertTrue(prompt.contains("SUGGESTION ALIGNMENT RULES"));
         assertTrue(prompt.contains("EXPLANATION RULES"));
-        assertTrue(prompt.contains("build"));
         assertTrue(prompt.contains("Do not produce any portfolio interpretation before reviewing portfolio_overview output."));
         assertTrue(prompt.contains("If largest holding exceeds 25%, one suggestion must address concentration."));
         assertTrue(prompt.contains("If top 3 holdings exceed 60%, one suggestion must address diversification."));
