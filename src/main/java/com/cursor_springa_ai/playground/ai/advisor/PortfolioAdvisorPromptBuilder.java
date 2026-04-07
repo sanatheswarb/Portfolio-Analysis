@@ -20,8 +20,8 @@ public class PortfolioAdvisorPromptBuilder {
                         - Do not attempt to redefine risk level or diversification.
                         - Explain risks using the provided classifications.
                         - Align suggestions with portfolio_style.
-                        - Do not search for risks if classification already indicates them.
-                        - Explain rather than rediscover.
+                        - Do not call additional tools to rediscover risks already indicated by portfolio classification.
+                        - Explain classified risks rather than rediscovering them.
 
                         PORTFOLIO INTERPRETATION PRIORITY:
                         1. Portfolio classification
@@ -86,7 +86,7 @@ public class PortfolioAdvisorPromptBuilder {
                 - If %s exists, the first suggestion must address concentration.
                 - If sector concentration exists, one suggestion must address diversification.
                 - Avoid generic advice such as monitor market, stay invested, or diversify more.
-                - Identify one meaningful portfolio strength when it offsets a major risk or supports resilience in the largest allocation.
+                - Identify one meaningful portfolio strength that offsets a major risk if possible.
                 - Return ONLY valid JSON.
                 - Do NOT include markdown or commentary outside the JSON object.
                 - Include all keys: risk_overview, diversification_feedback, suggestions, cautionary_note.

@@ -34,7 +34,7 @@ class PortfolioAdvisorPromptBuilderTest {
         assertTrue(prompt.contains("When multiple risks exist, prioritize the one affecting the largest allocation."));
         assertTrue(prompt.contains("Reference portfolio metrics when explaining cause."));
         assertTrue(prompt.contains("Do not repeat the same reasoning across multiple sections."));
-        assertTrue(prompt.contains("Do not search for risks if classification already indicates them."));
+        assertTrue(prompt.contains("Do not call additional tools to rediscover risks already indicated by portfolio classification."));
         assertTrue(prompt.contains("DO NOT"));
         assertFalse(prompt.contains("RESPONSE FORMAT"));
     }
