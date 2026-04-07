@@ -86,7 +86,7 @@ public class PortfolioAdvisorPromptBuilder {
                 - If %s exists, the first suggestion must address concentration.
                 - If sector concentration exists, one suggestion must address diversification.
                 - Avoid generic advice such as monitor market, stay invested, or diversify more.
-                - Identify one meaningful portfolio strength that offsets a major risk if possible.
+                - Identify one meaningful portfolio strength when it offsets a major risk or supports resilience in the largest allocation.
                 - Return ONLY valid JSON.
                 - Do NOT include markdown or commentary outside the JSON object.
                 - Include all keys: risk_overview, diversification_feedback, suggestions, cautionary_note.
@@ -120,7 +120,7 @@ public class PortfolioAdvisorPromptBuilder {
                 First action: call portfolio_overview.
                 Use it as the primary portfolio data source.
                 Do not call portfolio_overview again after the first result.
-                Pull additional tool data only if required.
+                Pull additional tool data only when needed to support specific risk evidence in suggestions.
                         """
                 .formatted(
                         reasoningContext.portfolioUserId(),
