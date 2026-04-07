@@ -12,6 +12,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.Map;
 import java.util.logging.Logger;
 
 /**
@@ -62,6 +63,7 @@ public class AiAnalysisService {
                     null,
                     adviceJson,
                     snapshotJson,
+                    null,
                     advisorModel,
                     ANALYSIS_VERSION));
             logger.info("ai_analysis saved: type=" + AnalysisType.PORTFOLIO_ANALYSIS
@@ -70,6 +72,27 @@ public class AiAnalysisService {
                     + (user != null ? " user=" + user.getId() : " (no user)"));
         } catch (JsonProcessingException e) {
             logger.warning("Failed to serialise PortfolioAdviceResponse for ai_analysis: " + e.getMessage());
+        }
+    }
+
+    @Transactional
+    public AiAnalysis saveChat(User user, String question, String answer, Long parentAnalysisId) {
+        try {
+            String json = objectMapper.writeValueAsString(Map.of("answer", answer));
+            return aiAnalysisRepository.save(new AiAnalysis(
+                    user,
+                    AnalysisType.PORTFOLIO_CHAT,
+                    question,
+                    json,
+                    null,
+                    parentAnalysisId,
+                    advisorModel,
+                    ANALYSIS_VERSION));
+        } catch (JsonProcessingException e) {
+            throw new IllegalStateException(
+                    "Failed to serialize chat answer for ai_analysis: parentAnalysisId=" + parentAnalysisId
+                            + (user != null ? ", userId=" + user.getId() : ", userId=null"),
+                    e);
         }
     }
 }

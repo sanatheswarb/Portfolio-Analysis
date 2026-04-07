@@ -6,7 +6,6 @@ import org.springframework.stereotype.Service;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.util.List;
-import java.util.Locale;
 import java.util.Objects;
 
 /**
@@ -54,7 +53,7 @@ public class HoldingValueCalculator {
         BigDecimal avgPrice = Objects.requireNonNullElse(item.getAveragePrice(), BigDecimal.ZERO);
         BigDecimal lastPrice = Objects.requireNonNullElse(item.getLastPrice(), BigDecimal.ZERO);
         BigDecimal closePrice = resolveClosePrice(item.getClosePrice(), nsePreviousClose);
-        String symbol = item.getTradingSymbol().toUpperCase(Locale.ROOT);
+        String symbol = TradingSymbolNormalizer.normalize(item.getTradingSymbol());
 
         BigDecimal investedValue = qty.multiply(avgPrice);
         BigDecimal currentValue = qty.multiply(lastPrice);
@@ -106,4 +105,5 @@ public class HoldingValueCalculator {
         }
         return Objects.requireNonNullElse(fallbackPct, BigDecimal.ZERO);
     }
+
 }

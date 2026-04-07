@@ -29,20 +29,29 @@ public class PortfolioReasoningTools {
     private final HoldingDetailsBuilder holdingDetailsBuilder;
     private final PortfolioOverviewBuilder overviewBuilder;
     private final HoldingsListBuilder holdingsListBuilder;
-    private final List<String> toolInvocationOrder = new ArrayList<>();
+    private final ToolInvocationRecorder toolInvocationRecorder;
     private final Map<String, Integer> toolInvocationCounts = new LinkedHashMap<>();
+    private int invocationCount;
+    private String firstInvokedTool;
     private String portfolioOverviewCache;
     private String flaggedHoldingsCache;
     private String holdingsListCache;
     private final Map<String, String> holdingDetailsCache = new LinkedHashMap<>();
 
     public PortfolioReasoningTools(PortfolioReasoningContext context, ObjectMapper objectMapper) {
+        this(context, objectMapper, null);
+    }
+
+    public PortfolioReasoningTools(PortfolioReasoningContext context,
+                                   ObjectMapper objectMapper,
+                                   ToolInvocationRecorder toolInvocationRecorder) {
         this.context = context;
         this.objectMapper = objectMapper;
         this.flaggedHoldingsBuilder = new FlaggedHoldingsBuilder();
         this.holdingDetailsBuilder = new HoldingDetailsBuilder();
         this.overviewBuilder = new PortfolioOverviewBuilder();
         this.holdingsListBuilder = new HoldingsListBuilder();
+        this.toolInvocationRecorder = toolInvocationRecorder;
     }
 
     @Tool(name = "portfolio_overview", description = "Returns deterministic portfolio summary, diversification metrics, sector exposure, portfolio risk flags, and the largest holdings. Call this first.")
@@ -113,7 +122,7 @@ public class PortfolioReasoningTools {
     }
 
     public int invocationCount() {
-        return toolInvocationOrder.size();
+        return invocationCount;
     }
 
     public Map<String, Integer> invocationCounts() {
@@ -121,7 +130,7 @@ public class PortfolioReasoningTools {
     }
 
     public String firstInvokedTool() {
-        return toolInvocationOrder.isEmpty() ? null : toolInvocationOrder.getFirst();
+        return firstInvokedTool;
     }
 
     public boolean hasInvokedTool(String toolName) {
@@ -138,7 +147,13 @@ public class PortfolioReasoningTools {
 
     private void recordToolInvocation(String toolName) {
         String safeToolName = Objects.requireNonNull(toolName, "toolName must not be null");
-        toolInvocationOrder.add(safeToolName);
+        invocationCount++;
+        if (firstInvokedTool == null) {
+            firstInvokedTool = safeToolName;
+        }
+        if (toolInvocationRecorder != null) {
+            toolInvocationRecorder.record(safeToolName);
+        }
         logger.info("Advisor tool invoked: " + safeToolName);
 
         Integer currentCount = toolInvocationCounts.get(safeToolName);

@@ -3,7 +3,6 @@ package com.cursor_springa_ai.playground.ai.advisor;
 import com.cursor_springa_ai.playground.ai.reasoning.PortfolioReasoningContext;
 import com.cursor_springa_ai.playground.dto.PortfolioSummary;
 import com.cursor_springa_ai.playground.model.RiskFlag;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
 
 import java.math.BigDecimal;
@@ -15,7 +14,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class PortfolioAdvisorPromptBuilderTest {
 
-    private final PortfolioAdvisorPromptBuilder builder = new PortfolioAdvisorPromptBuilder(new ObjectMapper());
+    private final PortfolioAdvisorPromptBuilder builder = new PortfolioAdvisorPromptBuilder();
 
     @Test
     void buildSystemPrompt_containsBaseRules() {

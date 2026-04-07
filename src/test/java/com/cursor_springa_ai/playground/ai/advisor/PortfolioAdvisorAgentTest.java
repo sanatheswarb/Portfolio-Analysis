@@ -1,12 +1,23 @@
 package com.cursor_springa_ai.playground.ai.advisor;
 
+import com.cursor_springa_ai.playground.ai.reasoning.PortfolioChatReasoningTools;
 import com.cursor_springa_ai.playground.ai.reasoning.PortfolioReasoningContext;
 import com.cursor_springa_ai.playground.ai.reasoning.PortfolioReasoningTools;
 import com.cursor_springa_ai.playground.dto.PortfolioAdviceResponse;
+import com.cursor_springa_ai.playground.dto.ai.AnalysisSnapshot;
+import com.cursor_springa_ai.playground.dto.ai.PortfolioStatsSummary;
 import com.cursor_springa_ai.playground.dto.EnrichedHoldingData;
 import com.cursor_springa_ai.playground.dto.PortfolioSummary;
+import com.cursor_springa_ai.playground.model.AiAnalysis;
 import com.cursor_springa_ai.playground.model.PortfolioStats;
 import com.cursor_springa_ai.playground.model.RiskFlag;
+import com.cursor_springa_ai.playground.model.AnalysisType;
+import com.cursor_springa_ai.playground.model.PortfolioClassification;
+import com.cursor_springa_ai.playground.model.enums.ConcentrationLevel;
+import com.cursor_springa_ai.playground.model.enums.DiversificationLevel;
+import com.cursor_springa_ai.playground.model.enums.PerformanceLevel;
+import com.cursor_springa_ai.playground.model.enums.PortfolioRiskLevel;
+import com.cursor_springa_ai.playground.model.enums.PortfolioStyle;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
 import org.springframework.ai.chat.client.ChatClient;
@@ -19,6 +30,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -33,6 +45,7 @@ class PortfolioAdvisorAgentTest {
         ChatClient.ChatClientRequestSpec requestSpec = mock(ChatClient.ChatClientRequestSpec.class);
         ChatClient.CallResponseSpec responseSpec = mock(ChatClient.CallResponseSpec.class);
         PortfolioAdvisorPromptBuilder promptBuilder = mock(PortfolioAdvisorPromptBuilder.class);
+        PortfolioChatPromptBuilder chatPromptBuilder = mock(PortfolioChatPromptBuilder.class);
         ObjectMapper objectMapper = new ObjectMapper();
         PortfolioReasoningContext reasoningContext = reasoningContext();
 
@@ -54,7 +67,7 @@ class PortfolioAdvisorAgentTest {
         when(promptBuilder.buildReasoningRequest(eq(reasoningContext)))
                 .thenReturn("user");
 
-        PortfolioAdvisorAgent service = new PortfolioAdvisorAgent(builder, objectMapper, promptBuilder);
+        PortfolioAdvisorAgent service = new PortfolioAdvisorAgent(builder, objectMapper, promptBuilder, chatPromptBuilder);
         PortfolioAdviceResponse response = service.generateInsights(reasoningContext);
 
         verify(promptBuilder).buildSystemPrompt();
@@ -69,10 +82,11 @@ class PortfolioAdvisorAgentTest {
                 ChatClient.Builder builder = mock(ChatClient.Builder.class);
                 ChatClient chatClient = mock(ChatClient.class);
                 ChatClient.ChatClientRequestSpec requestSpec = mock(ChatClient.ChatClientRequestSpec.class);
-                ChatClient.CallResponseSpec responseSpec = mock(ChatClient.CallResponseSpec.class);
-                PortfolioAdvisorPromptBuilder promptBuilder = mock(PortfolioAdvisorPromptBuilder.class);
-                ObjectMapper objectMapper = new ObjectMapper();
-                PortfolioReasoningContext reasoningContext = reasoningContext();
+        ChatClient.CallResponseSpec responseSpec = mock(ChatClient.CallResponseSpec.class);
+        PortfolioAdvisorPromptBuilder promptBuilder = mock(PortfolioAdvisorPromptBuilder.class);
+        PortfolioChatPromptBuilder chatPromptBuilder = mock(PortfolioChatPromptBuilder.class);
+        ObjectMapper objectMapper = new ObjectMapper();
+        PortfolioReasoningContext reasoningContext = reasoningContext();
 
                 when(builder.build()).thenReturn(chatClient);
                 when(chatClient.prompt()).thenReturn(requestSpec);
@@ -96,7 +110,7 @@ class PortfolioAdvisorAgentTest {
                 when(promptBuilder.buildReasoningRequest(eq(reasoningContext))).thenReturn("user");
                 when(promptBuilder.buildRetryReasoningRequest(anyString())).thenReturn("retry-user");
 
-                PortfolioAdvisorAgent service = new PortfolioAdvisorAgent(builder, objectMapper, promptBuilder);
+                PortfolioAdvisorAgent service = new PortfolioAdvisorAgent(builder, objectMapper, promptBuilder, chatPromptBuilder);
                 PortfolioAdviceResponse response = service.generateInsights(reasoningContext);
 
                 verify(chatClient, times(2)).prompt();
@@ -111,6 +125,7 @@ class PortfolioAdvisorAgentTest {
                 ChatClient.ChatClientRequestSpec requestSpec = mock(ChatClient.ChatClientRequestSpec.class);
                 ChatClient.CallResponseSpec responseSpec = mock(ChatClient.CallResponseSpec.class);
                 PortfolioAdvisorPromptBuilder promptBuilder = mock(PortfolioAdvisorPromptBuilder.class);
+                PortfolioChatPromptBuilder chatPromptBuilder = mock(PortfolioChatPromptBuilder.class);
                 ObjectMapper objectMapper = new ObjectMapper();
                 PortfolioReasoningContext reasoningContext = reasoningContext();
 
@@ -131,12 +146,128 @@ class PortfolioAdvisorAgentTest {
                 when(promptBuilder.buildSystemPrompt()).thenReturn("system");
                 when(promptBuilder.buildReasoningRequest(eq(reasoningContext))).thenReturn("user");
 
-                PortfolioAdvisorAgent service = new PortfolioAdvisorAgent(builder, objectMapper, promptBuilder);
+                PortfolioAdvisorAgent service = new PortfolioAdvisorAgent(builder, objectMapper, promptBuilder, chatPromptBuilder);
 
                 IllegalStateException exception = assertThrows(IllegalStateException.class,
                                 () -> service.generateInsights(reasoningContext));
 
                 assertEquals("Advisor response rejected because no portfolio_overview tool call was made.", exception.getMessage());
+        }
+
+        @Test
+        void answerQuestion_usesChatPromptBuilderAndReturnsTrimmedContent() {
+                ChatClient.Builder builder = mock(ChatClient.Builder.class);
+                ChatClient chatClient = mock(ChatClient.class);
+                ChatClient.ChatClientRequestSpec requestSpec = mock(ChatClient.ChatClientRequestSpec.class);
+                ChatClient.CallResponseSpec responseSpec = mock(ChatClient.CallResponseSpec.class);
+                PortfolioAdvisorPromptBuilder promptBuilder = mock(PortfolioAdvisorPromptBuilder.class);
+                PortfolioChatPromptBuilder chatPromptBuilder = mock(PortfolioChatPromptBuilder.class);
+                ObjectMapper objectMapper = new ObjectMapper();
+
+                when(builder.build()).thenReturn(chatClient);
+                when(chatClient.prompt()).thenReturn(requestSpec);
+                when(requestSpec.user(any(String.class))).thenReturn(requestSpec);
+                when(requestSpec.tools(any(Object[].class))).thenAnswer(invocation -> {
+                        for (Object tools : invocation.getArguments()) {
+                                try {
+                                        tools.getClass().getMethod("snapshotOverview").invoke(tools);
+                                } catch (NoSuchMethodException ignored) {
+                                }
+                                try {
+                                        tools.getClass().getMethod("portfolioOverview").invoke(tools);
+                                } catch (NoSuchMethodException ignored) {
+                                }
+                        }
+                        return requestSpec;
+                });
+                when(requestSpec.options(any())).thenReturn(requestSpec);
+                when(requestSpec.call()).thenReturn(responseSpec);
+                when(responseSpec.content()).thenReturn("  Snapshot-based answer  ");
+                when(chatPromptBuilder.buildPrompt(any(), any(), anyString())).thenReturn("chat-prompt");
+
+                PortfolioAdvisorAgent service = new PortfolioAdvisorAgent(builder, objectMapper, promptBuilder, chatPromptBuilder);
+
+                String answer = service.answerQuestion(sampleSnapshot(), reasoningContext(), List.of(sampleChat()), "Why is risk high?");
+
+                assertEquals("Snapshot-based answer", answer);
+                verify(chatPromptBuilder).buildPrompt(any(), any(), eq("Why is risk high?"));
+                verify(requestSpec).user("chat-prompt");
+                verify(requestSpec).tools(any(Object[].class));
+                verify(requestSpec, never()).system(anyString());
+        }
+
+        @Test
+        void answerQuestion_rejectsResponseWhenPortfolioToolRunsBeforeSnapshotOverview() {
+                ChatClient.Builder builder = mock(ChatClient.Builder.class);
+                ChatClient chatClient = mock(ChatClient.class);
+                ChatClient.ChatClientRequestSpec requestSpec = mock(ChatClient.ChatClientRequestSpec.class);
+                ChatClient.CallResponseSpec responseSpec = mock(ChatClient.CallResponseSpec.class);
+                PortfolioAdvisorPromptBuilder promptBuilder = mock(PortfolioAdvisorPromptBuilder.class);
+                PortfolioChatPromptBuilder chatPromptBuilder = mock(PortfolioChatPromptBuilder.class);
+                ObjectMapper objectMapper = new ObjectMapper();
+
+                when(builder.build()).thenReturn(chatClient);
+                when(chatClient.prompt()).thenReturn(requestSpec);
+                when(requestSpec.user(any(String.class))).thenReturn(requestSpec);
+                when(requestSpec.tools(any(Object[].class))).thenAnswer(invocation -> {
+                        PortfolioChatReasoningTools chatTools = null;
+                        PortfolioReasoningTools portfolioTools = null;
+                        for (Object tools : invocation.getArguments()) {
+                                if (tools instanceof PortfolioChatReasoningTools typedChatTools) {
+                                        chatTools = typedChatTools;
+                                }
+                                if (tools instanceof PortfolioReasoningTools typedPortfolioTools) {
+                                        portfolioTools = typedPortfolioTools;
+                                }
+                        }
+                        portfolioTools.portfolioOverview();
+                        chatTools.snapshotOverview();
+                        return requestSpec;
+                });
+                when(requestSpec.options(any())).thenReturn(requestSpec);
+                when(requestSpec.call()).thenReturn(responseSpec);
+                when(responseSpec.content()).thenReturn("answer");
+                when(chatPromptBuilder.buildPrompt(any(), any(), anyString())).thenReturn("chat-prompt");
+
+                PortfolioAdvisorAgent service = new PortfolioAdvisorAgent(builder, objectMapper, promptBuilder, chatPromptBuilder);
+
+                String answer = service.answerQuestion(sampleSnapshot(), reasoningContext(), List.of(sampleChat()), "Why is risk high?");
+
+                assertEquals("I could not generate a follow-up answer from the saved portfolio analysis.", answer);
+        }
+
+        @Test
+        void answerQuestion_rejectsResponseWhenAnotherChatToolRunsBeforeSnapshotOverview() {
+                ChatClient.Builder builder = mock(ChatClient.Builder.class);
+                ChatClient chatClient = mock(ChatClient.class);
+                ChatClient.ChatClientRequestSpec requestSpec = mock(ChatClient.ChatClientRequestSpec.class);
+                ChatClient.CallResponseSpec responseSpec = mock(ChatClient.CallResponseSpec.class);
+                PortfolioAdvisorPromptBuilder promptBuilder = mock(PortfolioAdvisorPromptBuilder.class);
+                PortfolioChatPromptBuilder chatPromptBuilder = mock(PortfolioChatPromptBuilder.class);
+                ObjectMapper objectMapper = new ObjectMapper();
+
+                when(builder.build()).thenReturn(chatClient);
+                when(chatClient.prompt()).thenReturn(requestSpec);
+                when(requestSpec.user(any(String.class))).thenReturn(requestSpec);
+                when(requestSpec.tools(any(Object[].class))).thenAnswer(invocation -> {
+                        for (Object tools : invocation.getArguments()) {
+                                if (tools instanceof PortfolioChatReasoningTools typedChatTools) {
+                                        typedChatTools.topHoldings();
+                                        typedChatTools.snapshotOverview();
+                                }
+                        }
+                        return requestSpec;
+                });
+                when(requestSpec.options(any())).thenReturn(requestSpec);
+                when(requestSpec.call()).thenReturn(responseSpec);
+                when(responseSpec.content()).thenReturn("answer");
+                when(chatPromptBuilder.buildPrompt(any(), any(), anyString())).thenReturn("chat-prompt");
+
+                PortfolioAdvisorAgent service = new PortfolioAdvisorAgent(builder, objectMapper, promptBuilder, chatPromptBuilder);
+
+                String answer = service.answerQuestion(sampleSnapshot(), reasoningContext(), List.of(sampleChat()), "Why is risk high?");
+
+                assertEquals("I could not generate a follow-up answer from the saved portfolio analysis.", answer);
         }
 
     private PortfolioReasoningContext reasoningContext() {
@@ -194,6 +325,43 @@ class PortfolioAdvisorAgentTest {
                 List.of(RiskFlag.HIGH_CONCENTRATION.name()),
                 List.of(holding),
                 null
+        );
+    }
+
+    private AnalysisSnapshot sampleSnapshot() {
+        return new AnalysisSnapshot(
+                new PortfolioClassification(
+                        PortfolioRiskLevel.HIGH,
+                        DiversificationLevel.AVERAGE,
+                        ConcentrationLevel.CONCENTRATED,
+                        PerformanceLevel.GOOD,
+                        PortfolioStyle.GROWTH_HEAVY,
+                        BigDecimal.valueOf(10),
+                        BigDecimal.valueOf(60)
+                ),
+                new PortfolioStatsSummary(
+                        4,
+                        BigDecimal.valueOf(30),
+                        BigDecimal.valueOf(55),
+                        BigDecimal.valueOf(12),
+                        BigDecimal.valueOf(25)
+                ),
+                List.of(RiskFlag.HIGH_CONCENTRATION.name()),
+                List.of(),
+                List.of()
+        );
+    }
+
+    private AiAnalysis sampleChat() {
+        return new AiAnalysis(
+                null,
+                AnalysisType.PORTFOLIO_CHAT,
+                "How risky is this portfolio?",
+                "{\"answer\":\"It is concentrated.\"}",
+                null,
+                9L,
+                "qwen2.5:7b-instruct",
+                "V1"
         );
     }
 }

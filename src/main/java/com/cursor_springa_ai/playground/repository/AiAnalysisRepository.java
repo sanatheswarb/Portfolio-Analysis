@@ -26,6 +26,9 @@ public interface AiAnalysisRepository extends JpaRepository<AiAnalysis, Long> {
      */
     List<AiAnalysis> findByParentAnalysisIdOrderByCreatedAt(Long parentAnalysisId);
 
+    List<AiAnalysis> findTop3ByParentAnalysisIdAndAnalysisTypeOrderByCreatedAtDesc(
+            Long parentAnalysisId, AnalysisType type);
+
     /**
      * Returns the most recent row whose type is one of the supplied types.
      * Handy for finding the latest base analysis regardless of whether it was a

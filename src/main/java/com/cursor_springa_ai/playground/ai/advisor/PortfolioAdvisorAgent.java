@@ -1,7 +1,11 @@
 package com.cursor_springa_ai.playground.ai.advisor;
 
+import com.cursor_springa_ai.playground.dto.ai.AnalysisSnapshot;
+import com.cursor_springa_ai.playground.model.AiAnalysis;
+import com.cursor_springa_ai.playground.ai.reasoning.PortfolioChatReasoningTools;
 import com.cursor_springa_ai.playground.ai.reasoning.PortfolioReasoningContext;
 import com.cursor_springa_ai.playground.ai.reasoning.PortfolioReasoningTools;
+import com.cursor_springa_ai.playground.ai.reasoning.ToolInvocationRecorder;
 import com.cursor_springa_ai.playground.dto.PortfolioAdviceResponse;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.ai.chat.client.ChatClient;
@@ -19,6 +23,7 @@ public class PortfolioAdvisorAgent {
         private final ChatClient chatClient;
         private final ObjectMapper objectMapper;
         private final PortfolioAdvisorPromptBuilder promptBuilder;
+        private final PortfolioChatPromptBuilder chatPromptBuilder;
 
         @Value("${portfolio.advisor.model:qwen2.5:7b-instruct}")
         private String advisorModel;
@@ -40,10 +45,12 @@ public class PortfolioAdvisorAgent {
 
         public PortfolioAdvisorAgent(ChatClient.Builder chatClientBuilder,
                         ObjectMapper objectMapper,
-                        PortfolioAdvisorPromptBuilder promptBuilder) {
+                        PortfolioAdvisorPromptBuilder promptBuilder,
+                        PortfolioChatPromptBuilder chatPromptBuilder) {
                 this.chatClient = chatClientBuilder.build();
                 this.objectMapper = objectMapper;
                 this.promptBuilder = promptBuilder;
+                this.chatPromptBuilder = chatPromptBuilder;
         }
 
         public PortfolioAdviceResponse generateInsights(PortfolioReasoningContext reasoningContext) {
@@ -73,6 +80,69 @@ public class PortfolioAdvisorAgent {
                 }
 
                 return fallbackAdviceResponse(secondAttempt.aiResponse());
+        }
+
+        public String answerQuestion(AnalysisSnapshot snapshot, PortfolioReasoningContext reasoningContext, List<AiAnalysis> chats, String question) {
+                String prompt = chatPromptBuilder.buildPrompt(snapshot, chats, question);
+                ToolInvocationRecorder toolInvocationRecorder = new ToolInvocationRecorder();
+                PortfolioChatReasoningTools reasoningTools = new PortfolioChatReasoningTools(
+                                snapshot,
+                                chats,
+                                objectMapper,
+                                toolInvocationRecorder);
+                PortfolioReasoningTools portfolioReasoningTools = new PortfolioReasoningTools(
+                                reasoningContext,
+                                objectMapper,
+                                toolInvocationRecorder);
+
+                long startTime = System.currentTimeMillis();
+                String aiResponse = chatClient.prompt()
+                                .user(prompt)
+                                .tools(reasoningTools, portfolioReasoningTools)
+                                .options(buildOptions(numPredict, temperature))
+                                .call()
+                                .content();
+                long llmTime = System.currentTimeMillis() - startTime;
+                String firstTool = toolInvocationRecorder.firstInvokedTool();
+                java.util.Map<String, Integer> invocationCounts = mergeInvocationCounts(reasoningTools, portfolioReasoningTools);
+                int totalCalls = reasoningTools.invocationCount() + portfolioReasoningTools.invocationCount();
+                logger.info("Chat LLM time: " + llmTime + " ms");
+                logger.info("Chat advisor tool usage summary: firstTool="
+                                + firstTool
+                                + ", totalCalls=" + totalCalls
+                                + ", counts=" + invocationCounts);
+
+                if (!hasRequiredChatToolUsage(reasoningTools, toolInvocationRecorder)) {
+                        logger.warning("Rejecting chat advisor response because required tool usage was missing or misordered: firstTool="
+                                        + firstTool + ", totalCalls=" + totalCalls + ", counts=" + invocationCounts);
+                        return "I could not generate a follow-up answer from the saved portfolio analysis.";
+                }
+
+                if (aiResponse == null || aiResponse.isBlank()) {
+                        return "I could not generate a follow-up answer from the saved portfolio analysis.";
+                }
+                return aiResponse.trim();
+        }
+
+        private boolean hasRequiredChatToolUsage(
+                        PortfolioChatReasoningTools chatTools,
+                        ToolInvocationRecorder toolInvocationRecorder) {
+                final String requiredFirstTool = "snapshot_overview";
+                Integer requiredToolCalls = chatTools.invocationCounts().get(requiredFirstTool);
+                if (requiredToolCalls == null || requiredToolCalls.intValue() <= 0) {
+                        return false;
+                }
+                return requiredFirstTool.equals(toolInvocationRecorder.firstInvokedTool());
+        }
+
+        private java.util.Map<String, Integer> mergeInvocationCounts(
+                        PortfolioChatReasoningTools chatTools,
+                        PortfolioReasoningTools portfolioTools) {
+                java.util.LinkedHashMap<String, Integer> merged = new java.util.LinkedHashMap<>();
+                merged.putAll(chatTools.invocationCounts());
+                portfolioTools.invocationCounts().forEach((tool, count) -> merged.merge(tool, count,
+                                (existingCount, newCount) -> existingCount + newCount));
+                return java.util.Map.copyOf(merged);
         }
 
         private AdvisorCallResult callAdvisor(
