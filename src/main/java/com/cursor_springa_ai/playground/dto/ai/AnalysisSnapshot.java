@@ -19,7 +19,8 @@ public record AnalysisSnapshot(
         List<String> riskFlags,
         List<TopHoldingSummary> topHoldings,
         List<SectorExposureSummary> sectorExposure,
-        PortfolioDecisionHints decisionHints
+        PortfolioDecisionHints decisionHints,
+        DecisionSignals decisionSignals
 ) {
     public AnalysisSnapshot {
         riskFlags = riskFlags == null ? List.of() : List.copyOf(riskFlags);
@@ -34,6 +35,17 @@ public record AnalysisSnapshot(
             List<TopHoldingSummary> topHoldings,
             List<SectorExposureSummary> sectorExposure
     ) {
-        this(classification, portfolioStats, riskFlags, topHoldings, sectorExposure, null);
+        this(classification, portfolioStats, riskFlags, topHoldings, sectorExposure, null, null);
+    }
+
+    public AnalysisSnapshot(
+            PortfolioClassification classification,
+            PortfolioStatsSummary portfolioStats,
+            List<String> riskFlags,
+            List<TopHoldingSummary> topHoldings,
+            List<SectorExposureSummary> sectorExposure,
+            PortfolioDecisionHints decisionHints
+    ) {
+        this(classification, portfolioStats, riskFlags, topHoldings, sectorExposure, decisionHints, null);
     }
 }
