@@ -27,7 +27,7 @@ public class DecisionTraceBuilder {
 
     private static final Map<String, Integer> RISK_PRIORITY = riskPriority();
     private static final int TOP_RISK_DRIVERS_LIMIT = 5;
-    private static final BigDecimal TOP3_CONCENTRATION_THRESHOLD = BigDecimal.valueOf(60);
+    private static final BigDecimal TOP3_CONCENTRATION_THRESHOLD_PERCENT = BigDecimal.valueOf(60);
 
     private final PortfolioDerivedMetricsService derivedMetricsService;
 
@@ -85,7 +85,7 @@ public class DecisionTraceBuilder {
 
         if (classification != null && ConcentrationLevel.CONCENTRATED.equals(classification.concentrationLevel())) {
             BigDecimal top3 = stats != null ? stats.getTop3HoldingPercent() : null;
-            if (top3 != null && top3.compareTo(TOP3_CONCENTRATION_THRESHOLD) > 0) {
+            if (top3 != null && top3.compareTo(TOP3_CONCENTRATION_THRESHOLD_PERCENT) > 0) {
                 return "Top 3 holdings exceed " + top3.stripTrailingZeros().toPlainString() + "%";
             }
             return "Portfolio is highly concentrated";

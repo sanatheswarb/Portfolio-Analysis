@@ -20,6 +20,7 @@ import java.util.List;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class DecisionTraceBuilderTest {
@@ -120,8 +121,7 @@ class DecisionTraceBuilderTest {
 
         List<String> drivers = trace.topRiskDrivers();
         assertNotNull(drivers);
-        // Record canonical form — list should be immutable
-        assertTrue(drivers instanceof java.util.List);
+        assertThrows(UnsupportedOperationException.class, () -> drivers.add("extra"));
     }
 
     // ---- helpers ----
