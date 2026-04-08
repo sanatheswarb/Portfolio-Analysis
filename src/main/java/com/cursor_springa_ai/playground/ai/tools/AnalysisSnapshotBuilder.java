@@ -1,7 +1,6 @@
 package com.cursor_springa_ai.playground.ai.tools;
 
 import com.cursor_springa_ai.playground.ai.reasoning.PortfolioReasoningContext;
-import com.cursor_springa_ai.playground.dto.EnrichedHoldingData;
 import com.cursor_springa_ai.playground.dto.ai.AnalysisSnapshot;
 import com.cursor_springa_ai.playground.dto.ai.PortfolioStatsSummary;
 import com.cursor_springa_ai.playground.dto.ai.SectorExposureSummary;
@@ -10,11 +9,7 @@ import com.cursor_springa_ai.playground.model.PortfolioStats;
 import org.springframework.stereotype.Component;
 
 import java.math.BigDecimal;
-import java.util.ArrayList;
-import java.util.Comparator;
-import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Map;
 
 /**
  * Converts a {@link PortfolioReasoningContext} into a lean {@link AnalysisSnapshot}
@@ -32,6 +27,16 @@ public class AnalysisSnapshotBuilder {
 
     /** Number of top sectors to include in the snapshot. */
     private static final int TOP_SECTORS_LIMIT = 5;
+    private final PortfolioDerivedMetricsService derivedMetricsService;
+    private final DecisionHintsBuilder decisionHintsBuilder;
+
+    public AnalysisSnapshotBuilder(
+            PortfolioDerivedMetricsService derivedMetricsService,
+            DecisionHintsBuilder decisionHintsBuilder
+    ) {
+        this.derivedMetricsService = derivedMetricsService;
+        this.decisionHintsBuilder = decisionHintsBuilder;
+    }
 
     public AnalysisSnapshot build(PortfolioReasoningContext context) {
         return new AnalysisSnapshot(
@@ -39,7 +44,8 @@ public class AnalysisSnapshotBuilder {
                 extractStats(context),
                 context.portfolioRiskFlags(),
                 extractTopHoldings(context),
-                extractSectorExposure(context)
+                extractSectorExposure(context),
+                context.decisionHints() != null ? context.decisionHints() : decisionHintsBuilder.build(context)
         );
     }
 
@@ -51,7 +57,7 @@ public class AnalysisSnapshotBuilder {
             return empty;
         }
 
-        BigDecimal smallCapExposure = extractSmallCapExposure(context);
+        BigDecimal smallCapExposure = derivedMetricsService.smallCapExposure(context);
 
         return new PortfolioStatsSummary(
                 stats.getStockCount() != null ? stats.getStockCount() : 0,
@@ -62,27 +68,8 @@ public class AnalysisSnapshotBuilder {
         );
     }
 
-    private BigDecimal extractSmallCapExposure(PortfolioReasoningContext context) {
-        if (context.classification() != null
-                && context.classification().smallCapExposure() != null) {
-            return context.classification().smallCapExposure();
-        }
-        // Compute from holdings if not in classification
-        if (context.enrichedHoldings().isEmpty()) {
-            return BigDecimal.ZERO;
-        }
-        BigDecimal smallCapAlloc = context.enrichedHoldings().stream()
-                .filter(h -> "smallcap".equalsIgnoreCase(h.marketCapType()))
-                .map(h -> h.allocationPercent() != null ? h.allocationPercent() : BigDecimal.ZERO)
-                .reduce(BigDecimal.ZERO, BigDecimal::add);
-        return smallCapAlloc;
-    }
-
     private List<TopHoldingSummary> extractTopHoldings(PortfolioReasoningContext context) {
-        return context.enrichedHoldings().stream()
-                .filter(h -> h.allocationPercent() != null)
-                .sorted(Comparator.comparing(EnrichedHoldingData::allocationPercent).reversed())
-                .limit(TOP_HOLDINGS_LIMIT)
+        return derivedMetricsService.topHoldings(context, TOP_HOLDINGS_LIMIT).stream()
                 .map(h -> new TopHoldingSummary(
                         h.symbol(),
                         h.allocationPercent(),
@@ -92,18 +79,6 @@ public class AnalysisSnapshotBuilder {
     }
 
     private List<SectorExposureSummary> extractSectorExposure(PortfolioReasoningContext context) {
-        Map<String, BigDecimal> sectorTotals = new LinkedHashMap<>();
-        for (EnrichedHoldingData h : context.enrichedHoldings()) {
-            if (h.sector() == null || h.allocationPercent() == null) {
-                continue;
-            }
-            sectorTotals.merge(h.sector(), h.allocationPercent(), BigDecimal::add);
-        }
-        List<Map.Entry<String, BigDecimal>> sorted = new ArrayList<>(sectorTotals.entrySet());
-        sorted.sort(Map.Entry.<String, BigDecimal>comparingByValue().reversed());
-        return sorted.stream()
-                .limit(TOP_SECTORS_LIMIT)
-                .map(e -> new SectorExposureSummary(e.getKey(), e.getValue()))
-                .toList();
+        return derivedMetricsService.sectorExposure(context, TOP_SECTORS_LIMIT);
     }
 }

@@ -1,7 +1,7 @@
 package com.cursor_springa_ai.playground.ai.tools;
 
 import com.cursor_springa_ai.playground.ai.reasoning.PortfolioReasoningContext;
-import com.cursor_springa_ai.playground.dto.EnrichedHoldingData;
+import com.cursor_springa_ai.playground.dto.ai.PortfolioDecisionHints;
 import com.cursor_springa_ai.playground.dto.PortfolioSummary;
 import com.cursor_springa_ai.playground.model.PortfolioClassification;
 import com.cursor_springa_ai.playground.model.PortfolioStats;
@@ -14,9 +14,27 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
-import java.util.Objects;
 
 public class PortfolioOverviewBuilder {
+
+    private final PortfolioDerivedMetricsService derivedMetricsService;
+    private final DecisionHintsBuilder decisionHintsBuilder;
+
+    public PortfolioOverviewBuilder() {
+        this(new PortfolioDerivedMetricsService());
+    }
+
+    private PortfolioOverviewBuilder(PortfolioDerivedMetricsService derivedMetricsService) {
+        this(derivedMetricsService, new DecisionHintsBuilder(derivedMetricsService));
+    }
+
+    public PortfolioOverviewBuilder(
+            PortfolioDerivedMetricsService derivedMetricsService,
+            DecisionHintsBuilder decisionHintsBuilder
+    ) {
+        this.derivedMetricsService = derivedMetricsService;
+        this.decisionHintsBuilder = decisionHintsBuilder;
+    }
 
     public Map<String, Object> build(PortfolioReasoningContext context) {
         Map<String, Object> payload = new LinkedHashMap<>();
@@ -24,6 +42,7 @@ public class PortfolioOverviewBuilder {
         payload.put("portfolio_structure", portfolioStructure(context));
         payload.put("portfolio_performance", portfolioPerformance(context));
         payload.put("portfolio_risk_profile", portfolioRiskProfile(context));
+        payload.put("decision_hints", decisionHintsPayload(context));
         payload.put("largest_holdings", largestHoldingsSummary(context));
         payload.put("portfolio_strengths", portfolioStrengths(context));
         payload.put("portfolio_concerns", portfolioConcerns(context));
@@ -59,14 +78,28 @@ public class PortfolioOverviewBuilder {
         payload.put("top3_holdings_percent", top3HoldingsPercent);
         payload.put("top3_holdings_assessment", top3HoldingsAssessment(top3HoldingsPercent));
 
-        payload.put("small_cap_exposure", smallCapExposure(context, classification));
-        payload.put("mid_cap_exposure", marketCapExposure(context, "midcap"));
-        payload.put("large_cap_exposure", marketCapExposure(context, "largecap"));
+        payload.put("small_cap_exposure", derivedMetricsService.smallCapExposure(context));
+        payload.put("mid_cap_exposure", derivedMetricsService.marketCapExposure(context, "midcap"));
+        payload.put("large_cap_exposure", derivedMetricsService.marketCapExposure(context, "largecap"));
 
         SectorExposure sectorExposure = topSectorExposure(context);
         payload.put("top_sector", sectorExposure.sector());
         payload.put("top_sector_percent", sectorExposure.allocationPercent());
         payload.put("sector_concentration_assessment", sectorConcentrationAssessment(sectorExposure.allocationPercent()));
+        return payload;
+    }
+
+    private Map<String, Object> decisionHintsPayload(PortfolioReasoningContext context) {
+        PortfolioDecisionHints hints = context.decisionHints() != null
+                ? context.decisionHints()
+                : decisionHintsBuilder.build(context);
+        Map<String, Object> payload = new LinkedHashMap<>();
+        payload.put("primary_risk", hints.primaryRisk());
+        payload.put("largest_holding_symbol", hints.largestHoldingSymbol());
+        payload.put("largest_holding_percent", hints.largestHoldingPercent());
+        payload.put("needs_diversification", hints.diversificationNeeded());
+        payload.put("concentration_reduction_needed", hints.concentrationReductionNeeded());
+        payload.put("small_cap_risk_high", hints.smallCapRiskHigh());
         return payload;
     }
 
@@ -92,9 +125,7 @@ public class PortfolioOverviewBuilder {
     }
 
     private List<Map<String, Object>> largestHoldingsSummary(PortfolioReasoningContext context) {
-        return context.enrichedHoldings().stream()
-                .sorted(HoldingClassifier.BY_ALLOCATION_DESC)
-                .limit(3)
+        return derivedMetricsService.topHoldings(context, 3).stream()
                 .map(holding -> {
                     Map<String, Object> payload = new LinkedHashMap<>();
                     payload.put("symbol", holding.symbol());
@@ -109,7 +140,7 @@ public class PortfolioOverviewBuilder {
         PortfolioClassification classification = context.classification();
         PortfolioStats stats = context.portfolioStats();
         Integer stockCount = stockCount(stats, context.portfolioSummary());
-        BigDecimal smallCapExposure = smallCapExposure(context, classification);
+        BigDecimal smallCapExposure = derivedMetricsService.smallCapExposure(context);
         BigDecimal pnlPercent = stats != null ? stats.getPnlPercent()
                 : context.portfolioSummary() == null ? null : context.portfolioSummary().totalPnLPercent();
         BigDecimal topSectorPercent = topSectorExposure(context).allocationPercent();
@@ -173,42 +204,11 @@ public class PortfolioOverviewBuilder {
         return classification == null ? null : classification.top3Exposure();
     }
 
-    private BigDecimal smallCapExposure(PortfolioReasoningContext context, PortfolioClassification classification) {
-        if (classification != null && classification.smallCapExposure() != null) {
-            return classification.smallCapExposure();
-        }
-        return marketCapExposure(context, "smallcap");
-    }
-
-    private BigDecimal marketCapExposure(PortfolioReasoningContext context, String marketCapType) {
-        return context.enrichedHoldings().stream()
-                .filter(holding -> holding.marketCapType() != null)
-                .filter(holding -> holding.marketCapType().equalsIgnoreCase(marketCapType))
-                .map(EnrichedHoldingData::allocationPercent)
-                .filter(Objects::nonNull)
-                .reduce(BigDecimal.ZERO, BigDecimal::add);
-    }
-
     private SectorExposure topSectorExposure(PortfolioReasoningContext context) {
-        Map<String, BigDecimal> exposureBySector = new LinkedHashMap<>();
-        Map<String, String> displaySectorByNormalizedKey = new LinkedHashMap<>();
-        for (EnrichedHoldingData holding : context.enrichedHoldings()) {
-            if (holding.sector() == null || holding.sector().isBlank() || holding.allocationPercent() == null) {
-                continue;
-            }
-            String normalizedSectorKey = normalizeSectorKey(holding.sector());
-            String displaySector = holding.sector().trim();
-            displaySectorByNormalizedKey.putIfAbsent(normalizedSectorKey, displaySector);
-            exposureBySector.merge(normalizedSectorKey, holding.allocationPercent(), BigDecimal::add);
-        }
-        return exposureBySector.entrySet().stream()
-                .max(Map.Entry.comparingByValue())
-                .map(entry -> new SectorExposure(displaySectorByNormalizedKey.get(entry.getKey()), entry.getValue()))
+        return derivedMetricsService.sectorExposure(context, 1).stream()
+                .findFirst()
+                .map(exposure -> new SectorExposure(exposure.sector(), exposure.allocation()))
                 .orElse(new SectorExposure(null, null));
-    }
-
-    private String normalizeSectorKey(String sector) {
-        return sector.trim().toLowerCase(Locale.ROOT);
     }
     private String largestHoldingAssessment(BigDecimal largestHoldingPercent) {
         if (largestHoldingPercent == null) {

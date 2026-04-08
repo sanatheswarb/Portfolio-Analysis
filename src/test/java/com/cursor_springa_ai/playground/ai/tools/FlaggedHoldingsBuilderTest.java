@@ -43,13 +43,17 @@ class FlaggedHoldingsBuilderTest {
     }
 
     @Test
-    void build_excludesHoldingsBelowThresholdWithNoFlags() {
+    void build_excludesNonTopHoldingBelowThresholdWithNoFlags() {
+        EnrichedHoldingData topA = holding("A", BigDecimal.valueOf(12), List.of());
+        EnrichedHoldingData topB = holding("B", BigDecimal.valueOf(11), List.of());
+        EnrichedHoldingData topC = holding("C", BigDecimal.valueOf(9), List.of());
         EnrichedHoldingData minor = holding("MINOR", BigDecimal.valueOf(3), List.of());
-        PortfolioReasoningContext context = contextWithHoldings(List.of(minor));
+        PortfolioReasoningContext context = contextWithHoldings(List.of(topA, topB, topC, minor));
 
         List<FlaggedHoldingDto> result = builder.build(context);
 
-        assertTrue(result.isEmpty());
+        assertEquals(3, result.size());
+        assertTrue(result.stream().noneMatch(h -> "MINOR".equals(h.symbol())));
     }
 
     @Test
@@ -62,6 +66,23 @@ class FlaggedHoldingsBuilderTest {
 
         assertEquals(1, result.size());
         assertEquals("FLAGGED", result.get(0).symbol());
+    }
+
+    @Test
+    void build_includesTopThreeHoldingsEvenWithoutFlagsAndThreshold() {
+        List<EnrichedHoldingData> holdings = List.of(
+                holding("A", BigDecimal.valueOf(9), List.of()),
+                holding("B", BigDecimal.valueOf(8), List.of()),
+                holding("C", BigDecimal.valueOf(7), List.of()),
+                holding("D", BigDecimal.valueOf(6), List.of())
+        );
+
+        List<FlaggedHoldingDto> result = builder.build(contextWithHoldings(holdings));
+
+        assertEquals(3, result.size());
+        assertEquals("A", result.get(0).symbol());
+        assertEquals("B", result.get(1).symbol());
+        assertEquals("C", result.get(2).symbol());
     }
 
     @Test

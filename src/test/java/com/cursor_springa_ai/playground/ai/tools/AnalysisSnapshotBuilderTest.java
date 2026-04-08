@@ -23,7 +23,11 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class AnalysisSnapshotBuilderTest {
 
-    private final AnalysisSnapshotBuilder builder = new AnalysisSnapshotBuilder();
+    private final PortfolioDerivedMetricsService derivedMetricsService = new PortfolioDerivedMetricsService();
+    private final AnalysisSnapshotBuilder builder = new AnalysisSnapshotBuilder(
+            derivedMetricsService,
+            new DecisionHintsBuilder(derivedMetricsService)
+    );
 
     @Test
     void build_populatesClassificationFromContext() {
@@ -106,6 +110,17 @@ class AnalysisSnapshotBuilderTest {
         assertEquals(BigDecimal.valueOf(35), snapshot.portfolioStats().largestHoldingPercent());
         assertEquals(BigDecimal.valueOf(65), snapshot.portfolioStats().top3Percent());
         assertEquals(BigDecimal.valueOf(12.5), snapshot.portfolioStats().pnlPercent());
+    }
+
+    @Test
+    void build_includesDecisionHints() {
+        AnalysisSnapshot snapshot = builder.build(sampleContext());
+
+        assertNotNull(snapshot.decisionHints());
+        assertEquals(RiskFlag.HIGH_CONCENTRATION.name(), snapshot.decisionHints().primaryRisk());
+        assertEquals("INFY", snapshot.decisionHints().largestHoldingSymbol());
+        assertEquals(BigDecimal.valueOf(35), snapshot.decisionHints().largestHoldingPercent());
+        assertTrue(snapshot.decisionHints().concentrationReductionNeeded());
     }
 
     @Test

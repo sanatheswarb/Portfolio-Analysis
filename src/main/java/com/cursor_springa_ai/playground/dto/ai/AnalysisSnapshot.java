@@ -18,11 +18,22 @@ public record AnalysisSnapshot(
         PortfolioStatsSummary portfolioStats,
         List<String> riskFlags,
         List<TopHoldingSummary> topHoldings,
-        List<SectorExposureSummary> sectorExposure
+        List<SectorExposureSummary> sectorExposure,
+        PortfolioDecisionHints decisionHints
 ) {
     public AnalysisSnapshot {
         riskFlags = riskFlags == null ? List.of() : List.copyOf(riskFlags);
         topHoldings = topHoldings == null ? List.of() : List.copyOf(topHoldings);
         sectorExposure = sectorExposure == null ? List.of() : List.copyOf(sectorExposure);
+    }
+
+    public AnalysisSnapshot(
+            PortfolioClassification classification,
+            PortfolioStatsSummary portfolioStats,
+            List<String> riskFlags,
+            List<TopHoldingSummary> topHoldings,
+            List<SectorExposureSummary> sectorExposure
+    ) {
+        this(classification, portfolioStats, riskFlags, topHoldings, sectorExposure, null);
     }
 }
