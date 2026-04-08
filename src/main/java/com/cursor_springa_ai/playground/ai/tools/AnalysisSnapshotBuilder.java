@@ -40,6 +40,12 @@ public class AnalysisSnapshotBuilder {
     /** Maximum number of priority actions to include in decision signals. */
     private static final int MAX_PRIORITY_ACTIONS = 3;
 
+    /**
+     * Safe single-holding concentration threshold used in priority action messages.
+     * Aligns with {@code HoldingAnalyticsService.HOLDING_CONCENTRATION_THRESHOLD} (20 %).
+     */
+    private static final int SAFE_HOLDING_CONCENTRATION_PERCENT = 20;
+
     private static final Map<String, Integer> RISK_PRIORITY = buildRiskPriority();
 
     private final PortfolioDerivedMetricsService derivedMetricsService;
@@ -211,8 +217,8 @@ public class AnalysisSnapshotBuilder {
         return switch (flag) {
             case "HIGH_CONCENTRATION" -> largestHolding != null
                     ? "Reduce " + largestHolding.symbol() + " allocation from "
-                      + formatPercent(largestHoldingPercent) + " to below 20%"
-                    : "Reduce largest holding allocation to below 20%";
+                      + formatPercent(largestHoldingPercent) + " to below " + SAFE_HOLDING_CONCENTRATION_PERCENT + "%"
+                    : "Reduce largest holding allocation to below " + SAFE_HOLDING_CONCENTRATION_PERCENT + "%";
             case "UNDER_DIVERSIFIED"   -> "Add more holdings to improve portfolio diversification";
             case "TOP_HEAVY_PORTFOLIO" -> "Rebalance top holdings to reduce concentration risk";
             case "HIGH_VALUATION"      -> "Review overvalued holdings for potential rebalancing";
@@ -228,6 +234,8 @@ public class AnalysisSnapshotBuilder {
     }
 
     private static Map<String, Integer> buildRiskPriority() {
+        // Priority 1 = most urgent; ordering mirrors the flag severity used across
+        // DecisionHintsBuilder and DecisionTraceBuilder so signal ordering is consistent.
         Map<String, Integer> priority = new LinkedHashMap<>();
         priority.put("HIGH_CONCENTRATION", 1);
         priority.put("UNDER_DIVERSIFIED", 2);
