@@ -135,6 +135,7 @@ class AnalysisSnapshotBuilderTest {
                 null,
                 List.of(),
                 List.of(),
+                null,
                 null
         );
 
@@ -207,6 +208,7 @@ class AnalysisSnapshotBuilderTest {
                         RiskFlag.TOP_HEAVY_PORTFOLIO.name(),
                         RiskFlag.HIGH_VALUATION.name()),
                 List.of(),
+                null,
                 null
         );
 
@@ -239,6 +241,7 @@ class AnalysisSnapshotBuilderTest {
                 null,
                 List.of(),
                 List.of(),
+                null,
                 null
         );
 
@@ -294,7 +297,8 @@ class AnalysisSnapshotBuilderTest {
                 List.of(infy, tcs, hdfcBank),
                 new PortfolioClassification(PortfolioRiskLevel.HIGH, DiversificationLevel.AVERAGE,
                         ConcentrationLevel.CONCENTRATED, PerformanceLevel.GOOD,
-                        PortfolioStyle.GROWTH_HEAVY, BigDecimal.valueOf(5), BigDecimal.valueOf(65)));
+                        PortfolioStyle.GROWTH_HEAVY, BigDecimal.valueOf(5), BigDecimal.valueOf(65)),
+                null);
     }
 
     private PortfolioReasoningContext contextWithHoldings(List<EnrichedHoldingData> holdings) {
@@ -307,7 +311,7 @@ class AnalysisSnapshotBuilderTest {
                 BigDecimal.valueOf(25), holdings.size(),
                 BigDecimal.ZERO, BigDecimal.ZERO,
                 BigDecimal.valueOf(55), BigDecimal.valueOf(50), null);
-        return new PortfolioReasoningContext("portfolio-1", summary, stats, List.of(), holdings, null);
+                return new PortfolioReasoningContext("portfolio-1", summary, stats, List.of(), holdings, null, null);
     }
 
     private EnrichedHoldingData holding(String symbol, BigDecimal allocation,

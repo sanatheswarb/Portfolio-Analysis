@@ -246,11 +246,12 @@ class FlaggedHoldingsBuilderTest {
                 List.of(RiskFlag.HIGH_CONCENTRATION.name()), List.of(infy, tcs, hdfcBank),
                 new PortfolioClassification(PortfolioRiskLevel.HIGH, DiversificationLevel.AVERAGE,
                         ConcentrationLevel.CONCENTRATED, PerformanceLevel.GOOD,
-                        PortfolioStyle.GROWTH_HEAVY, BigDecimal.ZERO, BigDecimal.valueOf(65)));
+                        PortfolioStyle.GROWTH_HEAVY, BigDecimal.ZERO, BigDecimal.valueOf(65)),
+                null);
     }
 
     private PortfolioReasoningContext contextWithHoldings(List<EnrichedHoldingData> holdings) {
-        return new PortfolioReasoningContext("test", null, null, List.of(), holdings, null);
+        return new PortfolioReasoningContext("test", null, null, List.of(), holdings, null, null);
     }
 
     private EnrichedHoldingData holding(String symbol, BigDecimal allocation, List<String> flags) {

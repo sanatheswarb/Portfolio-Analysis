@@ -22,35 +22,4 @@ public record PortfolioReasoningContext(
         portfolioRiskFlags = portfolioRiskFlags == null ? List.of() : List.copyOf(portfolioRiskFlags);
         enrichedHoldings = enrichedHoldings == null ? List.of() : List.copyOf(enrichedHoldings);
     }
-
-    public PortfolioReasoningContext(
-            String portfolioUserId,
-            PortfolioSummary portfolioSummary,
-            PortfolioStats portfolioStats,
-            List<String> portfolioRiskFlags,
-            List<EnrichedHoldingData> enrichedHoldings,
-            PortfolioClassification classification
-    ) {
-        this(
-                portfolioUserId,
-                portfolioSummary,
-                portfolioStats,
-                portfolioRiskFlags,
-                enrichedHoldings,
-                classification,
-                null
-        );
-    }
-
-    public PortfolioReasoningContext withDecisionHints(PortfolioDecisionHints newDecisionHints) {
-        return new PortfolioReasoningContext(
-                portfolioUserId,
-                portfolioSummary,
-                portfolioStats,
-                portfolioRiskFlags,
-                enrichedHoldings,
-                classification,
-                newDecisionHints
-        );
-    }
 }

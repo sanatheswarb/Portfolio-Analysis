@@ -320,7 +320,8 @@ class PortfolioReasoningToolsTest {
                         PortfolioStyle.GROWTH_HEAVY,
                         BigDecimal.ZERO,
                         BigDecimal.valueOf(65)
-                )
+            ),
+            null
         );
     }
 }
