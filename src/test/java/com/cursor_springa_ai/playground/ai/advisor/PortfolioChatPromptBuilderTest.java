@@ -39,6 +39,8 @@ class PortfolioChatPromptBuilderTest {
         assertTrue(prompt.contains("AI: Latest answer"));
         assertTrue(prompt.contains("AI: Earlier answer"));
         assertTrue(prompt.contains("HIGH_CONCENTRATION"));
+                assertTrue(prompt.contains("If the question asks for recent news, latest developments, headlines, company events, or market developments, you MUST call search_stock_news before answering."));
+                assertTrue(prompt.contains("For a news question, call snapshot_overview first and then search_stock_news."));
     }
 
     private AnalysisSnapshot sampleSnapshot() {

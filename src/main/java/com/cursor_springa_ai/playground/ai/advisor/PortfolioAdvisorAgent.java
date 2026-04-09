@@ -2,12 +2,14 @@ package com.cursor_springa_ai.playground.ai.advisor;
 
 import com.cursor_springa_ai.playground.dto.ai.AnalysisSnapshot;
 import com.cursor_springa_ai.playground.model.AiAnalysis;
+import com.cursor_springa_ai.playground.ai.reasoning.MarketNewsReasoningTools;
 import com.cursor_springa_ai.playground.ai.reasoning.PortfolioChatReasoningTools;
 import com.cursor_springa_ai.playground.ai.reasoning.PortfolioReasoningContext;
 import com.cursor_springa_ai.playground.ai.reasoning.PortfolioReasoningTools;
 import com.cursor_springa_ai.playground.ai.reasoning.ToolInvocationRecorder;
 import com.cursor_springa_ai.playground.dto.PortfolioAdviceResponse;
 import com.cursor_springa_ai.playground.dto.ai.PortfolioDecisionHints;
+import com.cursor_springa_ai.playground.service.MarketNewsService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.ollama.api.OllamaChatOptions;
@@ -28,6 +30,7 @@ public class PortfolioAdvisorAgent {
         private final ObjectMapper objectMapper;
         private final PortfolioAdvisorPromptBuilder promptBuilder;
         private final PortfolioChatPromptBuilder chatPromptBuilder;
+        private final MarketNewsService marketNewsService;
 
         @Value("${portfolio.advisor.model:qwen2.5:7b-instruct}")
         private String advisorModel;
@@ -50,11 +53,13 @@ public class PortfolioAdvisorAgent {
         public PortfolioAdvisorAgent(ChatClient.Builder chatClientBuilder,
                         ObjectMapper objectMapper,
                         PortfolioAdvisorPromptBuilder promptBuilder,
-                        PortfolioChatPromptBuilder chatPromptBuilder) {
+                        PortfolioChatPromptBuilder chatPromptBuilder,
+                        MarketNewsService marketNewsService) {
                 this.chatClient = chatClientBuilder.build();
                 this.objectMapper = objectMapper;
                 this.promptBuilder = promptBuilder;
                 this.chatPromptBuilder = chatPromptBuilder;
+                this.marketNewsService = marketNewsService;
         }
 
         public PortfolioAdviceResponse generateInsights(PortfolioReasoningContext reasoningContext) {
@@ -104,18 +109,21 @@ public class PortfolioAdvisorAgent {
                                 reasoningContext,
                                 objectMapper,
                                 toolInvocationRecorder);
+                MarketNewsReasoningTools marketNewsTools = new MarketNewsReasoningTools(
+                                marketNewsService,
+                                toolInvocationRecorder);
 
                 long startTime = System.currentTimeMillis();
                 String aiResponse = chatClient.prompt()
                                 .user(prompt)
-                                .tools(reasoningTools, portfolioReasoningTools)
+                                .tools(reasoningTools, portfolioReasoningTools, marketNewsTools)
                                 .options(buildOptions(numPredict, temperature))
                                 .call()
                                 .content();
                 long llmTime = System.currentTimeMillis() - startTime;
                 String firstTool = toolInvocationRecorder.firstInvokedTool();
-                java.util.Map<String, Integer> invocationCounts = mergeInvocationCounts(reasoningTools, portfolioReasoningTools);
-                int totalCalls = reasoningTools.invocationCount() + portfolioReasoningTools.invocationCount();
+                java.util.Map<String, Integer> invocationCounts = mergeInvocationCounts(reasoningTools, portfolioReasoningTools, marketNewsTools);
+                int totalCalls = reasoningTools.invocationCount() + portfolioReasoningTools.invocationCount() + marketNewsTools.invocationCount();
                 logger.info("Chat LLM time: " + llmTime + " ms");
                 logger.info("Chat advisor tool usage summary: firstTool="
                                 + firstTool
@@ -123,20 +131,54 @@ public class PortfolioAdvisorAgent {
                                 + ", counts=" + invocationCounts);
 
 
+                if (isNewsQuestion(question) && !marketNewsTools.hasInvokedTool("search_stock_news")) {
+                        logger.warning("Rejecting chat advisor response because search_stock_news was not called for a news question: question="
+                                        + question + ", firstTool=" + firstTool + ", totalCalls=" + totalCalls + ", counts=" + invocationCounts);
+                        return "I could not generate a news answer because no recent news tool call was made.";
+                }
+
                 if (aiResponse == null || aiResponse.isBlank()) {
                         return "I could not generate a follow-up answer from the saved portfolio analysis.";
                 }
                 return aiResponse.trim();
         }
 
-        
+        private boolean hasRequiredChatToolUsage(
+                        PortfolioChatReasoningTools chatTools,
+                        ToolInvocationRecorder toolInvocationRecorder) {
+                final String requiredFirstTool = "snapshot_overview";
+                Integer requiredToolCalls = chatTools.invocationCounts().get(requiredFirstTool);
+                if (requiredToolCalls == null || requiredToolCalls.intValue() <= 0) {
+                        return false;
+                }
+                return requiredFirstTool.equals(toolInvocationRecorder.firstInvokedTool());
+        }
+
+        private boolean isNewsQuestion(String question) {
+                if (question == null || question.isBlank()) {
+                        return false;
+                }
+                String normalized = question.toLowerCase(Locale.ROOT);
+                return normalized.contains("news")
+                                || normalized.contains("headline")
+                                || normalized.contains("headlines")
+                                || normalized.contains("recent")
+                                || normalized.contains("latest")
+                                || normalized.contains("development")
+                                || normalized.contains("developments")
+                                || normalized.contains("event")
+                                || normalized.contains("events");
+        }
 
         private java.util.Map<String, Integer> mergeInvocationCounts(
                         PortfolioChatReasoningTools chatTools,
-                        PortfolioReasoningTools portfolioTools) {
+                        PortfolioReasoningTools portfolioTools,
+                        MarketNewsReasoningTools marketNewsTools) {
                 java.util.LinkedHashMap<String, Integer> merged = new java.util.LinkedHashMap<>();
                 merged.putAll(chatTools.invocationCounts());
                 portfolioTools.invocationCounts().forEach((tool, count) -> merged.merge(tool, count,
+                                (existingCount, newCount) -> existingCount + newCount));
+                marketNewsTools.invocationCounts().forEach((tool, count) -> merged.merge(tool, count,
                                 (existingCount, newCount) -> existingCount + newCount));
                 return java.util.Map.copyOf(merged);
         }

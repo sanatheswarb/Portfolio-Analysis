@@ -35,6 +35,9 @@ class PortfolioAdvisorPromptBuilderTest {
         assertTrue(prompt.contains("Reference portfolio metrics when explaining cause."));
         assertTrue(prompt.contains("Do not repeat the same reasoning across multiple sections."));
         assertTrue(prompt.contains("Do not call additional tools to rediscover risks already indicated by portfolio classification."));
+        assertFalse(prompt.contains("search_stock_news"));
+        assertFalse(prompt.contains("NEWS RELEVANCE RULES"));
+        assertFalse(prompt.contains("Do not change portfolio classification based on news."));
         assertTrue(prompt.contains("SUGGESTION PRIORITY RULE"));
         assertTrue(prompt.contains("Suggestions must follow the provided suggestion_priority_order."));
         assertTrue(prompt.contains("Suggestion 1 must address priority 1."));
