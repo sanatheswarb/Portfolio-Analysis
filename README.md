@@ -83,6 +83,16 @@ Alternatively, create a local `.env` file (excluded from git via `.gitignore`) a
 
 The server starts on **http://localhost:8080**.
 
+### Run the React chat UI (optional)
+
+```bash
+cd frontend
+npm install
+npm run dev
+```
+
+The frontend runs at **http://localhost:5173** and proxies `/api/*` to `http://localhost:8080`.
+
 ### Local run with PostgreSQL + Ollama (Docker)
 
 1. Install and start Docker Desktop.
