@@ -77,6 +77,7 @@ class PortfolioChatServiceTest {
                 "{\"risk_overview\":\"high\"}",
                 null,
                 null,
+                null,
                 "model",
                 "V1"
         );
@@ -102,6 +103,7 @@ class PortfolioChatServiceTest {
                 "{\"risk_overview\":\"high\"}",
                 objectMapper.writeValueAsString(snapshot),
                 null,
+                null,
                 "model",
                 "V1"
         );
@@ -112,6 +114,7 @@ class PortfolioChatServiceTest {
                 "Earlier question",
                 "{\"answer\":\"Earlier answer\"}",
                 null,
+                null,
                 5L,
                 "model",
                 "V1"
@@ -121,6 +124,7 @@ class PortfolioChatServiceTest {
                 AnalysisType.PORTFOLIO_CHAT,
                 "What changed?",
                 "{\"answer\":\"Risk remains concentrated.\"}",
+                null,
                 null,
                 5L,
                 "model",

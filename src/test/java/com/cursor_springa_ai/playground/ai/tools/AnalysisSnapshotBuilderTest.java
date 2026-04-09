@@ -4,6 +4,7 @@ import com.cursor_springa_ai.playground.ai.reasoning.PortfolioReasoningContext;
 import com.cursor_springa_ai.playground.dto.EnrichedHoldingData;
 import com.cursor_springa_ai.playground.dto.PortfolioSummary;
 import com.cursor_springa_ai.playground.dto.ai.AnalysisSnapshot;
+import com.cursor_springa_ai.playground.dto.ai.DecisionSignals;
 import com.cursor_springa_ai.playground.model.PortfolioClassification;
 import com.cursor_springa_ai.playground.model.PortfolioStats;
 import com.cursor_springa_ai.playground.model.RiskFlag;
@@ -18,12 +19,19 @@ import java.math.BigDecimal;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class AnalysisSnapshotBuilderTest {
 
-    private final AnalysisSnapshotBuilder builder = new AnalysisSnapshotBuilder();
+    private final PortfolioDerivedMetricsService derivedMetricsService = new PortfolioDerivedMetricsService();
+    private final AnalysisSnapshotBuilder builder = new AnalysisSnapshotBuilder(
+            derivedMetricsService,
+            new DecisionHintsBuilder(derivedMetricsService)
+    );
 
     @Test
     void build_populatesClassificationFromContext() {
@@ -109,6 +117,17 @@ class AnalysisSnapshotBuilderTest {
     }
 
     @Test
+    void build_includesDecisionHints() {
+        AnalysisSnapshot snapshot = builder.build(sampleContext());
+
+        assertNotNull(snapshot.decisionHints());
+        assertEquals(RiskFlag.HIGH_CONCENTRATION.name(), snapshot.decisionHints().primaryRisk());
+        assertEquals("INFY", snapshot.decisionHints().largestHoldingSymbol());
+        assertEquals(BigDecimal.valueOf(35), snapshot.decisionHints().largestHoldingPercent());
+        assertTrue(snapshot.decisionHints().concentrationReductionNeeded());
+    }
+
+    @Test
     void build_handlesEmptyHoldings() {
         PortfolioReasoningContext context = new PortfolioReasoningContext(
                 "user-1",
@@ -125,6 +144,129 @@ class AnalysisSnapshotBuilderTest {
         assertTrue(snapshot.topHoldings().isEmpty());
         assertTrue(snapshot.sectorExposure().isEmpty());
         assertTrue(snapshot.riskFlags().isEmpty());
+    }
+
+    // ---- DecisionSignals tests ----
+
+    @Test
+    void build_includesDecisionSignals() {
+        AnalysisSnapshot snapshot = builder.build(sampleContext());
+
+        assertNotNull(snapshot.decisionSignals());
+    }
+
+    @Test
+    void build_decisionSignals_primaryRiskIsHighestPriorityFlag() {
+        AnalysisSnapshot snapshot = builder.build(sampleContext());
+
+        assertEquals(RiskFlag.HIGH_CONCENTRATION.name(), snapshot.decisionSignals().primaryRisk());
+    }
+
+    @Test
+    void build_decisionSignals_primaryRiskDriverIsSymbolCausingPrimaryRisk() {
+        AnalysisSnapshot snapshot = builder.build(sampleContext());
+
+        // INFY has HIGH_CONCENTRATION flag and is the largest holding
+        assertEquals("INFY", snapshot.decisionSignals().primaryRiskDriver());
+    }
+
+    @Test
+    void build_decisionSignals_largestHoldingSymbolAndPercent() {
+        AnalysisSnapshot snapshot = builder.build(sampleContext());
+
+        assertEquals("INFY", snapshot.decisionSignals().largestHoldingSymbol());
+        assertEquals(BigDecimal.valueOf(35), snapshot.decisionSignals().largestHoldingPercent());
+    }
+
+    @Test
+    void build_decisionSignals_priorityActionsNotEmpty() {
+        AnalysisSnapshot snapshot = builder.build(sampleContext());
+
+        assertNotNull(snapshot.decisionSignals().priorityActions());
+        assertFalse(snapshot.decisionSignals().priorityActions().isEmpty());
+    }
+
+    @Test
+    void build_decisionSignals_priorityActionsMentionsLargestHolding() {
+        AnalysisSnapshot snapshot = builder.build(sampleContext());
+
+        assertTrue(snapshot.decisionSignals().priorityActions().stream()
+                .anyMatch(a -> a.contains("INFY")));
+    }
+
+    @Test
+    void build_decisionSignals_priorityActionsLimitedToThree() {
+        // Context with 4+ different risk flags
+        PortfolioReasoningContext context = new PortfolioReasoningContext(
+                "portfolio-1",
+                new PortfolioSummary(BigDecimal.valueOf(100000), BigDecimal.valueOf(110000),
+                        BigDecimal.valueOf(10000), BigDecimal.TEN, 2),
+                null,
+                List.of(RiskFlag.HIGH_CONCENTRATION.name(),
+                        RiskFlag.UNDER_DIVERSIFIED.name(),
+                        RiskFlag.TOP_HEAVY_PORTFOLIO.name(),
+                        RiskFlag.HIGH_VALUATION.name()),
+                List.of(),
+                null
+        );
+
+        AnalysisSnapshot snapshot = builder.build(context);
+
+        assertTrue(snapshot.decisionSignals().priorityActions().size() <= 3);
+    }
+
+    @Test
+    void build_decisionSignals_riskDriversByFlagMapsHoldingFlags() {
+        AnalysisSnapshot snapshot = builder.build(sampleContext());
+
+        // INFY has HIGH_CONCENTRATION, TCS has HIGH_VALUATION
+        assertTrue(snapshot.decisionSignals().riskDriversByFlag()
+                .containsKey(RiskFlag.HIGH_CONCENTRATION.name()));
+        assertTrue(snapshot.decisionSignals().riskDriversByFlag()
+                .get(RiskFlag.HIGH_CONCENTRATION.name()).contains("INFY"));
+
+        assertTrue(snapshot.decisionSignals().riskDriversByFlag()
+                .containsKey(RiskFlag.HIGH_VALUATION.name()));
+        assertTrue(snapshot.decisionSignals().riskDriversByFlag()
+                .get(RiskFlag.HIGH_VALUATION.name()).contains("TCS"));
+    }
+
+    @Test
+    void build_decisionSignals_emptyWhenNoHoldingsAndNoFlags() {
+        PortfolioReasoningContext context = new PortfolioReasoningContext(
+                "user-1",
+                new PortfolioSummary(BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO, 0),
+                null,
+                List.of(),
+                List.of(),
+                null
+        );
+
+        DecisionSignals signals = builder.build(context).decisionSignals();
+
+        assertNotNull(signals);
+        assertNull(signals.primaryRisk());
+        assertNull(signals.primaryRiskDriver());
+        assertNull(signals.largestHoldingSymbol());
+        assertNull(signals.largestHoldingPercent());
+        assertTrue(signals.priorityActions().isEmpty());
+        assertTrue(signals.riskDriversByFlag().isEmpty());
+    }
+
+    @Test
+    void build_decisionSignals_riskDriversByFlagIsImmutable() {
+        AnalysisSnapshot snapshot = builder.build(sampleContext());
+
+        assertThrows(UnsupportedOperationException.class,
+                () -> snapshot.decisionSignals().riskDriversByFlag().put("EXTRA", List.of()));
+    }
+
+    @Test
+    void build_decisionSignals_priorityActionsIsImmutable() {
+        AnalysisSnapshot snapshot = builder.build(sampleContext());
+
+        assertThrows(UnsupportedOperationException.class,
+                () -> snapshot.decisionSignals().priorityActions().add("extra action"));
     }
 
     // ---- helpers ----

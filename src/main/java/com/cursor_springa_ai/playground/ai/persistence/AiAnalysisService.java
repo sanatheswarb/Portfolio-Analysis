@@ -1,6 +1,7 @@
 package com.cursor_springa_ai.playground.ai.persistence;
 
 import com.cursor_springa_ai.playground.dto.PortfolioAdviceResponse;
+import com.cursor_springa_ai.playground.dto.ai.AnalysisDecisionTrace;
 import com.cursor_springa_ai.playground.dto.ai.AnalysisSnapshot;
 import com.cursor_springa_ai.playground.model.AiAnalysis;
 import com.cursor_springa_ai.playground.model.AnalysisType;
@@ -38,17 +39,18 @@ public class AiAnalysisService {
     }
 
     /**
-     * Serialise {@code advice} and {@code snapshot} to JSON and append a row to
+     * Serialise {@code advice}, {@code snapshot} and {@code trace} to JSON and append a row to
      * {@code ai_analysis} with type {@link AnalysisType#PORTFOLIO_ANALYSIS}.
      *
      * @param user     the authenticated user (may be null — row is stored without FK)
      * @param advice   the AI-generated advice to persist
      * @param snapshot lean reasoning-context snapshot built from the same context
      *                 that was passed to the AI advisor
+     * @param trace    structured decision-input trace capturing the facts that drove the advice
      */
     @Transactional
     public void savePortfolioAdvice(User user, PortfolioAdviceResponse advice,
-                                    AnalysisSnapshot snapshot) {
+                                    AnalysisSnapshot snapshot, AnalysisDecisionTrace trace) {
         if (advice == null) {
             return;
         }
@@ -57,12 +59,16 @@ public class AiAnalysisService {
             String snapshotJson = snapshot != null
                     ? objectMapper.writeValueAsString(snapshot)
                     : null;
+            String traceJson    = trace != null
+                    ? objectMapper.writeValueAsString(trace)
+                    : null;
             aiAnalysisRepository.save(new AiAnalysis(
                     user,
                     AnalysisType.PORTFOLIO_ANALYSIS,
                     null,
                     adviceJson,
                     snapshotJson,
+                    traceJson,
                     null,
                     advisorModel,
                     ANALYSIS_VERSION));
@@ -84,6 +90,7 @@ public class AiAnalysisService {
                     AnalysisType.PORTFOLIO_CHAT,
                     question,
                     json,
+                    null,
                     null,
                     parentAnalysisId,
                     advisorModel,

@@ -27,8 +27,8 @@ class PortfolioChatPromptBuilderTest {
         String prompt = builder.buildPrompt(
                 sampleSnapshot(),
                 List.of(
-                        new AiAnalysis(null, AnalysisType.PORTFOLIO_CHAT, "Latest question", "{\"answer\":\"Latest answer\"}", null, 10L, "model", "V1"),
-                        new AiAnalysis(null, AnalysisType.PORTFOLIO_CHAT, "Earlier question", "{\"answer\":\"Earlier answer\"}", null, 10L, "model", "V1")
+                        new AiAnalysis(null, AnalysisType.PORTFOLIO_CHAT, "Latest question", "{\"answer\":\"Latest answer\"}", null, null, 10L, "model", "V1"),
+                        new AiAnalysis(null, AnalysisType.PORTFOLIO_CHAT, "Earlier question", "{\"answer\":\"Earlier answer\"}", null, null, 10L, "model", "V1")
                 ),
                 "What should I do next?"
         );

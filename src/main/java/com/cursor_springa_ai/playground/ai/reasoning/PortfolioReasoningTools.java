@@ -4,6 +4,7 @@ import com.cursor_springa_ai.playground.ai.tools.FlaggedHoldingsBuilder;
 import com.cursor_springa_ai.playground.ai.tools.HoldingDetailsBuilder;
 import com.cursor_springa_ai.playground.ai.tools.HoldingsListBuilder;
 import com.cursor_springa_ai.playground.ai.tools.PortfolioOverviewBuilder;
+import com.cursor_springa_ai.playground.dto.EnrichedHoldingData;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -29,6 +30,7 @@ public class PortfolioReasoningTools {
     private final HoldingDetailsBuilder holdingDetailsBuilder;
     private final PortfolioOverviewBuilder overviewBuilder;
     private final HoldingsListBuilder holdingsListBuilder;
+    private final Map<String, EnrichedHoldingData> holdingsBySymbol;
     private final ToolInvocationRecorder toolInvocationRecorder;
     private final Map<String, Integer> toolInvocationCounts = new LinkedHashMap<>();
     private int invocationCount;
@@ -51,6 +53,7 @@ public class PortfolioReasoningTools {
         this.holdingDetailsBuilder = new HoldingDetailsBuilder();
         this.overviewBuilder = new PortfolioOverviewBuilder();
         this.holdingsListBuilder = new HoldingsListBuilder();
+        this.holdingsBySymbol = buildHoldingsBySymbol(context.enrichedHoldings());
         this.toolInvocationRecorder = toolInvocationRecorder;
     }
 
@@ -132,12 +135,10 @@ public class PortfolioReasoningTools {
                 }
                 continue;
             }
-            Map<String, Object> detail = context.enrichedHoldings().stream()
-                    .filter(holding -> holding.symbol() != null)
-                    .filter(holding -> holding.symbol().equalsIgnoreCase(normalizedSymbol))
-                    .findFirst()
-                    .map(holding -> holdingDetailsBuilder.build(holding, context.enrichedHoldings()))
-                    .orElse(Map.of("error", "holding not found for symbol " + normalizedSymbol));
+            EnrichedHoldingData holding = holdingsBySymbol.get(normalizedSymbol);
+            Map<String, Object> detail = holding != null
+                    ? holdingDetailsBuilder.build(holding, context.enrichedHoldings())
+                    : Map.of("error", "holding not found for symbol " + normalizedSymbol);
             String detailJson = toJson(detail);
             holdingDetailsCache.put(normalizedSymbol, detailJson);
             results.add(detail);
@@ -186,5 +187,17 @@ public class PortfolioReasoningTools {
             return;
         }
         toolInvocationCounts.put(safeToolName, currentCount + 1);
+    }
+
+    private Map<String, EnrichedHoldingData> buildHoldingsBySymbol(List<EnrichedHoldingData> holdings) {
+        Map<String, EnrichedHoldingData> index = new LinkedHashMap<>();
+        for (EnrichedHoldingData holding : holdings) {
+            if (holding.symbol() == null || holding.symbol().isBlank()) {
+                continue;
+            }
+            String normalizedSymbol = holding.symbol().trim().toUpperCase(Locale.ROOT);
+            index.putIfAbsent(normalizedSymbol, holding);
+        }
+        return Map.copyOf(index);
     }
 }

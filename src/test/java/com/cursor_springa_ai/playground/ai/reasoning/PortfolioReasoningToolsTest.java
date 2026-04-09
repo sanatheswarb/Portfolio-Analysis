@@ -43,6 +43,9 @@ class PortfolioReasoningToolsTest {
         assertEquals(85, payload.path("portfolio_structure").path("large_cap_exposure").asInt());
         assertEquals("GOOD", payload.path("portfolio_performance").path("performance_level").asText());
         assertEquals("HIGH", payload.path("portfolio_risk_profile").path("risk_level").asText());
+        assertEquals(RiskFlag.HIGH_CONCENTRATION.name(), payload.path("decision_hints").path("primary_risk").asText());
+        assertEquals("INFY", payload.path("decision_hints").path("largest_holding_symbol").asText());
+        assertTrue(payload.path("decision_hints").path("concentration_reduction_needed").asBoolean());
         assertEquals("INFY", payload.path("largest_holdings").get(0).path("symbol").asText());
         assertTrue(json.contains(RiskFlag.HIGH_CONCENTRATION.name()));
         assertTrue(payload.path("portfolio_strengths").toString().contains("Overall performance is healthy."));

@@ -359,6 +359,7 @@ class PortfolioAdvisorAgentTest {
                 "How risky is this portfolio?",
                 "{\"answer\":\"It is concentrated.\"}",
                 null,
+                null,
                 9L,
                 "qwen2.5:7b-instruct",
                 "V1"

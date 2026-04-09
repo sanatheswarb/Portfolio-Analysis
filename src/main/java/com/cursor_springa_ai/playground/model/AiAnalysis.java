@@ -82,6 +82,16 @@ public class AiAnalysis {
     @Column(name = "parent_analysis_id")
     private Long parentAnalysisId;
 
+    /**
+     * Structured decision-input trace captured at analysis time.
+     * Stores the facts that caused the AI advice (primary risk, top risk drivers,
+     * diversification issue, main strength) — not the advice itself.
+     * Stored as JSONB in PostgreSQL for efficient querying.
+     */
+    @Column(name = "analysis_trace")
+    @JdbcTypeCode(SqlTypes.JSON)
+    private String analysisTrace;
+
     /** Model identifier used to generate this response, e.g. {@code qwen2.5:7b}. */
     @Column(name = "model_used", length = 50)
     private String modelUsed;
@@ -108,18 +118,20 @@ public class AiAnalysis {
      * @param question          user question (null for analysis rows)
      * @param analysisData      serialised AI response JSON
      * @param analysisContext   serialised reasoning-context snapshot JSON (null for chat rows)
+     * @param analysisTrace     serialised decision-input trace JSON (null for chat rows)
      * @param parentAnalysisId  linked base analysis id for follow-up chat rows
      * @param modelUsed         model identifier, e.g. {@code qwen2.5:7b-instruct}
      * @param analysisVersion   prompt/logic version tag, e.g. {@code V1}
      */
     public AiAnalysis(User user, AnalysisType analysisType, String question,
-                      String analysisData, String analysisContext, Long parentAnalysisId,
-                      String modelUsed, String analysisVersion) {
+                      String analysisData, String analysisContext, String analysisTrace,
+                      Long parentAnalysisId, String modelUsed, String analysisVersion) {
         this.user = user;
         this.analysisType = analysisType;
         this.question = question;
         this.analysisData = analysisData;
         this.analysisContext = analysisContext;
+        this.analysisTrace = analysisTrace;
         this.parentAnalysisId = parentAnalysisId;
         this.modelUsed = modelUsed;
         this.analysisVersion = analysisVersion;
@@ -136,6 +148,8 @@ public class AiAnalysis {
     public String getAnalysisData() { return analysisData; }
 
     public String getAnalysisContext() { return analysisContext; }
+
+    public String getAnalysisTrace() { return analysisTrace; }
 
     public Long getParentAnalysisId() { return parentAnalysisId; }
 
