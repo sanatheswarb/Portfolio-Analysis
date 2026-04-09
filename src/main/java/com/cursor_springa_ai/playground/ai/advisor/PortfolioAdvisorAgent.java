@@ -1,5 +1,6 @@
 package com.cursor_springa_ai.playground.ai.advisor;
 
+import com.cursor_springa_ai.playground.ai.tools.MarketNewsTools;
 import com.cursor_springa_ai.playground.dto.ai.AnalysisSnapshot;
 import com.cursor_springa_ai.playground.model.AiAnalysis;
 import com.cursor_springa_ai.playground.ai.reasoning.PortfolioChatReasoningTools;
@@ -24,6 +25,7 @@ public class PortfolioAdvisorAgent {
         private final ObjectMapper objectMapper;
         private final PortfolioAdvisorPromptBuilder promptBuilder;
         private final PortfolioChatPromptBuilder chatPromptBuilder;
+        private final MarketNewsTools marketNewsTools;
 
         @Value("${portfolio.advisor.model:qwen2.5:7b-instruct}")
         private String advisorModel;
@@ -46,11 +48,13 @@ public class PortfolioAdvisorAgent {
         public PortfolioAdvisorAgent(ChatClient.Builder chatClientBuilder,
                         ObjectMapper objectMapper,
                         PortfolioAdvisorPromptBuilder promptBuilder,
-                        PortfolioChatPromptBuilder chatPromptBuilder) {
+                        PortfolioChatPromptBuilder chatPromptBuilder,
+                        MarketNewsTools marketNewsTools) {
                 this.chatClient = chatClientBuilder.build();
                 this.objectMapper = objectMapper;
                 this.promptBuilder = promptBuilder;
                 this.chatPromptBuilder = chatPromptBuilder;
+                this.marketNewsTools = marketNewsTools;
         }
 
         public PortfolioAdviceResponse generateInsights(PortfolioReasoningContext reasoningContext) {
@@ -98,7 +102,7 @@ public class PortfolioAdvisorAgent {
                 long startTime = System.currentTimeMillis();
                 String aiResponse = chatClient.prompt()
                                 .user(prompt)
-                                .tools(reasoningTools, portfolioReasoningTools)
+                                .tools(reasoningTools, portfolioReasoningTools, marketNewsTools)
                                 .options(buildOptions(numPredict, temperature))
                                 .call()
                                 .content();
@@ -158,7 +162,7 @@ public class PortfolioAdvisorAgent {
                 String aiResponse = chatClient.prompt()
                                 .system(systemPrompt)
                                 .user(userPrompt)
-                                .tools(reasoningTools)
+                                .tools(reasoningTools, marketNewsTools)
                                 .options(options)
                                 .call()
                                 .content();

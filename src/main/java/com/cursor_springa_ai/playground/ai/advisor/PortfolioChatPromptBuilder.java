@@ -33,8 +33,10 @@ public class PortfolioChatPromptBuilder {
                 TOOL RULES:
                 Call snapshot_overview first. Use tools only if needed after that.
                 Available chat tools: snapshot_overview, top_holdings, sector_exposure, recent_chat_history.
-                Available portfolio tools: portfolio_overview, holdings_list, flagged_holdings, holding_details.
+                Available portfolio tools: portfolio_overview, holdings_list, flagged_holdings, holding_details, search_stock_news.
                 Use portfolio tools when you need current full-portfolio detail beyond the saved snapshot.
+                Use search_stock_news only for recent news, company events, or market developments.
+                Apply news relevance rules: prioritize HIGH materiality or MEDIUM+NEGATIVE; treat LOW as background unless explicitly requested.
 
                 QUESTION:
                 %s
