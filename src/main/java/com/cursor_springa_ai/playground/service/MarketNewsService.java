@@ -40,7 +40,7 @@ public class MarketNewsService {
         String to = now.toString();
 
         String url = UriComponentsBuilder
-                .fromHttpUrl("https://finnhub.io/api/v1/company-news")
+                .fromUriString("https://finnhub.io/api/v1/company-news")
                 .queryParam("symbol", symbol)
                 .queryParam("from", from)
                 .queryParam("to", to)
@@ -53,7 +53,7 @@ public class MarketNewsService {
             return List.of();
         }
 
-        List<NewsItemDto> news = Arrays.stream(response)
+        List<NewsItemDto> sortedNews = Arrays.stream(response)
                 .map(this::toNewsItem)
                 .sorted(Comparator
                         .comparingInt((NewsItemDto n) -> n.materiality().priority())
@@ -61,7 +61,7 @@ public class MarketNewsService {
                         .thenComparing(NewsItemDto::publishedAt, Comparator.nullsLast(Comparator.reverseOrder())))
                 .toList();
 
-        List<NewsItemDto> materialNews = news.stream()
+        List<NewsItemDto> materialNews = sortedNews.stream()
                 .filter(n -> n.materiality() != NewsMateriality.LOW)
                 .limit(5)
                 .toList();
@@ -70,7 +70,7 @@ public class MarketNewsService {
             return materialNews;
         }
 
-        return news.stream()
+        return sortedNews.stream()
                 .limit(3)
                 .toList();
     }

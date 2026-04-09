@@ -90,5 +90,7 @@ class MarketNewsServiceTest {
 
         assertEquals(3, result.size());
         assertTrue(result.stream().allMatch(n -> n.materiality() == NewsMateriality.LOW));
+        assertEquals(List.of("Routine update D", "Routine update C", "Routine update B"),
+                result.stream().map(NewsItemDto::headline).toList());
     }
 }
