@@ -56,6 +56,7 @@ class PortfolioAdvisorAgentTest {
         when(requestSpec.system(any(String.class))).thenReturn(requestSpec);
         when(requestSpec.user(any(String.class))).thenReturn(requestSpec);
                 when(requestSpec.tools(any(Object[].class))).thenAnswer(invocation -> {
+                        assertEquals(1, invocation.getArguments().length);
                         PortfolioReasoningTools tools = invocation.getArgument(0, PortfolioReasoningTools.class);
                         tools.portfolioOverview();
                         return requestSpec;

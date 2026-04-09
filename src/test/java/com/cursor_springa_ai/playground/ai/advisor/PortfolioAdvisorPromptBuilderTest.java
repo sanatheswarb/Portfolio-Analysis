@@ -28,8 +28,6 @@ class PortfolioAdvisorPromptBuilderTest {
         assertTrue(prompt.contains("PORTFOLIO CLASSIFICATION RULES"));
         assertTrue(prompt.contains("SUGGESTION ALIGNMENT RULES"));
         assertTrue(prompt.contains("EXPLANATION RULES"));
-        assertTrue(prompt.contains("NEWS RELEVANCE RULES"));
-        assertTrue(prompt.contains("NEWS INTERPRETATION"));
         assertTrue(prompt.contains("Do not produce any portfolio interpretation before reviewing portfolio_overview output."));
         assertTrue(prompt.contains("If largest holding exceeds 25%, one suggestion must address concentration."));
         assertTrue(prompt.contains("If top 3 holdings exceed 60%, one suggestion must address diversification."));
@@ -37,9 +35,9 @@ class PortfolioAdvisorPromptBuilderTest {
         assertTrue(prompt.contains("Reference portfolio metrics when explaining cause."));
         assertTrue(prompt.contains("Do not repeat the same reasoning across multiple sections."));
         assertTrue(prompt.contains("Do not call additional tools to rediscover risks already indicated by portfolio classification."));
-        assertTrue(prompt.contains("Call search_stock_news only when the user asks about recent news, company events, or market developments."));
-        assertTrue(prompt.contains("Use news only if materiality is HIGH, or materiality is MEDIUM and impact is NEGATIVE."));
-        assertTrue(prompt.contains("Do not change portfolio classification based on news."));
+        assertFalse(prompt.contains("search_stock_news"));
+        assertFalse(prompt.contains("NEWS RELEVANCE RULES"));
+        assertFalse(prompt.contains("Do not change portfolio classification based on news."));
         assertTrue(prompt.contains("SUGGESTION PRIORITY RULE"));
         assertTrue(prompt.contains("Suggestions must follow the provided suggestion_priority_order."));
         assertTrue(prompt.contains("Suggestion 1 must address priority 1."));

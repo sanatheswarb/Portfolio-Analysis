@@ -24,7 +24,6 @@ public class PortfolioAdvisorPromptBuilder {
                 "\n\n",
                 buildRoleSection(),
                 buildToolRules(),
-                buildNewsRules(),
                 """
                         PORTFOLIO CLASSIFICATION RULES:
                         - Use provided portfolio_classification as the primary interpretation of portfolio structure.
@@ -68,23 +67,6 @@ public class PortfolioAdvisorPromptBuilder {
                 - Call flagged_holdings only when you need risk evidence for recommendations.
                 - Call holdings_list to scan all holdings and identify which symbols are relevant.
                 - Call holding_details only for the few symbols that materially affect the advice.
-                - Call search_stock_news only when the user asks about recent news, company events, or market developments.
-                """;
-    }
-
-    private String buildNewsRules() {
-        return """
-                NEWS RELEVANCE RULES:
-                - Use news only if materiality is HIGH, or materiality is MEDIUM and impact is NEGATIVE.
-                - Ignore LOW materiality news unless the user explicitly asks for it.
-                - News should influence risk explanation only when riskRelevant is true.
-                - Otherwise treat news as background information.
-
-                NEWS INTERPRETATION:
-                - If riskRelevant is true, explain possible risk impact.
-                - If impact is POSITIVE, mention it only as a resilience signal.
-                - If materiality is LOW, ignore unless explicitly requested by the user.
-                - Do not change portfolio classification based on news.
                 """;
     }
 

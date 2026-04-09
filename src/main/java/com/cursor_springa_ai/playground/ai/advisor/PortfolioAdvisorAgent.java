@@ -162,7 +162,7 @@ public class PortfolioAdvisorAgent {
                 String aiResponse = chatClient.prompt()
                                 .system(systemPrompt)
                                 .user(userPrompt)
-                                .tools(reasoningTools, marketNewsTools)
+                                .tools(reasoningTools)
                                 .options(options)
                                 .call()
                                 .content();
