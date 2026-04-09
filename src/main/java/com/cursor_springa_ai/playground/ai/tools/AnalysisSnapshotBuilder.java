@@ -46,8 +46,6 @@ public class AnalysisSnapshotBuilder {
      */
     private static final int SAFE_HOLDING_CONCENTRATION_PERCENT = 20;
 
-    private static final Map<String, Integer> RISK_PRIORITY = buildRiskPriority();
-
     private final PortfolioDerivedMetricsService derivedMetricsService;
     private final DecisionHintsBuilder decisionHintsBuilder;
 
@@ -66,7 +64,7 @@ public class AnalysisSnapshotBuilder {
                 context.portfolioRiskFlags(),
                 extractTopHoldings(context),
                 extractSectorExposure(context),
-                context.decisionHints() != null ? context.decisionHints() : decisionHintsBuilder.build(context),
+                decisionHintsBuilder.resolve(context),
                 buildDecisionSignals(context)
         );
     }
@@ -120,7 +118,7 @@ public class AnalysisSnapshotBuilder {
                 : (largestHolding != null ? largestHolding.allocationPercent() : null);
 
         Map<String, List<String>> riskDriversByFlag = buildRiskDriversByFlag(context);
-        String primaryRisk = primaryRisk(context.portfolioRiskFlags());
+        String primaryRisk = RiskFlagPrioritizer.primaryRisk(context.portfolioRiskFlags());
         String primaryRiskDriver = primaryRiskDriverSymbol(primaryRisk, largestHoldingSymbol, riskDriversByFlag);
         List<String> priorityActions = buildPriorityActions(context, largestHolding, largestHoldingPercent);
 
@@ -132,17 +130,6 @@ public class AnalysisSnapshotBuilder {
                 priorityActions,
                 riskDriversByFlag
         );
-    }
-
-    /**
-     * Returns the highest-priority active risk flag, or {@code null} if none.
-     */
-    private String primaryRisk(List<String> riskFlags) {
-        return riskFlags.stream()
-                .min((a, b) -> Integer.compare(
-                        RISK_PRIORITY.getOrDefault(a, Integer.MAX_VALUE),
-                        RISK_PRIORITY.getOrDefault(b, Integer.MAX_VALUE)))
-                .orElse(null);
     }
 
     /**
@@ -190,11 +177,7 @@ public class AnalysisSnapshotBuilder {
     private List<String> buildPriorityActions(PortfolioReasoningContext context,
                                               EnrichedHoldingData largestHolding,
                                               BigDecimal largestHoldingPercent) {
-        List<String> sortedFlags = context.portfolioRiskFlags().stream()
-                .sorted((a, b) -> Integer.compare(
-                        RISK_PRIORITY.getOrDefault(a, Integer.MAX_VALUE),
-                        RISK_PRIORITY.getOrDefault(b, Integer.MAX_VALUE)))
-                .toList();
+        List<String> sortedFlags = RiskFlagPrioritizer.sortByPriority(context.portfolioRiskFlags());
 
         LinkedHashSet<String> actions = new LinkedHashSet<>();
         for (String flag : sortedFlags) {
@@ -233,17 +216,4 @@ public class AnalysisSnapshotBuilder {
         return value == null ? "current level" : value.stripTrailingZeros().toPlainString() + "%";
     }
 
-    private static Map<String, Integer> buildRiskPriority() {
-        // Priority 1 = most urgent; ordering mirrors the flag severity used across
-        // DecisionHintsBuilder and DecisionTraceBuilder so signal ordering is consistent.
-        Map<String, Integer> priority = new LinkedHashMap<>();
-        priority.put("HIGH_CONCENTRATION", 1);
-        priority.put("UNDER_DIVERSIFIED", 2);
-        priority.put("TOP_HEAVY_PORTFOLIO", 3);
-        priority.put("SMALL_CAP_RISK", 4);
-        priority.put("HIGH_VALUATION", 5);
-        priority.put("DEEP_CORRECTION", 6);
-        priority.put("PROFIT_BOOKING_ZONE", 7);
-        return Map.copyOf(priority);
-    }
 }

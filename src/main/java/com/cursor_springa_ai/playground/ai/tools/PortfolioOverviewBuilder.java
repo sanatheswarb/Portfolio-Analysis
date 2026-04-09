@@ -90,9 +90,7 @@ public class PortfolioOverviewBuilder {
     }
 
     private Map<String, Object> decisionHintsPayload(PortfolioReasoningContext context) {
-        PortfolioDecisionHints hints = context.decisionHints() != null
-                ? context.decisionHints()
-                : decisionHintsBuilder.build(context);
+        PortfolioDecisionHints hints = decisionHintsBuilder.resolve(context);
         Map<String, Object> payload = new LinkedHashMap<>();
         payload.put("primary_risk", hints.primaryRisk());
         payload.put("largest_holding_symbol", hints.largestHoldingSymbol());

@@ -12,9 +12,7 @@ import org.springframework.stereotype.Component;
 
 import java.math.BigDecimal;
 import java.util.ArrayList;
-import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Map;
 
 /**
  * Builds an {@link AnalysisDecisionTrace} from a {@link PortfolioReasoningContext}.
@@ -25,7 +23,6 @@ import java.util.Map;
 @Component
 public class DecisionTraceBuilder {
 
-    private static final Map<String, Integer> RISK_PRIORITY = riskPriority();
     private static final int TOP_RISK_DRIVERS_LIMIT = 5;
     private static final BigDecimal TOP3_CONCENTRATION_THRESHOLD_PERCENT = BigDecimal.valueOf(60);
 
@@ -40,22 +37,12 @@ public class DecisionTraceBuilder {
                 .stream().findFirst().orElse(null);
 
         return new AnalysisDecisionTrace(
-                primaryRisk(context.portfolioRiskFlags()),
+                RiskFlagPrioritizer.primaryRisk(context.portfolioRiskFlags()),
                 largestHolding != null ? largestHolding.symbol() : null,
                 topRiskDrivers(context),
                 mainDiversificationIssue(context),
                 mainStrength(context)
         );
-    }
-
-    private String primaryRisk(List<String> riskFlags) {
-        return riskFlags.stream()
-                .min((left, right) -> Integer.compare(priority(left), priority(right)))
-                .orElse(null);
-    }
-
-    private int priority(String riskFlag) {
-        return RISK_PRIORITY.getOrDefault(riskFlag, Integer.MAX_VALUE);
     }
 
     private List<String> topRiskDrivers(PortfolioReasoningContext context) {
@@ -116,15 +103,4 @@ public class DecisionTraceBuilder {
         return null;
     }
 
-    private static Map<String, Integer> riskPriority() {
-        Map<String, Integer> priority = new LinkedHashMap<>();
-        priority.put("HIGH_CONCENTRATION", 1);
-        priority.put("UNDER_DIVERSIFIED", 2);
-        priority.put("TOP_HEAVY_PORTFOLIO", 3);
-        priority.put("SMALL_CAP_RISK", 4);
-        priority.put("HIGH_VALUATION", 5);
-        priority.put("DEEP_CORRECTION", 6);
-        priority.put("PROFIT_BOOKING_ZONE", 7);
-        return Map.copyOf(priority);
-    }
 }
