@@ -81,7 +81,7 @@ class DecisionTraceBuilderTest {
         PortfolioReasoningContext context = new PortfolioReasoningContext(
                 "user-1",
                 new PortfolioSummary(BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO, 0),
-                null, List.of(), List.of(), null);
+                null, List.of(), List.of(), null, null);
 
         AnalysisDecisionTrace trace = builder.build(context);
 
@@ -106,7 +106,7 @@ class DecisionTraceBuilderTest {
                 "user-1",
                 new PortfolioSummary(BigDecimal.valueOf(100000), BigDecimal.valueOf(90000),
                         BigDecimal.valueOf(-10000), BigDecimal.valueOf(-10), 3),
-                stats, List.of(), List.of(), classification);
+                stats, List.of(), List.of(), classification, null);
 
         AnalysisDecisionTrace trace = builder.build(context);
 
@@ -149,7 +149,8 @@ class DecisionTraceBuilderTest {
                 List.of(infy, tcs, hdfcBank),
                 new PortfolioClassification(PortfolioRiskLevel.HIGH, DiversificationLevel.AVERAGE,
                         ConcentrationLevel.CONCENTRATED, PerformanceLevel.GOOD,
-                        PortfolioStyle.GROWTH_HEAVY, BigDecimal.valueOf(5), BigDecimal.valueOf(65)));
+                        PortfolioStyle.GROWTH_HEAVY, BigDecimal.valueOf(5), BigDecimal.valueOf(65)),
+                null);
     }
 
     private EnrichedHoldingData holding(String symbol, BigDecimal allocation,

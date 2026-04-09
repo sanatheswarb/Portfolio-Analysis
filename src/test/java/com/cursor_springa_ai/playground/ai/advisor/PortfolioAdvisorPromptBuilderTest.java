@@ -41,6 +41,10 @@ class PortfolioAdvisorPromptBuilderTest {
         assertTrue(prompt.contains("SUGGESTION PRIORITY RULE"));
         assertTrue(prompt.contains("Suggestions must follow the provided suggestion_priority_order."));
         assertTrue(prompt.contains("Suggestion 1 must address priority 1."));
+        assertTrue(prompt.contains("Return exactly this JSON shape and nothing else:"));
+        assertTrue(prompt.contains("\"risk_overview\": \"...\""));
+        assertTrue(prompt.contains("Do not include any other keys such as signals, rankings, booleans, percentages, metadata, or nested analysis objects."));
+        assertTrue(prompt.contains("Keep the full JSON response concise and under 140 words."));
         assertTrue(prompt.contains("DO NOT"));
         assertFalse(prompt.contains("RESPONSE FORMAT"));
     }
@@ -54,7 +58,8 @@ class PortfolioAdvisorPromptBuilderTest {
                 null,
                 List.of(RiskFlag.HIGH_CONCENTRATION.name()),
                 List.of(),
-                null
+            null,
+            null
         );
 
         String data = builder.buildReasoningRequest(reasoningContext);
@@ -81,5 +86,17 @@ class PortfolioAdvisorPromptBuilderTest {
         assertFalse(data.contains("portfolio_classification:"));
         assertFalse(data.contains("portfolio_overview_json"));
         assertFalse(data.contains("Use the smallest number of tool calls required to produce the final advice."));
+    }
+
+    @Test
+    void buildRetryReasoningRequest_reinforcesExactSchema() {
+        String retryPrompt = builder.buildRetryReasoningRequest("base-prompt");
+
+        assertNotNull(retryPrompt);
+        assertTrue(retryPrompt.contains("Previous response was truncated or used the wrong schema."));
+        assertTrue(retryPrompt.contains("Return only this JSON object and no other keys:"));
+        assertTrue(retryPrompt.contains("\"suggestions\": [\"...\", \"...\", \"...\"]"));
+        assertTrue(retryPrompt.contains("Do not include keys like signals, portfolio_rankings, concentration_risk, or valuation_gap_percentages."));
+        assertTrue(retryPrompt.contains("Stop immediately after the closing brace."));
     }
 }

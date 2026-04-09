@@ -105,11 +105,22 @@ public class PortfolioAdvisorPromptBuilder {
                 - Identify one meaningful portfolio strength that offsets a major risk if possible.
                 - Return ONLY valid JSON.
                 - Do NOT include markdown or commentary outside the JSON object.
+                                - Return exactly this JSON shape and nothing else:
+                                    {
+                                        "risk_overview": "...",
+                                        "diversification_feedback": "...",
+                                        "suggestions": ["...", "...", "..."],
+                                        "cautionary_note": "..."
+                                    }
                 - Include all keys: risk_overview, diversification_feedback, suggestions, cautionary_note.
+                                - Do not include any other keys such as signals, rankings, booleans, percentages, metadata, or nested analysis objects.
+                                - Do not return arrays or nested objects except the suggestions array.
                 - risk_overview, diversification_feedback, and cautionary_note must be non-null strings.
                 - risk_overview and diversification_feedback should each be at least one full sentence.
                 - suggestions must contain exactly 3 plain-text strings.
                 - Do not use colons inside suggestion strings.
+                                - Keep the full JSON response concise and under 140 words.
+                                - End the response immediately after the closing brace.
 
                 EXPLANATION RULES:
                 - Always explain advice using portfolio classification and risk flags.
@@ -210,14 +221,23 @@ public class PortfolioAdvisorPromptBuilder {
     public String buildRetryReasoningRequest(String baseUserPrompt) {
         return baseUserPrompt + """
 
-                Previous response was truncated.
+                                Previous response was truncated or used the wrong schema.
                 Reuse portfolio classification and tool data already obtained.
                 Do not call tools again unless missing required data.
                 Do not repeat analysis steps.
-                Return a shorter JSON response.
+                                Return only this JSON object and no other keys:
+                                {
+                                    "risk_overview": "...",
+                                    "diversification_feedback": "...",
+                                    "suggestions": ["...", "...", "..."],
+                                    "cautionary_note": "..."
+                                }
+                                Do not include keys like signals, portfolio_rankings, concentration_risk, or valuation_gap_percentages.
+                                Return a shorter JSON response.
                 Keep risk_overview and diversification_feedback to one concise sentence each.
                 Keep each suggestion short and plain text.
                 Keep cautionary_note to one short sentence.
+                                Stop immediately after the closing brace.
                 """;
     }
 

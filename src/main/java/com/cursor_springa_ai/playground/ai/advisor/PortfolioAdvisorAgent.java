@@ -8,13 +8,17 @@ import com.cursor_springa_ai.playground.ai.reasoning.PortfolioReasoningContext;
 import com.cursor_springa_ai.playground.ai.reasoning.PortfolioReasoningTools;
 import com.cursor_springa_ai.playground.ai.reasoning.ToolInvocationRecorder;
 import com.cursor_springa_ai.playground.dto.PortfolioAdviceResponse;
+import com.cursor_springa_ai.playground.dto.ai.PortfolioDecisionHints;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.ollama.api.OllamaChatOptions;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
+import java.math.BigDecimal;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 import java.util.logging.Logger;
 
 @Service
@@ -33,7 +37,7 @@ public class PortfolioAdvisorAgent {
         @Value("${portfolio.advisor.temperature:0.2}")
         private double temperature;
 
-        @Value("${portfolio.advisor.num-predict:192}")
+        @Value("${portfolio.advisor.num-predict:320}")
         private int numPredict;
 
         @Value("${portfolio.advisor.keep-alive:10m}")
@@ -61,7 +65,7 @@ public class PortfolioAdvisorAgent {
                 String systemPrompt = promptBuilder.buildSystemPrompt();
                 String userPrompt = promptBuilder.buildReasoningRequest(reasoningContext);
 
-                AdvisorCallResult firstAttempt = callAdvisor(reasoningContext, systemPrompt, userPrompt, numPredict, temperature);
+                AdvisorCallResult firstAttempt = callAdvisor("initial", reasoningContext, systemPrompt, userPrompt, numPredict, temperature);
                 PortfolioAdviceResponse parsedFirstAttempt = parseAdviceResponse(firstAttempt.aiResponse(), true);
                 if (parsedFirstAttempt != null) {
                         return parsedFirstAttempt;
@@ -73,6 +77,7 @@ public class PortfolioAdvisorAgent {
                 logger.info("Retrying advisor response with higher token budget after truncated JSON response");
 
                 AdvisorCallResult secondAttempt = callAdvisor(
+                                "retry",
                                 reasoningContext,
                                 systemPrompt,
                                 retryUserPrompt,
@@ -81,6 +86,11 @@ public class PortfolioAdvisorAgent {
                 PortfolioAdviceResponse parsedSecondAttempt = parseAdviceResponse(secondAttempt.aiResponse(), false);
                 if (parsedSecondAttempt != null) {
                         return parsedSecondAttempt;
+                }
+
+                if (secondAttempt.aiResponse() == null || secondAttempt.aiResponse().isBlank()) {
+                        logger.warning("Advisor returned no usable response after retry; using deterministic fallback advice.");
+                        return blankResponseFallback(reasoningContext);
                 }
 
                 return fallbackAdviceResponse(secondAttempt.aiResponse());
@@ -116,11 +126,6 @@ public class PortfolioAdvisorAgent {
                                 + ", totalCalls=" + totalCalls
                                 + ", counts=" + invocationCounts);
 
-                if (!hasRequiredChatToolUsage(reasoningTools, toolInvocationRecorder)) {
-                        logger.warning("Rejecting chat advisor response because required tool usage was missing or misordered: firstTool="
-                                        + firstTool + ", totalCalls=" + totalCalls + ", counts=" + invocationCounts);
-                        return "I could not generate a follow-up answer from the saved portfolio analysis.";
-                }
 
                 if (aiResponse == null || aiResponse.isBlank()) {
                         return "I could not generate a follow-up answer from the saved portfolio analysis.";
@@ -128,16 +133,7 @@ public class PortfolioAdvisorAgent {
                 return aiResponse.trim();
         }
 
-        private boolean hasRequiredChatToolUsage(
-                        PortfolioChatReasoningTools chatTools,
-                        ToolInvocationRecorder toolInvocationRecorder) {
-                final String requiredFirstTool = "snapshot_overview";
-                Integer requiredToolCalls = chatTools.invocationCounts().get(requiredFirstTool);
-                if (requiredToolCalls == null || requiredToolCalls.intValue() <= 0) {
-                        return false;
-                }
-                return requiredFirstTool.equals(toolInvocationRecorder.firstInvokedTool());
-        }
+        
 
         private java.util.Map<String, Integer> mergeInvocationCounts(
                         PortfolioChatReasoningTools chatTools,
@@ -150,6 +146,7 @@ public class PortfolioAdvisorAgent {
         }
 
         private AdvisorCallResult callAdvisor(
+                        String attemptLabel,
                         PortfolioReasoningContext reasoningContext,
                         String systemPrompt,
                         String userPrompt,
@@ -168,6 +165,7 @@ public class PortfolioAdvisorAgent {
                                 .content();
                 long llmTime = System.currentTimeMillis() - startTime;
                 logger.info("LLM time: " + llmTime + " ms");
+                logAdvisorRawResponse(attemptLabel, aiResponse);
                 validateRequiredToolUsage(reasoningTools);
                 logger.info("Advisor tool usage summary: firstTool=" + reasoningTools.firstInvokedTool()
                                 + ", totalCalls=" + reasoningTools.invocationCount()
@@ -175,6 +173,18 @@ public class PortfolioAdvisorAgent {
                 logRepeatedOverviewUsage(reasoningTools);
                 logMissingDrillDownUsage(reasoningTools);
                 return new AdvisorCallResult(aiResponse, llmTime);
+        }
+
+        private void logAdvisorRawResponse(String attemptLabel, String aiResponse) {
+                if (aiResponse == null) {
+                        logger.warning("Advisor raw response [" + attemptLabel + "] is null before parsing.");
+                        return;
+                }
+
+                logger.info("Advisor raw response [" + attemptLabel + "] chars=" + aiResponse.length()
+                                + "\n--- LLM RESPONSE START ---\n"
+                                + aiResponse
+                                + "\n--- LLM RESPONSE END ---");
         }
 
         private OllamaChatOptions buildOptions(int responseNumPredict, double responseTemperature) {
@@ -222,25 +232,55 @@ public class PortfolioAdvisorAgent {
         }
 
         private PortfolioAdviceResponse parseAdviceResponse(String aiResponse, boolean retryOnTruncation) {
-                if (aiResponse == null || aiResponse.isBlank()) {
+                String normalizedResponse = normalizeAiResponse(aiResponse);
+                if (normalizedResponse == null || normalizedResponse.isBlank()) {
                         return null;
                 }
                 try {
-                        PortfolioAdviceResponse parsed = objectMapper.readValue(aiResponse, PortfolioAdviceResponse.class);
+                        PortfolioAdviceResponse parsed = objectMapper.readValue(normalizedResponse, PortfolioAdviceResponse.class);
                         return normalizeAdviceResponse(parsed);
                 } catch (Exception e) {
-                        if (retryOnTruncation && isLikelyTruncatedResponse(aiResponse, e)) {
+                        if (retryOnTruncation && isLikelyTruncatedResponse(normalizedResponse, e)) {
                                 return null;
                         }
                         logger.warning("Failed to parse AI response as JSON: " + e.getMessage());
-                        logger.warning("Raw AI response: " + aiResponse);
+                        logger.warning("Raw AI response: " + normalizedResponse);
 
-                        PortfolioAdviceResponse fallback = tryExtractSuggestionsFromMalformedJson(aiResponse);
+                        PortfolioAdviceResponse fallback = tryExtractSuggestionsFromMalformedJson(normalizedResponse);
                         if (fallback != null) {
                                 return normalizeAdviceResponse(fallback);
                         }
-                        return fallbackAdviceResponse(aiResponse);
+                        return fallbackAdviceResponse(normalizedResponse);
                 }
+        }
+
+        private String normalizeAiResponse(String aiResponse) {
+                if (aiResponse == null) {
+                        return null;
+                }
+
+                String normalized = aiResponse.trim();
+                if (normalized.isEmpty()) {
+                        return normalized;
+                }
+
+                if (normalized.startsWith("```")) {
+                        int firstLineBreak = normalized.indexOf('\n');
+                        if (firstLineBreak != -1) {
+                                normalized = normalized.substring(firstLineBreak + 1).trim();
+                        }
+                        if (normalized.endsWith("```")) {
+                                normalized = normalized.substring(0, normalized.length() - 3).trim();
+                        }
+                }
+
+                int firstBrace = normalized.indexOf('{');
+                int lastBrace = normalized.lastIndexOf('}');
+                if (firstBrace >= 0 && lastBrace > firstBrace) {
+                        normalized = normalized.substring(firstBrace, lastBrace + 1).trim();
+                }
+
+                return normalized;
         }
 
         private boolean isLikelyTruncatedResponse(String aiResponse, Exception exception) {
@@ -260,6 +300,103 @@ public class PortfolioAdvisorAgent {
                                 "Unable to parse structured response",
                                 List.of("Review portfolio manually", "Consult with financial advisor", "Monitor risk metrics closely"),
                                 "AI response parsing failed - manual review required");
+        }
+
+        private PortfolioAdviceResponse blankResponseFallback(PortfolioReasoningContext reasoningContext) {
+                PortfolioDecisionHints hints = reasoningContext.decisionHints();
+
+                String primaryRisk = hints != null && hints.primaryRisk() != null
+                                ? humanizeToken(hints.primaryRisk())
+                                : humanizeToken(firstRiskFlag(reasoningContext));
+
+                String riskOverview;
+                if (primaryRisk != null) {
+                        riskOverview = "Portfolio risk remains centered on " + primaryRisk + " based on the current portfolio signals.";
+                } else if (reasoningContext.classification() != null && reasoningContext.classification().riskLevel() != null) {
+                        riskOverview = "Portfolio risk is currently assessed as "
+                                        + humanizeToken(reasoningContext.classification().riskLevel().name())
+                                        + " based on the available portfolio metrics.";
+                } else {
+                        riskOverview = "Portfolio risk could not be summarized by the AI model, so deterministic portfolio signals were used instead.";
+                }
+
+                String diversificationFeedback = buildDiversificationFallback(reasoningContext, hints);
+
+                return new PortfolioAdviceResponse(
+                                riskOverview,
+                                diversificationFeedback,
+                                buildFallbackSuggestions(reasoningContext, hints),
+                                "AI advisor returned no usable response, so this fallback uses deterministic portfolio metrics only.");
+        }
+
+        private String buildDiversificationFallback(PortfolioReasoningContext reasoningContext,
+                        PortfolioDecisionHints hints) {
+                if (hints != null && hints.concentrationReductionNeeded()) {
+                        BigDecimal largestHoldingPercent = hints.largestHoldingPercent();
+                        String percentSuffix = largestHoldingPercent != null
+                                        ? " with the largest holding at " + largestHoldingPercent.stripTrailingZeros().toPlainString() + "%"
+                                        : "";
+                        return "The portfolio is concentrated" + percentSuffix
+                                        + ", so diversification should improve before adding new risk.";
+                }
+
+                if (hints != null && hints.diversificationNeeded()) {
+                        return "Diversification is currently weak, so sector and market-cap balance should be improved.";
+                }
+
+                if (reasoningContext.classification() != null && reasoningContext.classification().diversificationLevel() != null) {
+                        return "Diversification is currently assessed as "
+                                        + humanizeToken(reasoningContext.classification().diversificationLevel().name())
+                                        + " from the saved portfolio metrics.";
+                }
+
+                return "Diversification should be reviewed manually because the AI model returned no final portfolio narrative.";
+        }
+
+        private List<String> buildFallbackSuggestions(PortfolioReasoningContext reasoningContext,
+                        PortfolioDecisionHints hints) {
+                List<String> suggestions = new ArrayList<>();
+
+                if (hints != null && hints.concentrationReductionNeeded()) {
+                        suggestions.add("Reduce oversized single-stock concentration and rebalance the portfolio");
+                }
+
+                if (hints != null && hints.diversificationNeeded()) {
+                        suggestions.add("Spread exposure across more sectors and market-cap buckets");
+                }
+
+                if (hints != null && hints.smallCapRiskHigh()) {
+                        suggestions.add("Trim small-cap exposure until overall portfolio risk is lower");
+                }
+
+                if (reasoningContext.classification() != null
+                                && reasoningContext.classification().riskLevel() != null
+                                && "high".equals(humanizeToken(reasoningContext.classification().riskLevel().name()))) {
+                        suggestions.add("Prioritize reducing the highest portfolio risk before seeking new upside");
+                }
+
+                if (suggestions.isEmpty()) {
+                        suggestions.add("Review the top holdings and rebalance positions that dominate the portfolio");
+                }
+                if (suggestions.size() < 2) {
+                        suggestions.add("Check whether sector and style exposure are aligned with your risk tolerance");
+                }
+                if (suggestions.size() < 3) {
+                        suggestions.add("Use the saved risk flags and portfolio metrics before making the next change");
+                }
+
+                return suggestions.stream().limit(3).toList();
+        }
+
+        private String firstRiskFlag(PortfolioReasoningContext reasoningContext) {
+                return reasoningContext.portfolioRiskFlags().stream().findFirst().orElse(null);
+        }
+
+        private String humanizeToken(String token) {
+                if (token == null || token.isBlank()) {
+                        return null;
+                }
+                return token.toLowerCase(Locale.ROOT).replace('_', ' ');
         }
 
         private PortfolioAdviceResponse normalizeAdviceResponse(PortfolioAdviceResponse response) {
