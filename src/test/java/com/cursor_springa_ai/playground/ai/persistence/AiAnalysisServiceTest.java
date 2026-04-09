@@ -1,6 +1,7 @@
 package com.cursor_springa_ai.playground.ai.persistence;
 
 import com.cursor_springa_ai.playground.dto.PortfolioAdviceResponse;
+import com.cursor_springa_ai.playground.dto.ai.AnalysisDecisionTrace;
 import com.cursor_springa_ai.playground.dto.ai.AnalysisSnapshot;
 import com.cursor_springa_ai.playground.dto.ai.PortfolioStatsSummary;
 import com.cursor_springa_ai.playground.model.AiAnalysis;
@@ -38,7 +39,7 @@ class AiAnalysisServiceTest {
     void savePortfolioAdvice_persistsRowWithCorrectType() {
         when(repository.save(any())).thenAnswer(inv -> inv.getArgument(0));
 
-        service.savePortfolioAdvice(null, sampleAdvice(), sampleSnapshot());
+        service.savePortfolioAdvice(null, sampleAdvice(), sampleSnapshot(), sampleTrace());
 
         ArgumentCaptor<AiAnalysis> captor = ArgumentCaptor.forClass(AiAnalysis.class);
         verify(repository).save(captor.capture());
@@ -54,7 +55,7 @@ class AiAnalysisServiceTest {
     void savePortfolioAdvice_storesModelAndVersion() {
         when(repository.save(any())).thenAnswer(inv -> inv.getArgument(0));
 
-        service.savePortfolioAdvice(null, sampleAdvice(), sampleSnapshot());
+        service.savePortfolioAdvice(null, sampleAdvice(), sampleSnapshot(), sampleTrace());
 
         ArgumentCaptor<AiAnalysis> captor = ArgumentCaptor.forClass(AiAnalysis.class);
         verify(repository).save(captor.capture());
@@ -80,7 +81,7 @@ class AiAnalysisServiceTest {
     void savePortfolioAdvice_storesSnapshotJson() {
         when(repository.save(any())).thenAnswer(inv -> inv.getArgument(0));
 
-        service.savePortfolioAdvice(null, sampleAdvice(), sampleSnapshot());
+        service.savePortfolioAdvice(null, sampleAdvice(), sampleSnapshot(), null);
 
         ArgumentCaptor<AiAnalysis> captor = ArgumentCaptor.forClass(AiAnalysis.class);
         verify(repository).save(captor.capture());
@@ -91,10 +92,25 @@ class AiAnalysisServiceTest {
     }
 
     @Test
+    void savePortfolioAdvice_storesTraceJson() {
+        when(repository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+        service.savePortfolioAdvice(null, sampleAdvice(), null, sampleTrace());
+
+        ArgumentCaptor<AiAnalysis> captor = ArgumentCaptor.forClass(AiAnalysis.class);
+        verify(repository).save(captor.capture());
+
+        String trace = captor.getValue().getAnalysisTrace();
+        assertNotNull(trace);
+        assertTrue(trace.contains("HIGH_CONCENTRATION"));
+        assertTrue(trace.contains("INFY"));
+    }
+
+    @Test
     void savePortfolioAdvice_nullSnapshotStoresNullContext() {
         when(repository.save(any())).thenAnswer(inv -> inv.getArgument(0));
 
-        service.savePortfolioAdvice(null, sampleAdvice(), null);
+        service.savePortfolioAdvice(null, sampleAdvice(), null, null);
 
         ArgumentCaptor<AiAnalysis> captor = ArgumentCaptor.forClass(AiAnalysis.class);
         verify(repository).save(captor.capture());
@@ -102,10 +118,31 @@ class AiAnalysisServiceTest {
     }
 
     @Test
+    void savePortfolioAdvice_nullTraceStoresNullTrace() {
+        when(repository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+        service.savePortfolioAdvice(null, sampleAdvice(), sampleSnapshot(), null);
+
+        ArgumentCaptor<AiAnalysis> captor = ArgumentCaptor.forClass(AiAnalysis.class);
+        verify(repository).save(captor.capture());
+        assertNull(captor.getValue().getAnalysisTrace());
+    }
+
+    @Test
     void savePortfolioAdvice_doesNothingWhenAdviceIsNull() {
-        service.savePortfolioAdvice(null, null, sampleSnapshot());
+        service.savePortfolioAdvice(null, null, sampleSnapshot(), sampleTrace());
 
         verify(repository, never()).save(any());
+    }
+
+    private AnalysisDecisionTrace sampleTrace() {
+        return new AnalysisDecisionTrace(
+                "HIGH_CONCENTRATION",
+                "INFY",
+                List.of("INFY", "TCS"),
+                "Top 3 holdings exceed 65%",
+                "Portfolio profitable"
+        );
     }
 
     // ---- helpers ----
