@@ -14,7 +14,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class PortfolioAdvisorPromptBuilderTest {
 
-    private final PortfolioAdvisorPromptBuilder builder = new PortfolioAdvisorPromptBuilder();
+    private final PortfolioAdvisorPromptBuilder builder = new PortfolioAdvisorPromptBuilder(new SuggestionPriorityBuilder());
 
     @Test
     void buildSystemPrompt_containsBaseRules() {
@@ -35,6 +35,9 @@ class PortfolioAdvisorPromptBuilderTest {
         assertTrue(prompt.contains("Reference portfolio metrics when explaining cause."));
         assertTrue(prompt.contains("Do not repeat the same reasoning across multiple sections."));
         assertTrue(prompt.contains("Do not call additional tools to rediscover risks already indicated by portfolio classification."));
+        assertTrue(prompt.contains("SUGGESTION PRIORITY RULE"));
+        assertTrue(prompt.contains("Suggestions must follow the provided suggestion_priority_order."));
+        assertTrue(prompt.contains("Suggestion 1 must address priority 1."));
         assertTrue(prompt.contains("DO NOT"));
         assertFalse(prompt.contains("RESPONSE FORMAT"));
     }
@@ -59,6 +62,14 @@ class PortfolioAdvisorPromptBuilderTest {
         assertTrue(data.contains("portfolio_stock_count: 2"));
         assertTrue(data.contains("Use it as the primary portfolio data source."));
         assertTrue(data.contains(RiskFlag.HIGH_CONCENTRATION.name()));
+        assertTrue(data.contains("decision_hints:"));
+        assertTrue(data.contains("primary_risk:"));
+        assertTrue(data.contains("primary_risk_driver:"));
+        assertTrue(data.contains("largest_holding_symbol:"));
+        assertTrue(data.contains("largest_holding_percent:"));
+        assertTrue(data.contains("priority_actions:"));
+        assertTrue(data.contains("suggestion_priority_order:"));
+        assertTrue(data.contains("Primary focus must be addressing primary_risk."));
         assertFalse(data.contains("portfolio_summary:"));
         assertFalse(data.contains("total_invested:"));
         assertFalse(data.contains("total_current_value:"));
