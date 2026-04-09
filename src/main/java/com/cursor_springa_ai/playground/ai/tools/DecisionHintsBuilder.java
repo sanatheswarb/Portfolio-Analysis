@@ -27,10 +27,21 @@ public class DecisionHintsBuilder {
     }
 
     public PortfolioDecisionHints build(PortfolioReasoningContext context) {
-        PortfolioStats stats = context.portfolioStats();
-        PortfolioClassification classification = context.classification();
+        return build(
+                context.portfolioStats(),
+                context.classification(),
+                context.portfolioRiskFlags(),
+                context.enrichedHoldings()
+        );
+    }
 
-        EnrichedHoldingData largestHolding = derivedMetricsService.topHoldings(context, 1).stream()
+    public PortfolioDecisionHints build(
+            PortfolioStats stats,
+            PortfolioClassification classification,
+            List<String> portfolioRiskFlags,
+            List<EnrichedHoldingData> enrichedHoldings
+    ) {
+        EnrichedHoldingData largestHolding = derivedMetricsService.topHoldings(enrichedHoldings, 1).stream()
                 .findFirst()
                 .orElse(null);
 
@@ -39,10 +50,10 @@ public class DecisionHintsBuilder {
             largestHoldingPercent = largestHolding.allocationPercent();
         }
 
-        BigDecimal smallCapExposure = derivedMetricsService.smallCapExposure(context);
+        BigDecimal smallCapExposure = derivedMetricsService.smallCapExposure(classification, enrichedHoldings);
 
         return new PortfolioDecisionHints(
-                primaryRisk(context.portfolioRiskFlags()),
+                primaryRisk(portfolioRiskFlags),
                 largestHolding == null ? null : largestHolding.symbol(),
                 largestHoldingPercent,
                 classification != null && DiversificationLevel.POOR.equals(classification.diversificationLevel()),
