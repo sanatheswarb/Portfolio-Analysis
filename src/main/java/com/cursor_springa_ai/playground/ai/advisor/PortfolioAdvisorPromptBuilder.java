@@ -1,13 +1,23 @@
 package com.cursor_springa_ai.playground.ai.advisor;
 
 import com.cursor_springa_ai.playground.ai.reasoning.PortfolioReasoningContext;
+import com.cursor_springa_ai.playground.dto.ai.PortfolioDecisionHints;
+import com.cursor_springa_ai.playground.dto.EnrichedHoldingData;
 import com.cursor_springa_ai.playground.model.RiskFlag;
 import org.springframework.stereotype.Component;
 
+import java.math.BigDecimal;
+import java.util.Comparator;
 import java.util.List;
 
 @Component
 public class PortfolioAdvisorPromptBuilder {
+
+    private final SuggestionPriorityBuilder suggestionPriorityBuilder;
+
+    public PortfolioAdvisorPromptBuilder(SuggestionPriorityBuilder suggestionPriorityBuilder) {
+        this.suggestionPriorityBuilder = suggestionPriorityBuilder;
+    }
 
     public String buildSystemPrompt() {
         return String.join(
@@ -76,6 +86,12 @@ public class PortfolioAdvisorPromptBuilder {
                 - Suggestion 1: Reduce the biggest identified risk.
                 - Suggestion 2: Improve diversification or style balance.
                 - Suggestion 3: Improve portfolio resilience.
+
+                SUGGESTION PRIORITY RULE:
+                - Suggestions must follow the provided suggestion_priority_order.
+                - Suggestion 1 must address priority 1.
+                - Suggestion 2 must address priority 2.
+                - Suggestion 3 must address priority 3.
                 """;
     }
 
@@ -112,11 +128,24 @@ public class PortfolioAdvisorPromptBuilder {
     }
 
     public String buildReasoningRequest(PortfolioReasoningContext reasoningContext) {
+        DecisionHints hints = buildDecisionHints(reasoningContext);
+        List<String> priorities = suggestionPriorityBuilder.build(reasoningContext);
+        String priorityOrder = formatPriorityOrder(priorities);
+
         return """
                         Portfolio Analysis Request:
                         portfolio_userId: %s
                         precomputed_portfolio_risk_flags: %s
                         portfolio_stock_count: %s
+                        decision_hints:
+                        - primary_risk: %s
+                        - primary_risk_driver: %s
+                        - largest_holding_symbol: %s
+                        - largest_holding_percent: %s%s
+                        - priority_actions: %s
+                        suggestion_priority_order:
+                %s
+                Primary focus must be addressing primary_risk.
                 First action: call portfolio_overview.
                 Use it as the primary portfolio data source.
                 Do not call portfolio_overview again after the first result.
@@ -127,7 +156,55 @@ public class PortfolioAdvisorPromptBuilder {
                         portfolioRiskFlags(reasoningContext),
                         reasoningContext.portfolioSummary() != null
                                 ? reasoningContext.portfolioSummary().totalHoldings()
-                                : 0);
+                                : 0,
+                        hints.primaryRisk(),
+                        hints.primaryRiskDriver(),
+                        hints.largestHoldingSymbol(),
+                        hints.largestHoldingPercent(),
+                        largestHoldingThresholdNote(hints.largestHoldingPercent()),
+                        hints.priorityActions(),
+                        priorityOrder);
+    }
+
+    private DecisionHints buildDecisionHints(PortfolioReasoningContext context) {
+        PortfolioDecisionHints existing = context.decisionHints();
+        List<String> priorityActions = suggestionPriorityBuilder.build(context);
+
+        EnrichedHoldingData largest = context.enrichedHoldings().stream()
+                .filter(h -> h.allocationPercent() != null)
+                .max(Comparator.comparing(EnrichedHoldingData::allocationPercent))
+                .orElse(null);
+
+        String primaryRisk = existing != null ? existing.primaryRisk() : null;
+        String largestHoldingSymbol = existing != null ? existing.largestHoldingSymbol()
+                : (largest != null ? largest.symbol() : null);
+        BigDecimal largestHoldingPercent = existing != null ? existing.largestHoldingPercent()
+                : (largest != null ? largest.allocationPercent() : null);
+        // The largest holding is the primary driver of concentration risk
+        String primaryRiskDriver = largestHoldingSymbol;
+
+        return new DecisionHints(
+                primaryRisk,
+                primaryRiskDriver,
+                largestHoldingSymbol,
+                largestHoldingPercent,
+                priorityActions
+        );
+    }
+
+    private String largestHoldingThresholdNote(BigDecimal largestHoldingPercent) {
+        if (largestHoldingPercent != null && largestHoldingPercent.compareTo(BigDecimal.valueOf(25)) > 0) {
+            return " (exceeds 25% safe diversification limit)";
+        }
+        return "";
+    }
+
+    private String formatPriorityOrder(List<String> priorities) {
+        StringBuilder sb = new StringBuilder();
+        for (int i = 0; i < priorities.size(); i++) {
+            sb.append("        ").append(i + 1).append(" ").append(priorities.get(i)).append("\n");
+        }
+        return sb.toString().stripTrailing();
     }
 
     public String buildRetryReasoningRequest(String baseUserPrompt) {
