@@ -3,6 +3,7 @@ package com.cursor_springa_ai.playground.ai.tools;
 import com.cursor_springa_ai.playground.ai.reasoning.PortfolioReasoningContext;
 import com.cursor_springa_ai.playground.dto.EnrichedHoldingData;
 import com.cursor_springa_ai.playground.dto.ai.SectorExposureSummary;
+import com.cursor_springa_ai.playground.model.PortfolioClassification;
 import org.springframework.stereotype.Component;
 
 import java.math.BigDecimal;
@@ -16,10 +17,14 @@ import java.util.Objects;
 public class PortfolioDerivedMetricsService {
 
     public List<EnrichedHoldingData> topHoldings(PortfolioReasoningContext context, int limit) {
+        return topHoldings(context.enrichedHoldings(), limit);
+    }
+
+    public List<EnrichedHoldingData> topHoldings(List<EnrichedHoldingData> holdings, int limit) {
         if (limit <= 0) {
             return List.of();
         }
-        return context.enrichedHoldings().stream()
+        return holdings.stream()
                 .filter(holding -> holding.allocationPercent() != null)
                 .sorted(HoldingClassifier.BY_ALLOCATION_DESC)
                 .limit(limit)
@@ -27,14 +32,22 @@ public class PortfolioDerivedMetricsService {
     }
 
     public BigDecimal smallCapExposure(PortfolioReasoningContext context) {
-        if (context.classification() != null && context.classification().smallCapExposure() != null) {
-            return context.classification().smallCapExposure();
+        return smallCapExposure(context.classification(), context.enrichedHoldings());
+    }
+
+    public BigDecimal smallCapExposure(PortfolioClassification classification, List<EnrichedHoldingData> holdings) {
+        if (classification != null && classification.smallCapExposure() != null) {
+            return classification.smallCapExposure();
         }
-        return marketCapExposure(context, "smallcap");
+        return marketCapExposure(holdings, "smallcap");
     }
 
     public BigDecimal marketCapExposure(PortfolioReasoningContext context, String marketCapType) {
-        return context.enrichedHoldings().stream()
+        return marketCapExposure(context.enrichedHoldings(), marketCapType);
+    }
+
+    public BigDecimal marketCapExposure(List<EnrichedHoldingData> holdings, String marketCapType) {
+        return holdings.stream()
                 .filter(holding -> holding.marketCapType() != null)
                 .filter(holding -> holding.marketCapType().equalsIgnoreCase(marketCapType))
                 .map(EnrichedHoldingData::allocationPercent)
@@ -43,12 +56,16 @@ public class PortfolioDerivedMetricsService {
     }
 
     public List<SectorExposureSummary> sectorExposure(PortfolioReasoningContext context, int limit) {
+        return sectorExposure(context.enrichedHoldings(), limit);
+    }
+
+    public List<SectorExposureSummary> sectorExposure(List<EnrichedHoldingData> holdings, int limit) {
         if (limit <= 0) {
             return List.of();
         }
         Map<String, BigDecimal> exposureBySector = new LinkedHashMap<>();
         Map<String, String> displaySectorByNormalizedKey = new LinkedHashMap<>();
-        for (EnrichedHoldingData holding : context.enrichedHoldings()) {
+        for (EnrichedHoldingData holding : holdings) {
             if (holding.sector() == null || holding.sector().isBlank() || holding.allocationPercent() == null) {
                 continue;
             }
