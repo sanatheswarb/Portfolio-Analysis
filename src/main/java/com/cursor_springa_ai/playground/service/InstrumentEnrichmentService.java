@@ -5,6 +5,7 @@ import com.cursor_springa_ai.playground.integration.market.dto.NseQuoteResponse;
 import com.cursor_springa_ai.playground.dto.zerodha.ZerodhaHoldingItem;
 import com.cursor_springa_ai.playground.model.entity.Instrument;
 import com.cursor_springa_ai.playground.repository.InstrumentRepository;
+import com.cursor_springa_ai.playground.util.StringNormalizer;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -44,17 +45,30 @@ public class InstrumentEnrichmentService {
      * @return the persisted {@link Instrument}
      */
     @Transactional
-    public Instrument upsertAndEnrich(ZerodhaHoldingItem item) {
+    public Instrument resolveInstrument(ZerodhaHoldingItem item) {
         Long token = item.getInstrumentToken();
-        if (token == null) {
+
+        // 1. Try by instrument token
+        Optional<Instrument> existing = token != null
+                ? instrumentRepository.findByInstrumentToken(token)
+                : Optional.empty();
+
+        // 2. Fallback: try by ISIN, then by symbol + exchange
+        if (existing.isEmpty()) {
+            existing = findExistingInstrument(item);
+        }
+
+        // 3. Nothing found — insert a minimal row (requires a token for the PK)
+        Instrument instrument = existing.orElseGet(
+                () -> token != null ? insertMinimal(item) : null);
+
+        if (instrument == null) {
             return null;
         }
 
-        Instrument instrument = instrumentRepository.findByInstrumentToken(token)
-                .orElseGet(() -> findExistingInstrument(item)
-                        .orElseGet(() -> insertMinimal(item)));
 
-        if (instrument.getLastEnriched() == null) {
+        if (instrument.getLastEnriched() == null
+                || instrument.getLastEnriched().isBefore(LocalDateTime.now().minusMonths(1))) {
             tryEnrich(instrument, item.getTradingSymbol());
         }
 
@@ -66,7 +80,7 @@ public class InstrumentEnrichmentService {
     // ------------------------------------------------------------------
 
     private Optional<Instrument> findExistingInstrument(ZerodhaHoldingItem item) {
-        String isin = normalize(item.getIsin());
+        String isin = StringNormalizer.normalize(item.getIsin());
         if (isin != null) {
             Optional<Instrument> existingByIsin = instrumentRepository.findByIsinIgnoreCase(isin);
             if (existingByIsin.isPresent()) {
@@ -75,8 +89,9 @@ public class InstrumentEnrichmentService {
             }
         }
 
-        String symbol = normalize(item.getTradingSymbol());
-        String exchange = normalize(item.getExchange()) != null ? normalize(item.getExchange()) : "NSE";
+        String symbol = StringNormalizer.normalize(item.getTradingSymbol());
+        String exchange = StringNormalizer.normalize(item.getExchange()) != null
+                ? StringNormalizer.normalize(item.getExchange()) : "NSE";
         if (symbol == null) {
             return Optional.empty();
         }
@@ -109,12 +124,6 @@ public class InstrumentEnrichmentService {
                 + ". Reusing existing instrument row.");
     }
 
-    private String normalize(String value) {
-        if (value == null || value.isBlank()) {
-            return null;
-        }
-        return value.trim().toUpperCase();
-    }
 
     private void tryEnrich(Instrument instrument, String symbol) {
         if (symbol == null || symbol.isBlank()) {

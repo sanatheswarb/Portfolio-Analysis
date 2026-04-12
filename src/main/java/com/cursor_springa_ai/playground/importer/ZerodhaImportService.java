@@ -6,6 +6,7 @@ import com.cursor_springa_ai.playground.model.entity.User;
 import com.cursor_springa_ai.playground.model.entity.UserHolding;
 import com.cursor_springa_ai.playground.service.PortfolioStatsBatchService;
 import com.cursor_springa_ai.playground.service.UserHoldingSyncService;
+import com.cursor_springa_ai.playground.util.StringNormalizer;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
@@ -91,7 +92,7 @@ public class ZerodhaImportService {
                         holdingPreparationService.prepareHolding(currentUser, item, totalCurrentValue)
                 );
             } catch (RuntimeException ex) {
-                String symbol = TradingSymbolNormalizer.normalize(item.getTradingSymbol());
+                String symbol = StringNormalizer.normalize(item.getTradingSymbol());
                 logger.log(Level.WARNING,
                         "Failed to import holding " + symbol + ": " + ex.getMessage(),
                         ex);
@@ -103,7 +104,7 @@ public class ZerodhaImportService {
         if (!failedSymbols.isEmpty()) {
             IllegalStateException importFailure = new IllegalStateException(
                     "Import aborted; failed holdings: " + String.join(", ", failedSymbols),
-                    failedExceptions.getFirst()
+                    failedExceptions.get(0)
             );
             failedExceptions.stream()
                     .skip(1)

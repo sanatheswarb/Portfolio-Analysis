@@ -60,7 +60,7 @@ class ZerodhaImportServiceTest {
         ZerodhaHoldingItem item = holdingItem(123L, "INFY", BigDecimal.TEN, BigDecimal.valueOf(1500), BigDecimal.valueOf(1600));
 
         when(holdingsClient.fetchHoldings()).thenReturn(List.of(item));
-        when(enrichmentService.upsertAndEnrich(argThat(holding -> hasTokenAndSymbol(holding, 123L, "INFY"))))
+        when(enrichmentService.resolveInstrument(argThat(holding -> hasTokenAndSymbol(holding, 123L, "INFY"))))
                 .thenReturn(instrument);
         when(fundamentalsService.upsertIfStale(instrument)).thenReturn(BigDecimal.valueOf(1550));
 
@@ -101,7 +101,7 @@ class ZerodhaImportServiceTest {
         ZerodhaHoldingItem item = holdingItem(123L, "INFY", BigDecimal.TEN, BigDecimal.valueOf(1500), BigDecimal.valueOf(1600));
 
         when(holdingsClient.fetchHoldings()).thenReturn(List.of(item));
-        when(enrichmentService.upsertAndEnrich(argThat(holding -> hasTokenAndSymbol(holding, 123L, "INFY"))))
+        when(enrichmentService.resolveInstrument(argThat(holding -> hasTokenAndSymbol(holding, 123L, "INFY"))))
                 .thenThrow(new IllegalStateException("boom"));
 
         IllegalStateException exception = assertThrows(IllegalStateException.class, () -> service.importHoldings(user));
@@ -155,9 +155,9 @@ class ZerodhaImportServiceTest {
         );
 
         when(holdingsClient.fetchHoldings()).thenReturn(List.of(first, second));
-        when(enrichmentService.upsertAndEnrich(argThat(holding -> hasTokenAndSymbol(holding, 123L, "INFY"))))
+        when(enrichmentService.resolveInstrument(argThat(holding -> hasTokenAndSymbol(holding, 123L, "INFY"))))
                 .thenReturn(instrument);
-        when(enrichmentService.upsertAndEnrich(argThat(holding -> hasTokenAndSymbol(holding, 456L, "INFY"))))
+        when(enrichmentService.resolveInstrument(argThat(holding -> hasTokenAndSymbol(holding, 456L, "INFY"))))
                 .thenReturn(instrument);
         when(fundamentalsService.upsertIfStale(instrument)).thenReturn(BigDecimal.valueOf(1550));
 
@@ -211,14 +211,14 @@ class ZerodhaImportServiceTest {
         ZerodhaHoldingItem unsupported = holdingItem(456L, "M&M", BigDecimal.ONE, BigDecimal.valueOf(1000), BigDecimal.valueOf(1100));
 
         when(holdingsClient.fetchHoldings()).thenReturn(List.of(supported, unsupported));
-        when(enrichmentService.upsertAndEnrich(argThat(holding -> hasTokenAndSymbol(holding, 123L, "INFY"))))
+        when(enrichmentService.resolveInstrument(argThat(holding -> hasTokenAndSymbol(holding, 123L, "INFY"))))
                 .thenReturn(instrument);
         when(fundamentalsService.upsertIfStale(instrument)).thenReturn(BigDecimal.valueOf(1550));
 
         ZerodhaImportResponse response = service.importHoldings(user);
 
-        verify(enrichmentService, times(1)).upsertAndEnrich(argThat(holding -> hasTokenAndSymbol(holding, 123L, "INFY")));
-        verify(enrichmentService, never()).upsertAndEnrich(unsupported);
+        verify(enrichmentService, times(1)).resolveInstrument(argThat(holding -> hasTokenAndSymbol(holding, 123L, "INFY")));
+        verify(enrichmentService, never()).resolveInstrument(unsupported);
         assertEquals(1, response.importedHoldings());
         assertEquals(List.of("INFY"), response.symbols());
     }
@@ -252,13 +252,13 @@ class ZerodhaImportServiceTest {
         ZerodhaHoldingItem item = holdingItem(123L, " infy ", BigDecimal.TEN, BigDecimal.valueOf(1500), BigDecimal.valueOf(1600));
 
         when(holdingsClient.fetchHoldings()).thenReturn(List.of(item));
-        when(enrichmentService.upsertAndEnrich(argThat(holding -> hasTokenAndSymbol(holding, 123L, " infy "))))
+        when(enrichmentService.resolveInstrument(argThat(holding -> hasTokenAndSymbol(holding, 123L, " infy "))))
                 .thenReturn(instrument);
         when(fundamentalsService.upsertIfStale(instrument)).thenReturn(BigDecimal.valueOf(1550));
 
         ZerodhaImportResponse response = service.importHoldings(user);
 
-        verify(enrichmentService).upsertAndEnrich(argThat(holding -> hasTokenAndSymbol(holding, 123L, " infy ")));
+        verify(enrichmentService).resolveInstrument(argThat(holding -> hasTokenAndSymbol(holding, 123L, " infy ")));
         verify(userHoldingSyncService).replaceHoldings(eq(1L), argThat(list -> {
             if (!(list instanceof List<?> holdings) || holdings.size() != 1) {
                 return false;
@@ -284,8 +284,6 @@ class ZerodhaImportServiceTest {
         item.setAveragePrice(averagePrice);
         item.setLastPrice(lastPrice);
         item.setPnl(BigDecimal.ZERO);
-        item.setDayChange(BigDecimal.ZERO);
-        item.setDayChangePercentage(BigDecimal.ZERO);
         return item;
     }
 

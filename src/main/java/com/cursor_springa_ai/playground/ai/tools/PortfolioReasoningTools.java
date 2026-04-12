@@ -6,6 +6,7 @@ import com.cursor_springa_ai.playground.ai.tools.HoldingDetailsBuilder;
 import com.cursor_springa_ai.playground.ai.tools.HoldingsListBuilder;
 import com.cursor_springa_ai.playground.ai.tools.PortfolioOverviewBuilder;
 import com.cursor_springa_ai.playground.dto.EnrichedHoldingData;
+import com.cursor_springa_ai.playground.util.StringNormalizer;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -15,7 +16,6 @@ import org.springframework.ai.tool.annotation.ToolParam;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.logging.Logger;
@@ -124,10 +124,10 @@ public class PortfolioReasoningTools {
 
         List<Map<String, Object>> results = new ArrayList<>();
         for (String symbol : symbols) {
-            if (symbol == null || symbol.isBlank()) {
+            String normalizedSymbol = StringNormalizer.normalize(symbol);
+            if (normalizedSymbol == null) {
                 continue;
             }
-            String normalizedSymbol = symbol.trim().toUpperCase(Locale.ROOT);
             if (holdingDetailsCache.containsKey(normalizedSymbol)) {
                 try {
                     results.add(objectMapper.readValue(holdingDetailsCache.get(normalizedSymbol), STRING_OBJECT_MAP));
@@ -193,10 +193,10 @@ public class PortfolioReasoningTools {
     private Map<String, EnrichedHoldingData> buildHoldingsBySymbol(List<EnrichedHoldingData> holdings) {
         Map<String, EnrichedHoldingData> index = new LinkedHashMap<>();
         for (EnrichedHoldingData holding : holdings) {
-            if (holding.symbol() == null || holding.symbol().isBlank()) {
+            String normalizedSymbol = StringNormalizer.normalize(holding.symbol());
+            if (normalizedSymbol == null) {
                 continue;
             }
-            String normalizedSymbol = holding.symbol().trim().toUpperCase(Locale.ROOT);
             index.putIfAbsent(normalizedSymbol, holding);
         }
         return Map.copyOf(index);

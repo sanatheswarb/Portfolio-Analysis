@@ -82,8 +82,6 @@ class HoldingPreparationServiceTest {
         item.setAveragePrice(BigDecimal.valueOf(1500));
         item.setLastPrice(BigDecimal.valueOf(1600));
         item.setPnl(BigDecimal.ZERO);
-        item.setDayChange(BigDecimal.ZERO);
-        item.setDayChangePercentage(BigDecimal.ZERO);
         return item;
     }
 }

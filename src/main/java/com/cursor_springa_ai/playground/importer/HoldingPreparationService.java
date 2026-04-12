@@ -6,6 +6,7 @@ import com.cursor_springa_ai.playground.model.entity.User;
 import com.cursor_springa_ai.playground.model.entity.UserHolding;
 import com.cursor_springa_ai.playground.service.InstrumentEnrichmentService;
 import com.cursor_springa_ai.playground.service.StockFundamentalsService;
+import com.cursor_springa_ai.playground.util.StringNormalizer;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
@@ -36,20 +37,19 @@ public class HoldingPreparationService {
     }
 
     boolean isImportableHolding(ZerodhaHoldingItem item) {
-        String symbol = item.getTradingSymbol();
-        if (symbol == null) {
-            logger.warning("Skipping Zerodha holding with null trading symbol");
+        String normalizedSymbol = StringNormalizer.normalize(item.getTradingSymbol());
+        if (normalizedSymbol == null) {
+            logger.warning("Skipping Zerodha holding with null or blank trading symbol");
             return false;
         }
 
-        String normalizedSymbol = TradingSymbolNormalizer.normalize(symbol);
         if (!importableSymbolPattern.matcher(normalizedSymbol).matches()) {
-            logger.info("Skipping Zerodha holding with unsupported symbol: " + symbol);
+            logger.info("Skipping Zerodha holding with unsupported symbol: " + item.getTradingSymbol());
             return false;
         }
 
         if (item.getQuantity() == null || item.getQuantity().compareTo(BigDecimal.ZERO) <= 0) {
-            logger.info("Skipping Zerodha holding with zero or null quantity: " + symbol);
+            logger.info("Skipping Zerodha holding with zero or null quantity: " + item.getTradingSymbol());
             return false;
         }
 
@@ -63,8 +63,8 @@ public class HoldingPreparationService {
     PreparedHolding prepareHolding(User currentUser,
                                    ZerodhaHoldingItem item,
                                    BigDecimal totalCurrentValue) {
-        String symbol = TradingSymbolNormalizer.normalize(item.getTradingSymbol());
-        Instrument instrument = instrumentEnrichmentService.upsertAndEnrich(item);
+        String symbol = StringNormalizer.normalize(item.getTradingSymbol());
+        Instrument instrument = instrumentEnrichmentService.resolveInstrument(item);
         if (instrument == null) {
             throw new IllegalStateException("Instrument resolution failed for symbol " + symbol);
         }
