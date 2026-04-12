@@ -12,9 +12,9 @@ import java.util.Optional;
 @Repository
 public interface UserHoldingRepository extends JpaRepository<UserHolding, Long> {
 
-    Optional<UserHolding> findByUserIdAndInstrumentInstrumentToken(Long userId, Long instrumentToken);
+    void deleteByUserId(Long userId);
 
-    Optional<UserHolding> findByUserIdAndInstrumentSymbolIgnoreCase(Long userId, String symbol);
+    Optional<UserHolding> findByUserIdAndInstrumentId(Long userId, Long instrumentId);
 
     List<UserHolding> findByUserId(Long userId);
 

@@ -24,7 +24,7 @@ import java.time.LocalDateTime;
         name = "user_holdings",
         uniqueConstraints = @UniqueConstraint(
                 name = "uq_user_holdings_user_instrument",
-                columnNames = {"user_id", "instrument_token"}
+        columnNames = {"user_id", "instrument_id"}
         )
 )
 public class UserHolding {
@@ -38,7 +38,7 @@ public class UserHolding {
     private User user;
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "instrument_token", nullable = false)
+    @JoinColumn(name = "instrument_id", nullable = false)
     private Instrument instrument;
 
     /** Trading symbol for readability (denormalized from instrument). */

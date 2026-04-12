@@ -4,6 +4,8 @@ import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.OneToOne;
 import jakarta.persistence.Table;
@@ -13,16 +15,20 @@ import java.time.LocalDateTime;
 
 /**
  * Persisted catalogue of financial instruments seen during holdings imports.
- * The primary key is the Zerodha instrument_token, which is stable across sessions
- * and can be used as a join key with the Zerodha API.
+ * Uses an internal surrogate primary key while retaining broker/exchange identifiers
+ * such as instrument_token and ISIN as lookup fields.
  */
 @Entity
 @Table(name = "instruments")
 public class Instrument {
 
-    /** Zerodha instrument token – stable identifier, not auto-generated. */
     @Id
-    @Column(name = "instrument_token", nullable = false)
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Column(name = "instrument_id", nullable = false)
+    private Long id;
+
+    /** Zerodha instrument token used as an external lookup identifier. */
+    @Column(name = "instrument_token", unique = true)
     private Long instrumentToken;
 
     @Column(nullable = false, length = 50)
@@ -31,7 +37,7 @@ public class Instrument {
     @Column(nullable = false, length = 20)
     private String exchange;
 
-    @Column(length = 20)
+    @Column(length = 20, unique = true)
     private String isin;
 
     @Column(name = "company_name", length = 200)
@@ -66,8 +72,16 @@ public class Instrument {
         this.isin = isin;
     }
 
+    public Long getId() {
+        return id;
+    }
+
     public Long getInstrumentToken() {
         return instrumentToken;
+    }
+
+    public void setInstrumentToken(Long instrumentToken) {
+        this.instrumentToken = instrumentToken;
     }
 
     public String getSymbol() {

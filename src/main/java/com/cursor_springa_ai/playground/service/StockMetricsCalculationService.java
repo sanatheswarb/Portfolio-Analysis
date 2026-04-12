@@ -1,5 +1,6 @@
 package com.cursor_springa_ai.playground.service;
 
+import com.cursor_springa_ai.playground.analytics.HoldingAnalyticsService;
 import com.cursor_springa_ai.playground.model.Instrument;
 import com.cursor_springa_ai.playground.model.StockFundamentals;
 import com.cursor_springa_ai.playground.model.User;
@@ -80,7 +81,7 @@ public class StockMetricsCalculationService {
         }
 
         StockFundamentals fundamentals = stockFundamentalsRepository
-                .findById(instrument.getInstrumentToken()).orElse(null);
+            .findByInstrumentId(instrument.getId()).orElse(null);
 
         BigDecimal week52High = fundamentals != null ? fundamentals.getWeek52High() : null;
         BigDecimal volatility = holdingAnalyticsService.calculateVolatility(holding);
@@ -89,7 +90,7 @@ public class StockMetricsCalculationService {
         BigDecimal riskScore = holdingAnalyticsService.computeRiskScore(volatility);
 
         userStockMetricsRepository
-                .findByUserIdAndInstrumentInstrumentToken(user.getId(), instrument.getInstrumentToken())
+            .findByUserIdAndInstrumentId(user.getId(), instrument.getId())
                 .ifPresentOrElse(
                         existing -> {
                             applyFields(existing, valuationFlag, riskScore, momentumScore,

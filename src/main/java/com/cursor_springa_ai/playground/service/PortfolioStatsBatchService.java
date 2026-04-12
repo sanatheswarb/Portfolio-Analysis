@@ -1,5 +1,6 @@
 package com.cursor_springa_ai.playground.service;
 
+import com.cursor_springa_ai.playground.analytics.PortfolioAnalyticsService;
 import com.cursor_springa_ai.playground.model.PortfolioStats;
 import com.cursor_springa_ai.playground.model.User;
 import com.cursor_springa_ai.playground.model.UserHolding;
