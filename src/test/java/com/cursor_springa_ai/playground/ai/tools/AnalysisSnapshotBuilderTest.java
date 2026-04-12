@@ -84,7 +84,7 @@ class AnalysisSnapshotBuilderTest {
         AnalysisSnapshot snapshot = builder.build(sampleContext());
 
         assertNotNull(snapshot.sectorExposure());
-        // Both INFY and TCS are "technology" â†’ combined 65%; HDFCBANK is "financials" â†’ 20%
+        // Both INFY and TCS are "technology" → combined 65%; HDFCBANK is "financials" → 20%
         var techSector = snapshot.sectorExposure().stream()
                 .filter(s -> "technology".equals(s.sector())).findFirst().orElseThrow();
         assertEquals(BigDecimal.valueOf(65), techSector.allocation());
