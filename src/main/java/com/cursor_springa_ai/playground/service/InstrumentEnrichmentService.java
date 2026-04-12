@@ -104,8 +104,8 @@ public class InstrumentEnrichmentService {
         }
 
         String symbol = StringNormalizer.normalize(item.getTradingSymbol());
-        String exchange = StringNormalizer.normalize(item.getExchange()) != null
-                ? StringNormalizer.normalize(item.getExchange()) : "NSE";
+        String normalizedExchange = StringNormalizer.normalize(item.getExchange());
+        String exchange = normalizedExchange != null ? normalizedExchange : "NSE";
         if (symbol == null) {
             return Optional.empty();
         }
