@@ -21,11 +21,11 @@ import java.util.Map;
  * Converts a {@link PortfolioReasoningContext} into a lean {@link AnalysisSnapshot}
  * suitable for storage in {@code ai_analysis.analysis_context}.
  *
- * <p>Only the fields that actually drove the AI decision are captured â€” full
+ * <p>Only the fields that actually drove the AI decision are captured — full
  * holding details, fundamentals, and momentum data are intentionally excluded
  * to keep the stored snapshot under ~5 KB.
  *
- * <p>{@link DecisionSignals} are computed here and only here â€” never in tools,
+ * <p>{@link DecisionSignals} are computed here and only here — never in tools,
  * prompt builders, or the reasoning context.
  */
 @Component
