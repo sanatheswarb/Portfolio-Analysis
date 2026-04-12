@@ -69,7 +69,7 @@ public class InstrumentEnrichmentService {
 
         if (instrument.getLastEnriched() == null
                 || instrument.getLastEnriched().isBefore(LocalDateTime.now().minusMonths(1))) {
-            enrichFromNse(instrument, item.getTradingSymbol());
+            enrichFromNse(instrument, StringNormalizer.normalize(item.getTradingSymbol()));
         }
 
         return instrument;
@@ -104,7 +104,7 @@ public class InstrumentEnrichmentService {
     private Instrument insertMinimal(ZerodhaHoldingItem item) {
         Instrument instrument = new Instrument(
                 item.getInstrumentToken(),
-                item.getTradingSymbol() != null ? item.getTradingSymbol().toUpperCase() : null,
+                StringNormalizer.normalize(item.getTradingSymbol()),
                 item.getExchange() != null ? item.getExchange() : "NSE",
                 item.getIsin()
         );
@@ -129,7 +129,7 @@ public class InstrumentEnrichmentService {
         if (symbol == null || symbol.isBlank()) {
             return;
         }
-        Optional<NseQuoteResponse> quoteOpt = nseApiClient.fetchQuote(symbol.toUpperCase());
+        Optional<NseQuoteResponse> quoteOpt = nseApiClient.fetchQuote(symbol);
         if (quoteOpt.isEmpty()) {
             return;
         }
