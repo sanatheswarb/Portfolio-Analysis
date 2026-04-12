@@ -53,7 +53,7 @@ public class HoldingValueCalculator {
         int qtyInt = qty.setScale(0, RoundingMode.HALF_UP).intValue();
         BigDecimal avgPrice = Objects.requireNonNullElse(item.getAveragePrice(), BigDecimal.ZERO);
         BigDecimal lastPrice = Objects.requireNonNullElse(item.getLastPrice(), BigDecimal.ZERO);
-        BigDecimal closePrice = Objects.requireNonNullElse(nsePreviousClose, BigDecimal.ZERO);
+        BigDecimal closePrice = Objects.requireNonNullElse(nsePreviousClose, lastPrice);
         String symbol = StringNormalizer.normalize(item.getTradingSymbol());
 
         BigDecimal investedValue = qty.multiply(avgPrice);
