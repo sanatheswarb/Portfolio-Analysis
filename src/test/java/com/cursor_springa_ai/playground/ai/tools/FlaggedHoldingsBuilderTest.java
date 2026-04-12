@@ -38,7 +38,7 @@ class FlaggedHoldingsBuilderTest {
     void build_includesHoldingsWithSignificantAllocation() {
         List<FlaggedHoldingDto> result = builder.build(sampleContext());
 
-        // HDFCBANK has 20% allocation (> 10 threshold) but no risk flags â€” still included
+        // HDFCBANK has 20% allocation (> 10 threshold) but no risk flags — still included
         assertTrue(result.stream().anyMatch(h -> "HDFCBANK".equals(h.symbol())));
     }
 
