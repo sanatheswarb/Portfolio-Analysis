@@ -51,19 +51,20 @@ public class HoldingValueCalculator {
         // Indian equity markets do not support fractional shares; round to the nearest
         // whole number defensively before storing as Integer.
         int qtyInt = qty.setScale(0, RoundingMode.HALF_UP).intValue();
+        BigDecimal qtyNormalized = BigDecimal.valueOf(qtyInt);
         BigDecimal avgPrice = Objects.requireNonNullElse(item.getAveragePrice(), BigDecimal.ZERO);
         BigDecimal lastPrice = Objects.requireNonNullElse(item.getLastPrice(), BigDecimal.ZERO);
         BigDecimal closePrice = Objects.requireNonNullElse(nsePreviousClose, lastPrice);
         String symbol = StringNormalizer.normalize(item.getTradingSymbol());
 
-        BigDecimal investedValue = qty.multiply(avgPrice);
-        BigDecimal currentValue = qty.multiply(lastPrice);
+        BigDecimal investedValue = qtyNormalized.multiply(avgPrice);
+        BigDecimal currentValue = qtyNormalized.multiply(lastPrice);
         BigDecimal pnl = Objects.requireNonNullElse(item.getPnl(), BigDecimal.ZERO);
         BigDecimal pnlPercent = investedValue.compareTo(BigDecimal.ZERO) != 0
                 ? pnl.divide(investedValue, 6, RoundingMode.HALF_UP).multiply(BigDecimal.valueOf(100))
                 : BigDecimal.ZERO;
         BigDecimal dayChange = closePrice.compareTo(BigDecimal.ZERO) > 0
-                ? lastPrice.subtract(closePrice).multiply(qty)
+                ? lastPrice.subtract(closePrice).multiply(qtyNormalized)
                 : BigDecimal.ZERO;
         BigDecimal dayChangePct = closePrice.compareTo(BigDecimal.ZERO) > 0
                 ? lastPrice.subtract(closePrice)
