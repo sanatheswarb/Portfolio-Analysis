@@ -13,11 +13,12 @@ public final class BigDecimalUtils {
     }
 
     /**
-     * Scales {@code value} to two decimal places using {@link RoundingMode#HALF_UP}.
+     * Scales a non-null {@code value} to two decimal places using {@link RoundingMode#HALF_UP}.
      * Returns {@link BigDecimal#ZERO} when {@code value} is {@code null}.
      *
      * @param value the value to scale; may be {@code null}
-     * @return a non-null, two-decimal-place value
+     * @return {@link BigDecimal#ZERO} if {@code value} is {@code null}; otherwise a non-null,
+     *         two-decimal-place value
      */
     public static BigDecimal scale(BigDecimal value) {
         if (value == null) {
