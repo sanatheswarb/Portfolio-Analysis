@@ -114,6 +114,9 @@ public class InstrumentEnrichmentService {
     }
 
     private void logTokenMismatch(ZerodhaHoldingItem item, Instrument instrument, String matchedBy) {
+        if (item.getInstrumentToken() == null) {
+            return;
+        }
         if (item.getInstrumentToken().equals(instrument.getInstrumentToken())) {
             return;
         }
