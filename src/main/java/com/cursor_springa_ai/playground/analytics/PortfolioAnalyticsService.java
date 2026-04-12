@@ -6,6 +6,7 @@ import com.cursor_springa_ai.playground.model.enums.RiskFlag;
 import com.cursor_springa_ai.playground.model.entity.PortfolioStats;
 import com.cursor_springa_ai.playground.model.entity.User;
 import com.cursor_springa_ai.playground.model.entity.UserHolding;
+import com.cursor_springa_ai.playground.util.BigDecimalUtils;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
@@ -86,10 +87,10 @@ public class PortfolioAnalyticsService {
             return new PortfolioSummary(BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO, 0);
         }
         return new PortfolioSummary(
-                scale(portfolioStats.getTotalInvested()),
-                scale(portfolioStats.getTotalValue()),
-                scale(portfolioStats.getTotalPnl()),
-                scale(portfolioStats.getPnlPercent()),
+                BigDecimalUtils.scale(portfolioStats.getTotalInvested()),
+                BigDecimalUtils.scale(portfolioStats.getTotalValue()),
+                BigDecimalUtils.scale(portfolioStats.getTotalPnl()),
+                BigDecimalUtils.scale(portfolioStats.getPnlPercent()),
                 portfolioStats.getStockCount() != null ? portfolioStats.getStockCount() : 0
         );
     }
@@ -153,12 +154,5 @@ public class PortfolioAnalyticsService {
                 .divide(maxPossibleScore, 4, RoundingMode.HALF_UP)
                 .max(BigDecimal.ZERO)
                 .min(BigDecimal.ONE);
-    }
-
-    private BigDecimal scale(BigDecimal value) {
-        if (value == null) {
-            return BigDecimal.ZERO;
-        }
-        return value.setScale(2, RoundingMode.HALF_UP);
     }
 }

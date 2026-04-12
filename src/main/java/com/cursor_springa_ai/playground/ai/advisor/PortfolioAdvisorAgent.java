@@ -16,8 +16,10 @@ import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.logging.Logger;
 
 @Service
@@ -114,7 +116,7 @@ public class PortfolioAdvisorAgent {
                                 .content();
                 long llmTime = System.currentTimeMillis() - startTime;
                 String firstTool = toolInvocationRecorder.firstInvokedTool();
-                java.util.Map<String, Integer> invocationCounts = mergeInvocationCounts(reasoningTools, portfolioReasoningTools);
+                Map<String, Integer> invocationCounts = mergeInvocationCounts(reasoningTools, portfolioReasoningTools);
                 int totalCalls = reasoningTools.invocationCount() + portfolioReasoningTools.invocationCount();
                 logger.info("Chat LLM time: " + llmTime + " ms");
                 logger.info("Chat advisor tool usage summary: firstTool="
@@ -131,14 +133,14 @@ public class PortfolioAdvisorAgent {
 
         
 
-        private java.util.Map<String, Integer> mergeInvocationCounts(
+        private Map<String, Integer> mergeInvocationCounts(
                         PortfolioChatReasoningTools chatTools,
                         PortfolioReasoningTools portfolioTools) {
-                java.util.LinkedHashMap<String, Integer> merged = new java.util.LinkedHashMap<>();
+                LinkedHashMap<String, Integer> merged = new LinkedHashMap<>();
                 merged.putAll(chatTools.invocationCounts());
                 portfolioTools.invocationCounts().forEach((tool, count) -> merged.merge(tool, count,
                                 (existingCount, newCount) -> existingCount + newCount));
-                return java.util.Map.copyOf(merged);
+                return Map.copyOf(merged);
         }
 
         private AdvisorCallResult callAdvisor(

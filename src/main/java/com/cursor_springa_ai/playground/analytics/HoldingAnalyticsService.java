@@ -5,6 +5,7 @@ import com.cursor_springa_ai.playground.model.entity.Instrument;
 import com.cursor_springa_ai.playground.model.enums.RiskFlag;
 import com.cursor_springa_ai.playground.model.entity.StockFundamentals;
 import com.cursor_springa_ai.playground.model.entity.UserHolding;
+import com.cursor_springa_ai.playground.util.BigDecimalUtils;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
@@ -36,7 +37,7 @@ public class HoldingAnalyticsService {
         BigDecimal quantity = holding != null && holding.getQuantity() != null
                 ? BigDecimal.valueOf(holding.getQuantity())
                 : BigDecimal.ZERO;
-        BigDecimal currentPrice = scale(holding != null ? holding.getLastPrice() : null);
+        BigDecimal currentPrice = BigDecimalUtils.scale(holding != null ? holding.getLastPrice() : null);
         BigDecimal week52High = fundamentals != null ? fundamentals.getWeek52High() : null;
         String valuationFlag = computeValuationFlag(fundamentals);
         BigDecimal momentumScore = computeMomentumScore(holding != null ? holding.getLastPrice() : null, week52High);
@@ -46,12 +47,12 @@ public class HoldingAnalyticsService {
         EnrichedHoldingData enrichedHolding = new EnrichedHoldingData(
                 resolveSymbol(holding),
                 inferAssetType(resolveSector(holding)),
-                scale(quantity),
-                scale(holding != null ? holding.getAvgPrice() : null),
+                BigDecimalUtils.scale(quantity),
+                BigDecimalUtils.scale(holding != null ? holding.getAvgPrice() : null),
                 currentPrice,
-                scale(holding != null ? holding.getInvestedValue() : null),
-                scale(holding != null ? holding.getCurrentValue() : null),
-                scale(holding != null ? holding.getPnl() : null),
+                BigDecimalUtils.scale(holding != null ? holding.getInvestedValue() : null),
+                BigDecimalUtils.scale(holding != null ? holding.getCurrentValue() : null),
+                BigDecimalUtils.scale(holding != null ? holding.getPnl() : null),
                 resolveSector(holding),
                 fundamentals != null ? fundamentals.getPe() : null,
                 null,
@@ -60,8 +61,8 @@ public class HoldingAnalyticsService {
                 fundamentals != null ? fundamentals.getWeek52Low() : null,
                 resolveMarketCapType(holding),
                 null,
-                scale(holding != null ? holding.getWeightPercent() : null),
-                scale(holding != null ? holding.getPnlPercent() : null),
+                BigDecimalUtils.scale(holding != null ? holding.getWeightPercent() : null),
+                BigDecimalUtils.scale(holding != null ? holding.getPnlPercent() : null),
                 calculateDistanceFromHigh(currentPrice, week52High),
                 valuationFlag,
                 momentumScore,
@@ -251,13 +252,6 @@ public class HoldingAnalyticsService {
         }
         Instrument instrument = instrumentOf(holding);
         return instrument != null ? instrument.getSymbol() : null;
-    }
-
-    private BigDecimal scale(BigDecimal value) {
-        if (value == null) {
-            return BigDecimal.ZERO;
-        }
-        return value.setScale(2, RoundingMode.HALF_UP);
     }
 
     private String inferAssetType(String sector) {
