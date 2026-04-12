@@ -69,7 +69,7 @@ public class InstrumentEnrichmentService {
 
         if (instrument.getLastEnriched() == null
                 || instrument.getLastEnriched().isBefore(LocalDateTime.now().minusMonths(1))) {
-            tryEnrich(instrument, item.getTradingSymbol());
+            enrichFromNse(instrument, item.getTradingSymbol());
         }
 
         return instrument;
@@ -125,7 +125,7 @@ public class InstrumentEnrichmentService {
     }
 
 
-    private void tryEnrich(Instrument instrument, String symbol) {
+    private void enrichFromNse(Instrument instrument, String symbol) {
         if (symbol == null || symbol.isBlank()) {
             return;
         }
@@ -177,11 +177,11 @@ public class InstrumentEnrichmentService {
         if (quote.priceInfo() == null || quote.priceInfo().lastPrice() == null) {
             return null;
         }
-        double marketCapCrore = (quote.securityInfo().issuedSize() * quote.priceInfo().lastPrice()) / 1e7;
-        if (marketCapCrore >= 20_000) {
+        double marketCapInCrores = (quote.securityInfo().issuedSize() * quote.priceInfo().lastPrice()) / 1e7;
+        if (marketCapInCrores >= 20_000) {
             return "LARGE_CAP";
         }
-        if (marketCapCrore >= 5_000) {
+        if (marketCapInCrores >= 5_000) {
             return "MID_CAP";
         }
         return "SMALL_CAP";

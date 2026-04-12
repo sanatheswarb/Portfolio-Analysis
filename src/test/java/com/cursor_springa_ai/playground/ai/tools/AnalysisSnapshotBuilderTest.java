@@ -1,13 +1,13 @@
 package com.cursor_springa_ai.playground.ai.tools;
 
 import com.cursor_springa_ai.playground.ai.reasoning.PortfolioReasoningContext;
-import com.cursor_springa_ai.playground.dto.EnrichedHoldingData;
-import com.cursor_springa_ai.playground.dto.PortfolioSummary;
-import com.cursor_springa_ai.playground.dto.ai.AnalysisSnapshot;
-import com.cursor_springa_ai.playground.dto.ai.DecisionSignals;
+import com.cursor_springa_ai.playground.analytics.model.EnrichedHoldingData;
+import com.cursor_springa_ai.playground.analytics.model.PortfolioSummary;
+import com.cursor_springa_ai.playground.ai.dto.AnalysisSnapshot;
+import com.cursor_springa_ai.playground.ai.dto.DecisionSignals;
 import com.cursor_springa_ai.playground.model.PortfolioClassification;
 import com.cursor_springa_ai.playground.model.entity.PortfolioStats;
-import com.cursor_springa_ai.playground.model.RiskFlag;
+import com.cursor_springa_ai.playground.model.enums.RiskFlag;
 import com.cursor_springa_ai.playground.model.enums.ConcentrationLevel;
 import com.cursor_springa_ai.playground.model.enums.DiversificationLevel;
 import com.cursor_springa_ai.playground.model.enums.PerformanceLevel;
@@ -84,7 +84,7 @@ class AnalysisSnapshotBuilderTest {
         AnalysisSnapshot snapshot = builder.build(sampleContext());
 
         assertNotNull(snapshot.sectorExposure());
-        // Both INFY and TCS are "technology" → combined 65%; HDFCBANK is "financials" → 20%
+        // Both INFY and TCS are "technology" â†’ combined 65%; HDFCBANK is "financials" â†’ 20%
         var techSector = snapshot.sectorExposure().stream()
                 .filter(s -> "technology".equals(s.sector())).findFirst().orElseThrow();
         assertEquals(BigDecimal.valueOf(65), techSector.allocation());

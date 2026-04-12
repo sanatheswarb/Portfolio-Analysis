@@ -16,12 +16,12 @@ import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
 
-import com.cursor_springa_ai.playground.model.AnalysisType;
+import com.cursor_springa_ai.playground.model.enums.AnalysisType;
 
 import java.time.LocalDateTime;
 
 /**
- * Append-only audit log of every AI interaction — portfolio analysis results
+ * Append-only audit log of every AI interaction â€” portfolio analysis results
  * and follow-up chat messages.
  *
  * <p>{@code analysis_data} and {@code analysis_context} are stored as JSONB in
@@ -44,7 +44,7 @@ public class AiAnalysis {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    /** Owning user — nullable so that analyses run before login are still stored. */
+    /** Owning user â€” nullable so that analyses run before login are still stored. */
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id")
     private User user;
@@ -87,7 +87,7 @@ public class AiAnalysis {
     /**
      * Structured decision-input trace captured at analysis time.
      * Stores the facts that caused the AI advice (primary risk, top risk drivers,
-     * diversification issue, main strength) — not the advice itself.
+     * diversification issue, main strength) â€” not the advice itself.
      * Stored as JSONB in PostgreSQL for efficient querying.
      */
     @Column(name = "analysis_trace")

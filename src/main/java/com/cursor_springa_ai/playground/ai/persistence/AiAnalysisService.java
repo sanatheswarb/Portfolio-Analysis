@@ -1,10 +1,10 @@
 package com.cursor_springa_ai.playground.ai.persistence;
 
 import com.cursor_springa_ai.playground.dto.PortfolioAdviceResponse;
-import com.cursor_springa_ai.playground.dto.ai.AnalysisDecisionTrace;
-import com.cursor_springa_ai.playground.dto.ai.AnalysisSnapshot;
+import com.cursor_springa_ai.playground.ai.dto.AnalysisDecisionTrace;
+import com.cursor_springa_ai.playground.ai.dto.AnalysisSnapshot;
 import com.cursor_springa_ai.playground.model.entity.AiAnalysis;
-import com.cursor_springa_ai.playground.model.AnalysisType;
+import com.cursor_springa_ai.playground.model.enums.AnalysisType;
 import com.cursor_springa_ai.playground.model.entity.User;
 import com.cursor_springa_ai.playground.repository.AiAnalysisRepository;
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -42,7 +42,7 @@ public class AiAnalysisService {
      * Serialise {@code advice}, {@code snapshot} and {@code trace} to JSON and append a row to
      * {@code ai_analysis} with type {@link AnalysisType#PORTFOLIO_ANALYSIS}.
      *
-     * @param user     the authenticated user (may be null — row is stored without FK)
+     * @param user     the authenticated user (may be null â€” row is stored without FK)
      * @param advice   the AI-generated advice to persist
      * @param snapshot lean reasoning-context snapshot built from the same context
      *                 that was passed to the AI advisor

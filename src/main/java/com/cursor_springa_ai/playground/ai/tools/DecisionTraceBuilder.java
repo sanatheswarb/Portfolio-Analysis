@@ -1,8 +1,8 @@
 package com.cursor_springa_ai.playground.ai.tools;
 
 import com.cursor_springa_ai.playground.ai.reasoning.PortfolioReasoningContext;
-import com.cursor_springa_ai.playground.dto.EnrichedHoldingData;
-import com.cursor_springa_ai.playground.dto.ai.AnalysisDecisionTrace;
+import com.cursor_springa_ai.playground.analytics.model.EnrichedHoldingData;
+import com.cursor_springa_ai.playground.ai.dto.AnalysisDecisionTrace;
 import com.cursor_springa_ai.playground.model.PortfolioClassification;
 import com.cursor_springa_ai.playground.model.entity.PortfolioStats;
 import com.cursor_springa_ai.playground.model.enums.ConcentrationLevel;
@@ -17,7 +17,7 @@ import java.util.List;
 /**
  * Builds an {@link AnalysisDecisionTrace} from a {@link PortfolioReasoningContext}.
  *
- * <p>The trace captures <em>decision inputs</em> — facts that caused the AI advice —
+ * <p>The trace captures <em>decision inputs</em> â€” facts that caused the AI advice â€”
  * not the AI output itself.  Storing these facts makes follow-up chat deterministic.
  */
 @Component

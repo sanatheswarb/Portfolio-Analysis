@@ -1,6 +1,6 @@
 package com.cursor_springa_ai.playground.analytics;
 
-import com.cursor_springa_ai.playground.dto.EnrichedHoldingData;
+import com.cursor_springa_ai.playground.analytics.model.EnrichedHoldingData;
 import com.cursor_springa_ai.playground.model.PortfolioClassification;
 import com.cursor_springa_ai.playground.model.entity.PortfolioStats;
 import com.cursor_springa_ai.playground.model.enums.ConcentrationLevel;

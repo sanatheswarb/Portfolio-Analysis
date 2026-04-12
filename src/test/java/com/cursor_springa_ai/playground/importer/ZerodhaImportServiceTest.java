@@ -62,7 +62,7 @@ class ZerodhaImportServiceTest {
         when(holdingsClient.fetchHoldings()).thenReturn(List.of(item));
         when(enrichmentService.resolveInstrument(argThat(holding -> hasTokenAndSymbol(holding, 123L, "INFY"))))
                 .thenReturn(instrument);
-        when(fundamentalsService.upsertIfStale(instrument)).thenReturn(BigDecimal.valueOf(1550));
+        when(fundamentalsService.refreshAndGetPreviousClose(instrument)).thenReturn(BigDecimal.valueOf(1550));
 
         ZerodhaImportResponse response = service.importHoldings(user);
 
@@ -159,7 +159,7 @@ class ZerodhaImportServiceTest {
                 .thenReturn(instrument);
         when(enrichmentService.resolveInstrument(argThat(holding -> hasTokenAndSymbol(holding, 456L, "INFY"))))
                 .thenReturn(instrument);
-        when(fundamentalsService.upsertIfStale(instrument)).thenReturn(BigDecimal.valueOf(1550));
+        when(fundamentalsService.refreshAndGetPreviousClose(instrument)).thenReturn(BigDecimal.valueOf(1550));
 
         ZerodhaImportResponse response = service.importHoldings(user);
 
@@ -213,7 +213,7 @@ class ZerodhaImportServiceTest {
         when(holdingsClient.fetchHoldings()).thenReturn(List.of(supported, unsupported));
         when(enrichmentService.resolveInstrument(argThat(holding -> hasTokenAndSymbol(holding, 123L, "INFY"))))
                 .thenReturn(instrument);
-        when(fundamentalsService.upsertIfStale(instrument)).thenReturn(BigDecimal.valueOf(1550));
+        when(fundamentalsService.refreshAndGetPreviousClose(instrument)).thenReturn(BigDecimal.valueOf(1550));
 
         ZerodhaImportResponse response = service.importHoldings(user);
 
@@ -254,7 +254,7 @@ class ZerodhaImportServiceTest {
         when(holdingsClient.fetchHoldings()).thenReturn(List.of(item));
         when(enrichmentService.resolveInstrument(argThat(holding -> hasTokenAndSymbol(holding, 123L, " infy "))))
                 .thenReturn(instrument);
-        when(fundamentalsService.upsertIfStale(instrument)).thenReturn(BigDecimal.valueOf(1550));
+        when(fundamentalsService.refreshAndGetPreviousClose(instrument)).thenReturn(BigDecimal.valueOf(1550));
 
         ZerodhaImportResponse response = service.importHoldings(user);
 

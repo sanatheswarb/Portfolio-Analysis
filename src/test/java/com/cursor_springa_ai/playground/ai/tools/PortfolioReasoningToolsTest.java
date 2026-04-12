@@ -1,11 +1,11 @@
 package com.cursor_springa_ai.playground.ai.tools;
 
 import com.cursor_springa_ai.playground.ai.reasoning.PortfolioReasoningContext;
-import com.cursor_springa_ai.playground.dto.EnrichedHoldingData;
-import com.cursor_springa_ai.playground.dto.PortfolioSummary;
+import com.cursor_springa_ai.playground.analytics.model.EnrichedHoldingData;
+import com.cursor_springa_ai.playground.analytics.model.PortfolioSummary;
 import com.cursor_springa_ai.playground.model.PortfolioClassification;
 import com.cursor_springa_ai.playground.model.entity.PortfolioStats;
-import com.cursor_springa_ai.playground.model.RiskFlag;
+import com.cursor_springa_ai.playground.model.enums.RiskFlag;
 import com.cursor_springa_ai.playground.model.enums.ConcentrationLevel;
 import com.cursor_springa_ai.playground.model.enums.DiversificationLevel;
 import com.cursor_springa_ai.playground.model.enums.PerformanceLevel;
@@ -67,7 +67,7 @@ class PortfolioReasoningToolsTest {
         assertEquals(35, payload.get(0).path("allocation_percent").asInt());
         assertEquals("TCS", payload.get(1).path("symbol").asText());
         assertEquals("HDFCBANK", payload.get(2).path("symbol").asText());
-        // minimal fields only — no sector, no pe, etc.
+        // minimal fields only â€” no sector, no pe, etc.
         assertFalse(payload.get(0).has("sector"));
         assertFalse(payload.get(0).has("pe"));
     }
@@ -120,7 +120,7 @@ class PortfolioReasoningToolsTest {
     void holdingDetails_valuationContextHasGapPercent() throws Exception {
         PortfolioReasoningTools tools = new PortfolioReasoningTools(sampleContext(), objectMapper);
 
-        // INFY: pe=28, sectorPe=22 → gap = (28-22)/22 * 100 ≈ 27.27
+        // INFY: pe=28, sectorPe=22 â†’ gap = (28-22)/22 * 100 â‰ˆ 27.27
         String json = tools.holdingDetails(List.of("INFY"));
         JsonNode valuationCtx = objectMapper.readTree(json).get(0).path("valuation_context");
 
@@ -134,7 +134,7 @@ class PortfolioReasoningToolsTest {
     void holdingDetails_performanceContextHasTrendAndStatus() throws Exception {
         PortfolioReasoningTools tools = new PortfolioReasoningTools(sampleContext(), objectMapper);
 
-        // INFY: distanceFromHigh=-7.89 → NEAR_HIGH, profitPercent=16.67 → PROFIT
+        // INFY: distanceFromHigh=-7.89 â†’ NEAR_HIGH, profitPercent=16.67 â†’ PROFIT
         String json = tools.holdingDetails(List.of("INFY"));
         JsonNode perfCtx = objectMapper.readTree(json).get(0).path("performance_context");
 

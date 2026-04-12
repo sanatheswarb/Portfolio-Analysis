@@ -1,4 +1,4 @@
-package com.cursor_springa_ai.playground.dto.ai;
+package com.cursor_springa_ai.playground.ai.dto;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;

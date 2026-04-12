@@ -2,8 +2,8 @@ package com.cursor_springa_ai.playground.ai.service;
 
 import com.cursor_springa_ai.playground.dto.PortfolioAdviceResponse;
 import com.cursor_springa_ai.playground.dto.PortfolioAnalysisResponse;
-import com.cursor_springa_ai.playground.dto.ai.AnalysisDecisionTrace;
-import com.cursor_springa_ai.playground.dto.ai.AnalysisSnapshot;
+import com.cursor_springa_ai.playground.ai.dto.AnalysisDecisionTrace;
+import com.cursor_springa_ai.playground.ai.dto.AnalysisSnapshot;
 import com.cursor_springa_ai.playground.model.entity.User;
 import com.cursor_springa_ai.playground.ai.advisor.PortfolioAdvisorAgent;
 import com.cursor_springa_ai.playground.ai.persistence.AiAnalysisService;

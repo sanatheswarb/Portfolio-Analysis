@@ -85,13 +85,15 @@ public class UserHolding {
     protected UserHolding() {
     }
 
-    public UserHolding(User user, Instrument instrument, Integer quantity,
+    public UserHolding(User user, Instrument instrument, String symbol, Integer quantity,
                        BigDecimal avgPrice, BigDecimal closePrice, BigDecimal lastPrice,
                        BigDecimal investedValue, BigDecimal currentValue,
                        BigDecimal pnl, BigDecimal pnlPercent,
-                       BigDecimal dayChange, BigDecimal dayChangePercent) {
+                       BigDecimal dayChange, BigDecimal dayChangePercent,
+                       BigDecimal weightPercent) {
         this.user = user;
         this.instrument = instrument;
+        this.symbol = symbol;
         this.quantity = quantity;
         this.avgPrice = avgPrice;
         this.closePrice = closePrice;
@@ -102,6 +104,7 @@ public class UserHolding {
         this.pnlPercent = pnlPercent;
         this.dayChange = dayChange;
         this.dayChangePercent = dayChangePercent;
+        this.weightPercent = weightPercent;
     }
 
     public Long getId() {

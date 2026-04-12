@@ -1,4 +1,4 @@
-package com.cursor_springa_ai.playground.dto;
+package com.cursor_springa_ai.playground.analytics.model;
 
 import java.math.BigDecimal;
 

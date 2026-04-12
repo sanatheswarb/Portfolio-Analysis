@@ -5,7 +5,7 @@ import com.cursor_springa_ai.playground.ai.tools.FlaggedHoldingsBuilder;
 import com.cursor_springa_ai.playground.ai.tools.HoldingDetailsBuilder;
 import com.cursor_springa_ai.playground.ai.tools.HoldingsListBuilder;
 import com.cursor_springa_ai.playground.ai.tools.PortfolioOverviewBuilder;
-import com.cursor_springa_ai.playground.dto.EnrichedHoldingData;
+import com.cursor_springa_ai.playground.analytics.model.EnrichedHoldingData;
 import com.cursor_springa_ai.playground.util.StringNormalizer;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.core.JsonProcessingException;

@@ -1,9 +1,9 @@
 package com.cursor_springa_ai.playground.ai.tools;
 
-import com.cursor_springa_ai.playground.dto.ai.AnalysisSnapshot;
-import com.cursor_springa_ai.playground.dto.ai.PortfolioStatsSummary;
+import com.cursor_springa_ai.playground.ai.dto.AnalysisSnapshot;
+import com.cursor_springa_ai.playground.ai.dto.PortfolioStatsSummary;
 import com.cursor_springa_ai.playground.model.entity.AiAnalysis;
-import com.cursor_springa_ai.playground.model.AnalysisType;
+import com.cursor_springa_ai.playground.model.enums.AnalysisType;
 import com.cursor_springa_ai.playground.model.PortfolioClassification;
 import com.cursor_springa_ai.playground.model.enums.ConcentrationLevel;
 import com.cursor_springa_ai.playground.model.enums.DiversificationLevel;

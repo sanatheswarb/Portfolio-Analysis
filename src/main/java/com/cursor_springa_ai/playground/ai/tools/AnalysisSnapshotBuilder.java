@@ -1,12 +1,12 @@
 package com.cursor_springa_ai.playground.ai.tools;
 
 import com.cursor_springa_ai.playground.ai.reasoning.PortfolioReasoningContext;
-import com.cursor_springa_ai.playground.dto.EnrichedHoldingData;
-import com.cursor_springa_ai.playground.dto.ai.AnalysisSnapshot;
-import com.cursor_springa_ai.playground.dto.ai.DecisionSignals;
-import com.cursor_springa_ai.playground.dto.ai.PortfolioStatsSummary;
-import com.cursor_springa_ai.playground.dto.ai.SectorExposureSummary;
-import com.cursor_springa_ai.playground.dto.ai.TopHoldingSummary;
+import com.cursor_springa_ai.playground.analytics.model.EnrichedHoldingData;
+import com.cursor_springa_ai.playground.ai.dto.AnalysisSnapshot;
+import com.cursor_springa_ai.playground.ai.dto.DecisionSignals;
+import com.cursor_springa_ai.playground.ai.dto.PortfolioStatsSummary;
+import com.cursor_springa_ai.playground.ai.dto.SectorExposureSummary;
+import com.cursor_springa_ai.playground.ai.dto.TopHoldingSummary;
 import com.cursor_springa_ai.playground.model.entity.PortfolioStats;
 import org.springframework.stereotype.Component;
 
@@ -21,11 +21,11 @@ import java.util.Map;
  * Converts a {@link PortfolioReasoningContext} into a lean {@link AnalysisSnapshot}
  * suitable for storage in {@code ai_analysis.analysis_context}.
  *
- * <p>Only the fields that actually drove the AI decision are captured — full
+ * <p>Only the fields that actually drove the AI decision are captured â€” full
  * holding details, fundamentals, and momentum data are intentionally excluded
  * to keep the stored snapshot under ~5 KB.
  *
- * <p>{@link DecisionSignals} are computed here and only here — never in tools,
+ * <p>{@link DecisionSignals} are computed here and only here â€” never in tools,
  * prompt builders, or the reasoning context.
  */
 @Component

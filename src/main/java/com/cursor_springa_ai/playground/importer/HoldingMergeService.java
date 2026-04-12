@@ -15,14 +15,13 @@ public class HoldingMergeService {
 
     private static final Logger logger = Logger.getLogger(HoldingMergeService.class.getName());
 
-    List<UserHolding> mergeDuplicateHoldings(List<PreparedHolding> preparedHoldings) {
+    List<UserHolding> mergeDuplicateHoldings(List<UserHolding> holdings) {
         Map<Long, UserHolding> mergedByInstrumentId = new LinkedHashMap<>();
-        for (PreparedHolding preparedHolding : preparedHoldings) {
-            UserHolding holding = preparedHolding.userHolding();
+        for (UserHolding holding : holdings) {
             Long instrumentId = holding.getInstrument().getId();
             if (instrumentId == null) {
                 throw new IllegalStateException(
-                        "Instrument id missing for symbol " + preparedHolding.symbol());
+                        "Instrument id missing for symbol " + holding.getSymbol());
             }
 
             UserHolding existing = mergedByInstrumentId.get(instrumentId);

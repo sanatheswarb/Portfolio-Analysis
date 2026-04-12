@@ -1,10 +1,10 @@
 package com.cursor_springa_ai.playground.analytics;
 
-import com.cursor_springa_ai.playground.dto.EnrichedHoldingData;
-import com.cursor_springa_ai.playground.dto.PortfolioSummary;
+import com.cursor_springa_ai.playground.analytics.model.EnrichedHoldingData;
+import com.cursor_springa_ai.playground.analytics.model.PortfolioSummary;
 import com.cursor_springa_ai.playground.model.entity.Instrument;
 import com.cursor_springa_ai.playground.model.entity.PortfolioStats;
-import com.cursor_springa_ai.playground.model.RiskFlag;
+import com.cursor_springa_ai.playground.model.enums.RiskFlag;
 import com.cursor_springa_ai.playground.model.entity.User;
 import com.cursor_springa_ai.playground.model.entity.UserHolding;
 import org.junit.jupiter.api.Test;
@@ -86,6 +86,7 @@ class PortfolioAnalyticsServiceTest {
         UserHolding holding = new UserHolding(
                 user,
                 instrument,
+                symbol,
                 10,
                 BigDecimal.TEN,
                 BigDecimal.TEN,
@@ -95,10 +96,9 @@ class PortfolioAnalyticsServiceTest {
                 currentValue.subtract(investedValue),
                 BigDecimal.ZERO,
                 dayChange,
-                BigDecimal.ZERO
+                BigDecimal.ZERO,
+                weightPercent
         );
-        holding.setSymbol(symbol);
-        holding.setWeightPercent(weightPercent);
         return holding;
     }
 

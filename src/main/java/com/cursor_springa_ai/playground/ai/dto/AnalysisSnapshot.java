@@ -1,4 +1,4 @@
-package com.cursor_springa_ai.playground.dto.ai;
+package com.cursor_springa_ai.playground.ai.dto;
 
 import com.cursor_springa_ai.playground.model.PortfolioClassification;
 

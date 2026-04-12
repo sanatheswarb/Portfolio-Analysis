@@ -11,6 +11,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
+import java.util.List;
 import java.util.regex.Pattern;
 import java.util.regex.PatternSyntaxException;
 import java.util.logging.Logger;
@@ -36,67 +37,65 @@ public class HoldingPreparationService {
         this.importableSymbolPattern = compileImportableSymbolPattern(importableSymbolPattern);
     }
 
-    boolean isImportableHolding(ZerodhaHoldingItem item) {
-        String normalizedSymbol = StringNormalizer.normalize(item.getTradingSymbol());
+    boolean isImportableHolding(ZerodhaHoldingItem holdingItem) {
+        String normalizedSymbol = StringNormalizer.normalize(holdingItem.getTradingSymbol());
         if (normalizedSymbol == null) {
             logger.warning("Skipping Zerodha holding with null or blank trading symbol");
             return false;
         }
 
         if (!importableSymbolPattern.matcher(normalizedSymbol).matches()) {
-            logger.info("Skipping Zerodha holding with unsupported symbol: " + item.getTradingSymbol());
+            logger.info("Skipping Zerodha holding with unsupported symbol: " + holdingItem.getTradingSymbol());
             return false;
         }
 
-        if (item.getQuantity() == null || item.getQuantity().compareTo(BigDecimal.ZERO) <= 0) {
-            logger.info("Skipping Zerodha holding with zero or null quantity: " + item.getTradingSymbol());
+        if (holdingItem.getQuantity() == null || holdingItem.getQuantity().compareTo(BigDecimal.ZERO) <= 0) {
+            logger.info("Skipping Zerodha holding with zero or null quantity: " + holdingItem.getTradingSymbol());
             return false;
         }
 
         return true;
     }
 
-    BigDecimal computeTotalCurrentValue(java.util.List<ZerodhaHoldingItem> activeHoldings) {
-        return holdingValueCalculator.computeTotalCurrentValue(activeHoldings);
+    BigDecimal computeTotalCurrentValue(List<ZerodhaHoldingItem> importableHoldings) {
+        return holdingValueCalculator.computeTotalCurrentValue(importableHoldings);
     }
 
-    PreparedHolding prepareHolding(User currentUser,
-                                   ZerodhaHoldingItem item,
+    UserHolding prepareHolding(User currentUser,
+                                   ZerodhaHoldingItem holdingItem,
                                    BigDecimal totalCurrentValue) {
-        String symbol = StringNormalizer.normalize(item.getTradingSymbol());
-        Instrument instrument = instrumentEnrichmentService.resolveInstrument(item);
+        String symbol = StringNormalizer.normalize(holdingItem.getTradingSymbol());
+        Instrument instrument = instrumentEnrichmentService.resolveInstrument(holdingItem);
         if (instrument == null) {
             throw new IllegalStateException("Instrument resolution failed for symbol " + symbol);
         }
 
-        BigDecimal previousClose = stockFundamentalsService.upsertIfStale(instrument);
-        HoldingComputedValues values = holdingValueCalculator.computeValues(
-                item,
+        BigDecimal previousClose = stockFundamentalsService.refreshAndGetPreviousClose(instrument);
+        HoldingComputedValues computedValues = holdingValueCalculator.computeValues(
+                holdingItem,
                 totalCurrentValue,
                 previousClose
         );
-        UserHolding userHolding = buildUserHolding(currentUser, instrument, values);
-        return new PreparedHolding(symbol, userHolding);
+        return buildUserHolding(currentUser, instrument, computedValues);
     }
 
-    private UserHolding buildUserHolding(User user, Instrument instrument, HoldingComputedValues values) {
-        UserHolding holding = new UserHolding(
+    private UserHolding buildUserHolding(User user, Instrument instrument, HoldingComputedValues computedValues) {
+        return new UserHolding(
                 user,
                 instrument,
-                values.quantity(),
-                values.avgPrice(),
-                values.closePrice(),
-                values.lastPrice(),
-                values.investedValue(),
-                values.currentValue(),
-                values.pnl(),
-                values.pnlPercent(),
-                values.dayChange(),
-                values.dayChangePct()
+                computedValues.symbol(),
+                computedValues.quantity(),
+                computedValues.avgPrice(),
+                computedValues.closePrice(),
+                computedValues.lastPrice(),
+                computedValues.investedValue(),
+                computedValues.currentValue(),
+                computedValues.pnl(),
+                computedValues.pnlPercent(),
+                computedValues.dayChange(),
+                computedValues.dayChangePct(),
+                computedValues.weightPercent()
         );
-        holding.setWeightPercent(values.weightPercent());
-        holding.setSymbol(values.symbol());
-        return holding;
     }
 
     private Pattern compileImportableSymbolPattern(String importableSymbolPattern) {

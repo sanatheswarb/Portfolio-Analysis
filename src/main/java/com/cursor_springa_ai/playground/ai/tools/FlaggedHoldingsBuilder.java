@@ -1,8 +1,8 @@
 package com.cursor_springa_ai.playground.ai.tools;
 
-import com.cursor_springa_ai.playground.dto.EnrichedHoldingData;
+import com.cursor_springa_ai.playground.analytics.model.EnrichedHoldingData;
 import com.cursor_springa_ai.playground.ai.reasoning.PortfolioReasoningContext;
-import com.cursor_springa_ai.playground.dto.ai.FlaggedHoldingDto;
+import com.cursor_springa_ai.playground.ai.dto.FlaggedHoldingDto;
 
 import java.math.BigDecimal;
 import java.util.ArrayList;

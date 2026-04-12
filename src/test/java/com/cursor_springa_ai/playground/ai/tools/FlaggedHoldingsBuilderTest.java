@@ -1,12 +1,12 @@
 package com.cursor_springa_ai.playground.ai.tools;
 
 import com.cursor_springa_ai.playground.ai.reasoning.PortfolioReasoningContext;
-import com.cursor_springa_ai.playground.dto.EnrichedHoldingData;
-import com.cursor_springa_ai.playground.dto.PortfolioSummary;
-import com.cursor_springa_ai.playground.dto.ai.FlaggedHoldingDto;
+import com.cursor_springa_ai.playground.analytics.model.EnrichedHoldingData;
+import com.cursor_springa_ai.playground.analytics.model.PortfolioSummary;
+import com.cursor_springa_ai.playground.ai.dto.FlaggedHoldingDto;
 import com.cursor_springa_ai.playground.model.PortfolioClassification;
 import com.cursor_springa_ai.playground.model.entity.PortfolioStats;
-import com.cursor_springa_ai.playground.model.RiskFlag;
+import com.cursor_springa_ai.playground.model.enums.RiskFlag;
 import com.cursor_springa_ai.playground.model.enums.ConcentrationLevel;
 import com.cursor_springa_ai.playground.model.enums.DiversificationLevel;
 import com.cursor_springa_ai.playground.model.enums.PerformanceLevel;
@@ -38,7 +38,7 @@ class FlaggedHoldingsBuilderTest {
     void build_includesHoldingsWithSignificantAllocation() {
         List<FlaggedHoldingDto> result = builder.build(sampleContext());
 
-        // HDFCBANK has 20% allocation (> 10 threshold) but no risk flags — still included
+        // HDFCBANK has 20% allocation (> 10 threshold) but no risk flags â€” still included
         assertTrue(result.stream().anyMatch(h -> "HDFCBANK".equals(h.symbol())));
     }
 

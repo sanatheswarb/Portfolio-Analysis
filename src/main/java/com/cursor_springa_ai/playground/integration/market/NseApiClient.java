@@ -110,8 +110,16 @@ public class NseApiClient {
         }
 
         BigDecimal lastPrice = null;
-        if (nseResponse.priceInfo() != null && nseResponse.priceInfo().lastPrice() != null) {
-            lastPrice = BigDecimal.valueOf(nseResponse.priceInfo().lastPrice());
+        BigDecimal previousClose = null;
+        if (nseResponse.priceInfo() != null) {
+            if (nseResponse.priceInfo().lastPrice() != null) {
+                lastPrice = BigDecimal.valueOf(nseResponse.priceInfo().lastPrice());
+            }
+            if (nseResponse.priceInfo().previousClose() != null) {
+                previousClose = BigDecimal.valueOf(nseResponse.priceInfo().previousClose());
+            } else if (nseResponse.priceInfo().close() != null) {
+                previousClose = BigDecimal.valueOf(nseResponse.priceInfo().close());
+            }
         }
 
         if (pe == null && week52High == null && week52Low == null
@@ -131,12 +139,14 @@ public class NseApiClient {
                 sectorPe,
                 issuedSize,
                 null,
-                lastPrice
+                lastPrice,
+                previousClose
         );
 
         logger.info("Fetched NSE metrics for " + symbol + " | Sector: " + sector +
                 ", PE: " + pe + ", 52WeekHigh: " + week52High + ", 52WeekLow: " + week52Low +
-                ", SectorPE: " + sectorPe + ", IssuedSize: " + issuedSize + ", LastPrice: " + lastPrice);
+                ", SectorPE: " + sectorPe + ", IssuedSize: " + issuedSize +
+                ", LastPrice: " + lastPrice + ", PreviousClose: " + previousClose);
 
         return metrics;
     }

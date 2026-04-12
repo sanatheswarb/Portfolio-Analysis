@@ -27,22 +27,22 @@ public class PortfolioService {
                 .toList();
     }
 
-    private UserHoldingDto toDto(UserHolding h) {
+    private UserHoldingDto toDto(UserHolding userHolding) {
         return new UserHoldingDto(
-                h.getId(),
-                h.getSymbol(),
-                h.getQuantity(),
-                h.getAvgPrice(),
-                h.getClosePrice(),
-                h.getLastPrice(),
-                h.getInvestedValue(),
-                h.getCurrentValue(),
-                h.getPnl(),
-                h.getPnlPercent(),
-                h.getDayChange(),
-                h.getDayChangePercent(),
-                h.getWeightPercent(),
-                h.getUpdatedAt()
+                userHolding.getId(),
+                userHolding.getSymbol(),
+                userHolding.getQuantity(),
+                userHolding.getAvgPrice(),
+                userHolding.getClosePrice(),
+                userHolding.getLastPrice(),
+                userHolding.getInvestedValue(),
+                userHolding.getCurrentValue(),
+                userHolding.getPnl(),
+                userHolding.getPnlPercent(),
+                userHolding.getDayChange(),
+                userHolding.getDayChangePercent(),
+                userHolding.getWeightPercent(),
+                userHolding.getUpdatedAt()
         );
     }
 }

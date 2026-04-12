@@ -1,8 +1,8 @@
 package com.cursor_springa_ai.playground.ai.reasoning;
 
-import com.cursor_springa_ai.playground.dto.EnrichedHoldingData;
-import com.cursor_springa_ai.playground.dto.PortfolioSummary;
-import com.cursor_springa_ai.playground.dto.ai.PortfolioDecisionHints;
+import com.cursor_springa_ai.playground.analytics.model.EnrichedHoldingData;
+import com.cursor_springa_ai.playground.analytics.model.PortfolioSummary;
+import com.cursor_springa_ai.playground.ai.dto.PortfolioDecisionHints;
 import com.cursor_springa_ai.playground.model.PortfolioClassification;
 import com.cursor_springa_ai.playground.model.entity.PortfolioStats;
 

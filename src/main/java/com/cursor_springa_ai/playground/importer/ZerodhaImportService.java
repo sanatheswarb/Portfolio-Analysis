@@ -58,55 +58,56 @@ public class ZerodhaImportService {
 
     public ZerodhaImportResponse importHoldings(User currentUser) {
         List<ZerodhaHoldingItem> fetchedHoldings = zerodhaHoldingsClient.fetchHoldings();
-        List<ZerodhaHoldingItem> activeHoldings = fetchedHoldings.stream()
+        List<ZerodhaHoldingItem> importableHoldings = fetchedHoldings.stream()
                 .filter(holdingPreparationService::isImportableHolding)
                 .toList();
-        BigDecimal totalCurrentValue = holdingPreparationService.computeTotalCurrentValue(activeHoldings);
-        List<UserHolding> holdingsToPersist = holdingMergeService.mergeDuplicateHoldings(
-            prepareHoldingsOrThrow(currentUser, activeHoldings, totalCurrentValue)
+        BigDecimal totalCurrentValue = holdingPreparationService.computeTotalCurrentValue(importableHoldings);
+        List<UserHolding> mergedHoldings = holdingMergeService.mergeDuplicateHoldings(
+            prepareAllHoldingsOrAbort(currentUser, importableHoldings, totalCurrentValue)
         );
-        userHoldingSyncService.replaceHoldings(currentUser.getId(), holdingsToPersist);
+        userHoldingSyncService.replaceHoldings(currentUser.getId(), mergedHoldings);
         portfolioStatsBatchService.calculateForUserAsync(currentUser.getId());
 
-        List<String> importedSymbols = holdingsToPersist.stream()
+        List<String> importedSymbols = mergedHoldings.stream()
                 .map(UserHolding::getSymbol)
                 .toList();
 
         return new ZerodhaImportResponse(
                 currentUser.getBrokerUserId(),
                 importedSymbols.size(),
+                totalCurrentValue,
                 importedSymbols
         );
     }
 
-    private List<PreparedHolding> prepareHoldingsOrThrow(User currentUser,
-                                                         List<ZerodhaHoldingItem> activeHoldings,
-                                                         BigDecimal totalCurrentValue) {
-        List<PreparedHolding> preparedHoldings = new ArrayList<>();
+    private List<UserHolding> prepareAllHoldingsOrAbort(User currentUser,
+                                                        List<ZerodhaHoldingItem> importableHoldings,
+                                                        BigDecimal totalCurrentValue) {
+        List<UserHolding> preparedHoldings = new ArrayList<>();
         List<String> failedSymbols = new ArrayList<>();
-        List<RuntimeException> failedExceptions = new ArrayList<>();
+        List<RuntimeException> failureCauses = new ArrayList<>();
 
-        for (ZerodhaHoldingItem item : activeHoldings) {
+        for (ZerodhaHoldingItem holdingItem : importableHoldings) {
             try {
                 preparedHoldings.add(
-                        holdingPreparationService.prepareHolding(currentUser, item, totalCurrentValue)
+                        holdingPreparationService.prepareHolding(currentUser, holdingItem, totalCurrentValue)
                 );
-            } catch (RuntimeException ex) {
-                String symbol = StringNormalizer.normalize(item.getTradingSymbol());
+            } catch (RuntimeException exception) {
+                String symbol = StringNormalizer.normalize(holdingItem.getTradingSymbol());
                 logger.log(Level.WARNING,
-                        "Failed to import holding " + symbol + ": " + ex.getMessage(),
-                        ex);
+                        "Failed to import holding " + symbol + ": " + exception.getMessage(),
+                        exception);
                 failedSymbols.add(symbol);
-                failedExceptions.add(ex);
+                failureCauses.add(exception);
             }
         }
 
         if (!failedSymbols.isEmpty()) {
             IllegalStateException importFailure = new IllegalStateException(
                     "Import aborted; failed holdings: " + String.join(", ", failedSymbols),
-                    failedExceptions.get(0)
+                    failureCauses.getFirst()
             );
-            failedExceptions.stream()
+            failureCauses.stream()
                     .skip(1)
                     .forEach(importFailure::addSuppressed);
             throw importFailure;
