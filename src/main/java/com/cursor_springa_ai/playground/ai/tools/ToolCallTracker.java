@@ -50,7 +50,7 @@ public final class ToolCallTracker {
         if (sharedRecorder != null) {
             sharedRecorder.record(safeToolName);
         }
-        logger.info(logPrefix + safeToolName);
+        logger.info(() -> logPrefix + safeToolName);
         invocationCounts.merge(safeToolName, 1, Integer::sum);
     }
 
