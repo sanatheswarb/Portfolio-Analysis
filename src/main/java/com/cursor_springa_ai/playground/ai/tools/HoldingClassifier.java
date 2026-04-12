@@ -8,7 +8,7 @@ import java.util.List;
 
 /**
  * Shared classification helpers used by {@link FlaggedHoldingsBuilder} and
- * {@link HoldingDetailsBuilder}. Contains only pure, stateless methods â€” safe
+ * {@link HoldingDetailsBuilder}. Contains only pure, stateless methods — safe
  * to call from any context.
  */
 final class HoldingClassifier {
