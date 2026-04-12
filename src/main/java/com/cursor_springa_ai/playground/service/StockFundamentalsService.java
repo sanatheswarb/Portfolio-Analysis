@@ -56,19 +56,19 @@ public class StockFundamentalsService {
 
         Optional<StockFundamentals> existing = fundamentalsRepository.findByInstrumentId(instrumentId);
 
+        StockFundamentals row;
         if (existing.isPresent()) {
-            StockFundamentals row = existing.get();
+            row = existing.get();
             row.setSymbol(symbol);
             if (row.getLastUpdated() != null
                     && row.getLastUpdated().toLocalDate().isEqual(LocalDate.now())) {
                 return fetchPreviousClose(symbol);
             }
-            return refreshFromNse(row, symbol);
         } else {
-            StockFundamentals row = new StockFundamentals(instrument);
+            row = new StockFundamentals(instrument);
             row.setSymbol(symbol);
-            return refreshFromNse(row, symbol);
         }
+        return refreshFromNse(row, symbol);
     }
 
     // ------------------------------------------------------------------

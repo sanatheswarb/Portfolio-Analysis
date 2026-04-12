@@ -1,8 +1,8 @@
-package com.cursor_springa_ai.playground.controller;
+package com.cursor_springa_ai.playground.exception;
 
 /**
  * Thrown when an operation requires an authenticated Zerodha session but none is active.
- * Mapped to HTTP 401 Unauthorized by {@link ApiExceptionHandler}.
+ * Mapped to HTTP 401 Unauthorized by {@link com.cursor_springa_ai.playground.controller.ApiExceptionHandler}.
  */
 public class NotAuthenticatedException extends RuntimeException {
 
@@ -10,3 +10,4 @@ public class NotAuthenticatedException extends RuntimeException {
         super(message);
     }
 }
+

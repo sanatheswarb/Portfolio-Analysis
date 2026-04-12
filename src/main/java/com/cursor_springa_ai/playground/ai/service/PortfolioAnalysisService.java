@@ -1,6 +1,5 @@
-package com.cursor_springa_ai.playground.ai.orchestration;
+package com.cursor_springa_ai.playground.ai.service;
 
-import com.cursor_springa_ai.playground.controller.NotAuthenticatedException;
 import com.cursor_springa_ai.playground.dto.PortfolioAdviceResponse;
 import com.cursor_springa_ai.playground.dto.PortfolioAnalysisResponse;
 import com.cursor_springa_ai.playground.dto.ai.AnalysisDecisionTrace;
@@ -11,14 +10,12 @@ import com.cursor_springa_ai.playground.ai.persistence.AiAnalysisService;
 import com.cursor_springa_ai.playground.ai.reasoning.PortfolioReasoningContext;
 import com.cursor_springa_ai.playground.ai.tools.AnalysisSnapshotBuilder;
 import com.cursor_springa_ai.playground.ai.tools.DecisionTraceBuilder;
-import com.cursor_springa_ai.playground.service.ZerodhaAuthService;
 import org.springframework.stereotype.Service;
 
 @Service
 public class PortfolioAnalysisService {
 
     private final PortfolioAdvisorAgent aiPortfolioAdvisorService;
-    private final ZerodhaAuthService zerodhaAuthService;
     private final AiAnalysisService aiAnalysisService;
     private final AnalysisSnapshotBuilder snapshotBuilder;
     private final PortfolioReasoningContextFactory reasoningContextFactory;
@@ -26,26 +23,18 @@ public class PortfolioAnalysisService {
 
     public PortfolioAnalysisService(
             PortfolioAdvisorAgent aiPortfolioAdvisorService,
-            ZerodhaAuthService zerodhaAuthService,
             AiAnalysisService aiAnalysisService,
             AnalysisSnapshotBuilder snapshotBuilder,
             PortfolioReasoningContextFactory reasoningContextFactory,
             DecisionTraceBuilder decisionTraceBuilder) {
         this.aiPortfolioAdvisorService = aiPortfolioAdvisorService;
-        this.zerodhaAuthService = zerodhaAuthService;
         this.aiAnalysisService = aiAnalysisService;
         this.snapshotBuilder = snapshotBuilder;
         this.reasoningContextFactory = reasoningContextFactory;
         this.decisionTraceBuilder = decisionTraceBuilder;
     }
 
-    public PortfolioAnalysisResponse analyzeCurrentUserPortfolio() {
-        User currentUser = zerodhaAuthService.getCurrentUser();
-        if (currentUser == null) {
-            throw new NotAuthenticatedException(
-                    "No authenticated Zerodha user found. Please complete login first.");
-        }
-
+    public PortfolioAnalysisResponse analyzePortfolio(User currentUser) {
         // Decision hints are pre-populated by the factory
         PortfolioReasoningContext reasoningContext = reasoningContextFactory.build(currentUser);
 

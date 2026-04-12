@@ -1,35 +1,59 @@
 package com.cursor_springa_ai.playground.importer;
 
-import com.cursor_springa_ai.playground.integration.zerodha.dto.ZerodhaHoldingItem;
+import com.cursor_springa_ai.playground.dto.zerodha.ZerodhaHoldingItem;
 import com.cursor_springa_ai.playground.model.entity.Instrument;
 import com.cursor_springa_ai.playground.model.entity.User;
 import com.cursor_springa_ai.playground.model.entity.UserHolding;
 import com.cursor_springa_ai.playground.service.InstrumentEnrichmentService;
 import com.cursor_springa_ai.playground.service.StockFundamentalsService;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
+import java.util.regex.Pattern;
+import java.util.regex.PatternSyntaxException;
+import java.util.logging.Logger;
 @Service
 public class HoldingPreparationService {
+
+    private static final Logger logger = Logger.getLogger(HoldingPreparationService.class.getName());
 
     private final InstrumentEnrichmentService instrumentEnrichmentService;
     private final StockFundamentalsService stockFundamentalsService;
     private final HoldingValueCalculator holdingValueCalculator;
+    private final Pattern importableSymbolPattern;
 
     public HoldingPreparationService(
             InstrumentEnrichmentService instrumentEnrichmentService,
             StockFundamentalsService stockFundamentalsService,
-            HoldingValueCalculator holdingValueCalculator
+            HoldingValueCalculator holdingValueCalculator,
+            @Value("${zerodha.import.symbol-pattern:^[A-Z0-9]+$}") String importableSymbolPattern
     ) {
         this.instrumentEnrichmentService = instrumentEnrichmentService;
         this.stockFundamentalsService = stockFundamentalsService;
         this.holdingValueCalculator = holdingValueCalculator;
+        this.importableSymbolPattern = compileImportableSymbolPattern(importableSymbolPattern);
     }
 
     boolean isImportableHolding(ZerodhaHoldingItem item) {
-        return item.getTradingSymbol() != null
-                && item.getQuantity() != null
-                && item.getQuantity().compareTo(BigDecimal.ZERO) > 0;
+        String symbol = item.getTradingSymbol();
+        if (symbol == null) {
+            logger.warning("Skipping Zerodha holding with null trading symbol");
+            return false;
+        }
+
+        String normalizedSymbol = TradingSymbolNormalizer.normalize(symbol);
+        if (!importableSymbolPattern.matcher(normalizedSymbol).matches()) {
+            logger.info("Skipping Zerodha holding with unsupported symbol: " + symbol);
+            return false;
+        }
+
+        if (item.getQuantity() == null || item.getQuantity().compareTo(BigDecimal.ZERO) <= 0) {
+            logger.info("Skipping Zerodha holding with zero or null quantity: " + symbol);
+            return false;
+        }
+
+        return true;
     }
 
     BigDecimal computeTotalCurrentValue(java.util.List<ZerodhaHoldingItem> activeHoldings) {
@@ -73,5 +97,16 @@ public class HoldingPreparationService {
         holding.setWeightPercent(values.weightPercent());
         holding.setSymbol(values.symbol());
         return holding;
+    }
+
+    private Pattern compileImportableSymbolPattern(String importableSymbolPattern) {
+        try {
+            return Pattern.compile(importableSymbolPattern);
+        } catch (PatternSyntaxException exception) {
+            throw new IllegalStateException(
+                    "Invalid configuration for zerodha.import.symbol-pattern: " + importableSymbolPattern,
+                    exception
+            );
+        }
     }
 }

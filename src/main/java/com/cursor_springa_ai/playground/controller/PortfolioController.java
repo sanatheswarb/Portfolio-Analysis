@@ -1,13 +1,14 @@
 package com.cursor_springa_ai.playground.controller;
 
+import com.cursor_springa_ai.playground.exception.NotAuthenticatedException;
 import com.cursor_springa_ai.playground.dto.ChatRequest;
 import com.cursor_springa_ai.playground.dto.ChatResponse;
 import com.cursor_springa_ai.playground.dto.PortfolioAnalysisResponse;
 import com.cursor_springa_ai.playground.dto.UserHoldingDto;
-import com.cursor_springa_ai.playground.dto.ZerodhaImportResponse;
+import com.cursor_springa_ai.playground.dto.zerodha.ZerodhaImportResponse;
 import com.cursor_springa_ai.playground.model.entity.User;
-import com.cursor_springa_ai.playground.ai.orchestration.PortfolioAnalysisService;
-import com.cursor_springa_ai.playground.ai.orchestration.PortfolioChatService;
+import com.cursor_springa_ai.playground.ai.service.PortfolioAnalysisService;
+import com.cursor_springa_ai.playground.ai.service.PortfolioChatService;
 import com.cursor_springa_ai.playground.service.PortfolioService;
 import com.cursor_springa_ai.playground.service.ZerodhaAuthService;
 import com.cursor_springa_ai.playground.importer.ZerodhaImportService;
@@ -62,7 +63,7 @@ public class PortfolioController {
             responses = @ApiResponse(responseCode = "200", description = "Holdings imported"))
     @PostMapping("/holdings/import/zerodha")
     public ZerodhaImportResponse importFromZerodha() {
-        return zerodhaImportService.importHoldings();
+        return zerodhaImportService.importHoldings(requireAuthenticatedUser());
     }
 
     @Operation(summary = "Run AI portfolio analysis",
@@ -70,7 +71,7 @@ public class PortfolioController {
             responses = @ApiResponse(responseCode = "200", description = "Analysis result returned"))
     @GetMapping("/analysis")
     public PortfolioAnalysisResponse analyzePortfolio() {
-        return portfolioAnalysisService.analyzeCurrentUserPortfolio();
+        return portfolioAnalysisService.analyzePortfolio(requireAuthenticatedUser());
     }
 
     @Operation(summary = "Ask a follow-up portfolio question",

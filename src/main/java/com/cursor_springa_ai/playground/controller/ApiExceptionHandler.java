@@ -1,6 +1,7 @@
 package com.cursor_springa_ai.playground.controller;
 
-import com.cursor_springa_ai.playground.integration.zerodha.ZerodhaClientException;
+import com.cursor_springa_ai.playground.exception.NotAuthenticatedException;
+import com.cursor_springa_ai.playground.exception.ZerodhaClientException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.MethodArgumentNotValidException;

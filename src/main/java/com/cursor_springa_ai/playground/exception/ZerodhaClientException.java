@@ -1,4 +1,4 @@
-package com.cursor_springa_ai.playground.integration.zerodha;
+package com.cursor_springa_ai.playground.exception;
 
 public class ZerodhaClientException extends RuntimeException {
 
@@ -10,3 +10,4 @@ public class ZerodhaClientException extends RuntimeException {
         super(message, cause);
     }
 }
+

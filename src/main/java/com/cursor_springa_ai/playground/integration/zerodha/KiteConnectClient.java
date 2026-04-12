@@ -1,5 +1,6 @@
 package com.cursor_springa_ai.playground.integration.zerodha;
 
+import com.cursor_springa_ai.playground.exception.ZerodhaClientException;
 import com.zerodhatech.kiteconnect.KiteConnect;
 import com.zerodhatech.kiteconnect.kitehttp.exceptions.KiteException;
 import com.zerodhatech.models.Holding;

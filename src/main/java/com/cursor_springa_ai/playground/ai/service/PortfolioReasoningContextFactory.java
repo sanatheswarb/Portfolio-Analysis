@@ -1,4 +1,4 @@
-package com.cursor_springa_ai.playground.ai.orchestration;
+package com.cursor_springa_ai.playground.ai.service;
 
 import com.cursor_springa_ai.playground.ai.reasoning.PortfolioReasoningContext;
 import com.cursor_springa_ai.playground.ai.tools.DecisionHintsBuilder;

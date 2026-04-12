@@ -1,6 +1,6 @@
 package com.cursor_springa_ai.playground.importer;
 
-import com.cursor_springa_ai.playground.integration.zerodha.dto.ZerodhaHoldingItem;
+import com.cursor_springa_ai.playground.dto.zerodha.ZerodhaHoldingItem;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;

@@ -1,4 +1,4 @@
-package com.cursor_springa_ai.playground.integration.zerodha.dto;
+package com.cursor_springa_ai.playground.dto.zerodha;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
@@ -26,17 +26,9 @@ public class ZerodhaHoldingItem {
     @JsonProperty("last_price")
     private BigDecimal lastPrice;
 
-    @JsonProperty("close_price")
-    private BigDecimal closePrice;
-
     @JsonProperty("pnl")
     private BigDecimal pnl;
 
-    @JsonProperty("day_change")
-    private BigDecimal dayChange;
-
-    @JsonProperty("day_change_percentage")
-    private BigDecimal dayChangePercentage;
 
     private String profitLoss;
 
@@ -80,13 +72,6 @@ public class ZerodhaHoldingItem {
         this.lastPrice = lastPrice;
     }
 
-    public BigDecimal getClosePrice() {
-        return closePrice;
-    }
-
-    public void setClosePrice(BigDecimal closePrice) {
-        this.closePrice = closePrice;
-    }
 
     public BigDecimal getPnl() {
         return pnl;
@@ -104,21 +89,6 @@ public class ZerodhaHoldingItem {
         this.profitLoss = profitLoss;
     }
 
-    public BigDecimal getDayChange() {
-        return dayChange;
-    }
-
-    public void setDayChange(BigDecimal dayChange) {
-        this.dayChange = dayChange;
-    }
-
-    public BigDecimal getDayChangePercentage() {
-        return dayChangePercentage;
-    }
-
-    public void setDayChangePercentage(BigDecimal dayChangePercentage) {
-        this.dayChangePercentage = dayChangePercentage;
-    }
 
     public Long getInstrumentToken() {
         return instrumentToken;
@@ -136,3 +106,4 @@ public class ZerodhaHoldingItem {
         this.isin = isin;
     }
 }
+
