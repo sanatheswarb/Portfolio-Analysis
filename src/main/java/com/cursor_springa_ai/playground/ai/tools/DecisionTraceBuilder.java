@@ -17,7 +17,7 @@ import java.util.List;
 /**
  * Builds an {@link AnalysisDecisionTrace} from a {@link PortfolioReasoningContext}.
  *
- * <p>The trace captures <em>decision inputs</em> â€” facts that caused the AI advice â€”
+ * <p>The trace captures <em>decision inputs</em> — facts that caused the AI advice —
  * not the AI output itself.  Storing these facts makes follow-up chat deterministic.
  */
 @Component
