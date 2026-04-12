@@ -6,9 +6,7 @@ import com.cursor_springa_ai.playground.ai.reasoning.PortfolioReasoningContext;
 import com.cursor_springa_ai.playground.dto.ChatResponse;
 import com.cursor_springa_ai.playground.ai.dto.AnalysisSnapshot;
 import com.cursor_springa_ai.playground.model.entity.AiAnalysis;
-import com.cursor_springa_ai.playground.model.enums.AnalysisType;
 import com.cursor_springa_ai.playground.model.entity.User;
-import com.cursor_springa_ai.playground.repository.AiAnalysisRepository;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.stereotype.Service;
 import org.springframework.http.HttpStatus;
@@ -19,20 +17,17 @@ import java.util.List;
 @Service
 public class PortfolioChatService {
 
-    private final AiAnalysisRepository repo;
     private final PortfolioAdvisorAgent advisor;
     private final AiAnalysisService aiAnalysisService;
     private final ObjectMapper objectMapper;
     private final PortfolioReasoningContextFactory reasoningContextFactory;
 
     public PortfolioChatService(
-            AiAnalysisRepository repo,
             PortfolioAdvisorAgent advisor,
             AiAnalysisService aiAnalysisService,
             ObjectMapper objectMapper,
             PortfolioReasoningContextFactory reasoningContextFactory
     ) {
-        this.repo = repo;
         this.advisor = advisor;
         this.aiAnalysisService = aiAnalysisService;
         this.objectMapper = objectMapper;
@@ -44,10 +39,8 @@ public class PortfolioChatService {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Question cannot be empty");
         }
 
-        AiAnalysis analysis = repo.findTopByUserIdAndAnalysisTypeOrderByCreatedAtDesc(
-                user.getId(),
-                AnalysisType.PORTFOLIO_ANALYSIS
-        ).orElseThrow(() -> new ResponseStatusException(HttpStatus.CONFLICT, "Run portfolio analysis first"));
+        AiAnalysis analysis = aiAnalysisService.findLatestPortfolioAnalysis(user.getId())
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.CONFLICT, "Run portfolio analysis first"));
 
         if (analysis.getAnalysisContext() == null || analysis.getAnalysisContext().isBlank()) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Portfolio analysis is incomplete or corrupted");
@@ -60,10 +53,7 @@ public class PortfolioChatService {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Failed to read saved portfolio analysis context", e);
         }
 
-        List<AiAnalysis> chats = repo.findTop3ByParentAnalysisIdAndAnalysisTypeOrderByCreatedAtDesc(
-                analysis.getId(),
-                AnalysisType.PORTFOLIO_CHAT
-        );
+        List<AiAnalysis> chats = aiAnalysisService.findRecentChatHistory(analysis.getId());
 
         PortfolioReasoningContext reasoningContext = reasoningContextFactory.build(user);
 

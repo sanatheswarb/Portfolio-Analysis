@@ -1,4 +1,4 @@
-package com.cursor_springa_ai.playground.ai.tools;
+package com.cursor_springa_ai.playground.ai.reasoning;
 
 import com.cursor_springa_ai.playground.ai.dto.AnalysisSnapshot;
 import com.cursor_springa_ai.playground.model.entity.AiAnalysis;

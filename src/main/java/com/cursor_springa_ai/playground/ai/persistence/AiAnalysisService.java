@@ -13,7 +13,9 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.logging.Logger;
 
 /**
@@ -101,5 +103,21 @@ public class AiAnalysisService {
                             + (user != null ? ", userId=" + user.getId() : ", userId=null"),
                     e);
         }
+    }
+
+    /**
+     * Returns the most recent portfolio analysis for the given user, or empty if none exists.
+     */
+    public Optional<AiAnalysis> findLatestPortfolioAnalysis(Long userId) {
+        return aiAnalysisRepository.findTopByUserIdAndAnalysisTypeOrderByCreatedAtDesc(
+                userId, AnalysisType.PORTFOLIO_ANALYSIS);
+    }
+
+    /**
+     * Returns the most recent chat entries linked to a base analysis (newest first, up to 3).
+     */
+    public List<AiAnalysis> findRecentChatHistory(Long parentAnalysisId) {
+        return aiAnalysisRepository.findTop3ByParentAnalysisIdAndAnalysisTypeOrderByCreatedAtDesc(
+                parentAnalysisId, AnalysisType.PORTFOLIO_CHAT);
     }
 }

@@ -1,8 +1,9 @@
-package com.cursor_springa_ai.playground.ai.tools;
+package com.cursor_springa_ai.playground.analytics;
 
 import com.cursor_springa_ai.playground.ai.reasoning.PortfolioReasoningContext;
 import com.cursor_springa_ai.playground.analytics.model.EnrichedHoldingData;
 import com.cursor_springa_ai.playground.ai.dto.SectorExposureSummary;
+import com.cursor_springa_ai.playground.ai.tools.HoldingClassifier;
 import com.cursor_springa_ai.playground.model.PortfolioClassification;
 import org.springframework.stereotype.Component;
 
@@ -13,6 +14,11 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 
+/**
+ * Computes derived portfolio metrics (top holdings, market-cap exposure, sector exposure)
+ * from an enriched holding dataset.  Lives in the analytics layer because these are
+ * deterministic analytical computations, not AI-tool-specific logic.
+ */
 @Component
 public class PortfolioDerivedMetricsService {
 

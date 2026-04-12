@@ -11,7 +11,7 @@ import java.util.List;
  * {@link HoldingDetailsBuilder}. Contains only pure, stateless methods — safe
  * to call from any context.
  */
-final class HoldingClassifier {
+public final class HoldingClassifier {
 
     static final BigDecimal CORE_THRESHOLD = BigDecimal.valueOf(20);
     static final BigDecimal SIGNIFICANT_THRESHOLD = BigDecimal.valueOf(10);
@@ -36,7 +36,7 @@ final class HoldingClassifier {
      * Null-safe descending comparator for {@link EnrichedHoldingData#allocationPercent()}.
      * Nulls are sorted last.
      */
-    static final Comparator<EnrichedHoldingData> BY_ALLOCATION_DESC =
+    public static final Comparator<EnrichedHoldingData> BY_ALLOCATION_DESC =
             Comparator.comparing(EnrichedHoldingData::allocationPercent,
                     Comparator.nullsLast(Comparator.reverseOrder()));
 
