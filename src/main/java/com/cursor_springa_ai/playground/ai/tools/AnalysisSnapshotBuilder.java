@@ -7,6 +7,7 @@ import com.cursor_springa_ai.playground.ai.dto.DecisionSignals;
 import com.cursor_springa_ai.playground.ai.dto.PortfolioStatsSummary;
 import com.cursor_springa_ai.playground.ai.dto.SectorExposureSummary;
 import com.cursor_springa_ai.playground.ai.dto.TopHoldingSummary;
+import com.cursor_springa_ai.playground.analytics.PortfolioDerivedMetricsService;
 import com.cursor_springa_ai.playground.model.entity.PortfolioStats;
 import org.springframework.stereotype.Component;
 

@@ -256,14 +256,18 @@ Fixed risk flag names are centralized in `com.cursor_springa_ai.playground.model
 ```
 src/main/java/.../
 ├── controller/          REST endpoints (Portfolio, ZerodhaAuth)
+├── exception/           Custom exceptions (NotAuthenticatedException, ZerodhaClientException)
 ├── ai/
 │   ├── advisor/         Spring AI agents and prompt builders
 │   ├── dto/             AI-only snapshot/trace/tool DTOs
-│   ├── service/         AI orchestration services
-│   └── tools/           Tool-calling helpers and builders
+│   ├── persistence/     AI result persistence (AiAnalysisService)
+│   ├── reasoning/       Spring AI tool implementations + PortfolioReasoningContext
+│   ├── service/         AI orchestration services (analysis, chat, context factory)
+│   └── tools/           Data builder helpers (snapshot, trace, hints, flagged holdings, overview)
 ├── analytics/
-│   ├── model/           Internal analytics read models (e.g., PortfolioSummary)
-│   └── ...
+│   ├── model/           Internal analytics read models (PortfolioSummary, EnrichedHoldingData)
+│   ├── PortfolioDerivedMetricsService  Derived metric computations (top holdings, sector/cap exposure)
+│   └── ...              Holding and portfolio analytics services
 ├── importer/            Zerodha import pipeline orchestration + calculators
 ├── service/             Core business services (auth, enrichment, snapshots, persistence helpers)
 ├── integration/
@@ -283,6 +287,9 @@ src/main/java/.../
 - `PortfolioSummary` and `EnrichedHoldingData` moved to `analytics.model` (internal read models, not API DTOs).
 - `AnalysisType` and `RiskFlag` moved to `model.enums`.
 - Import pipeline no longer uses a `PreparedHolding` intermediate; preparation returns `UserHolding` directly.
+- `PortfolioReasoningTools`, `PortfolioChatReasoningTools`, and `ToolInvocationRecorder` moved from `ai.tools` to `ai.reasoning` — reasoning tool implementations live alongside `PortfolioReasoningContext`.
+- `PortfolioDerivedMetricsService` moved from `ai.tools` to `analytics` — derived metric computations belong in the analytics layer, not the AI tool layer.
+- `PortfolioChatService` no longer injects `AiAnalysisRepository` directly; it uses `AiAnalysisService.findLatestPortfolioAnalysis` and `AiAnalysisService.findRecentChatHistory` to respect service-layer boundaries.
 
 ### Migration Map (Old -> New)
 
@@ -294,6 +301,10 @@ src/main/java/.../
 | `com.cursor_springa_ai.playground.model.AnalysisType` | `com.cursor_springa_ai.playground.model.enums.AnalysisType` |
 | `com.cursor_springa_ai.playground.model.RiskFlag` | `com.cursor_springa_ai.playground.model.enums.RiskFlag` |
 | `PreparedHolding` wrapper record | Removed; importer flow now prepares `UserHolding` directly |
+| `com.cursor_springa_ai.playground.ai.tools.PortfolioReasoningTools` | `com.cursor_springa_ai.playground.ai.reasoning.PortfolioReasoningTools` |
+| `com.cursor_springa_ai.playground.ai.tools.PortfolioChatReasoningTools` | `com.cursor_springa_ai.playground.ai.reasoning.PortfolioChatReasoningTools` |
+| `com.cursor_springa_ai.playground.ai.tools.ToolInvocationRecorder` | `com.cursor_springa_ai.playground.ai.reasoning.ToolInvocationRecorder` |
+| `com.cursor_springa_ai.playground.ai.tools.PortfolioDerivedMetricsService` | `com.cursor_springa_ai.playground.analytics.PortfolioDerivedMetricsService` |
 
 ---
 

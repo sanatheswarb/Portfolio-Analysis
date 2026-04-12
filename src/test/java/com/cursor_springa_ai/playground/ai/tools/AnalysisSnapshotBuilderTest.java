@@ -5,6 +5,7 @@ import com.cursor_springa_ai.playground.analytics.model.EnrichedHoldingData;
 import com.cursor_springa_ai.playground.analytics.model.PortfolioSummary;
 import com.cursor_springa_ai.playground.ai.dto.AnalysisSnapshot;
 import com.cursor_springa_ai.playground.ai.dto.DecisionSignals;
+import com.cursor_springa_ai.playground.analytics.PortfolioDerivedMetricsService;
 import com.cursor_springa_ai.playground.model.PortfolioClassification;
 import com.cursor_springa_ai.playground.model.entity.PortfolioStats;
 import com.cursor_springa_ai.playground.model.enums.RiskFlag;

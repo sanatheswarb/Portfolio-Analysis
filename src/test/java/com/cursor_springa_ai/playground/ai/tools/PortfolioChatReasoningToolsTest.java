@@ -1,5 +1,6 @@
 package com.cursor_springa_ai.playground.ai.tools;
 
+import com.cursor_springa_ai.playground.ai.reasoning.PortfolioChatReasoningTools;
 import com.cursor_springa_ai.playground.ai.dto.AnalysisSnapshot;
 import com.cursor_springa_ai.playground.ai.dto.PortfolioStatsSummary;
 import com.cursor_springa_ai.playground.model.entity.AiAnalysis;

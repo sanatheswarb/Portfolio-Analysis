@@ -15,7 +15,6 @@ import com.cursor_springa_ai.playground.model.enums.DiversificationLevel;
 import com.cursor_springa_ai.playground.model.enums.PerformanceLevel;
 import com.cursor_springa_ai.playground.model.enums.PortfolioRiskLevel;
 import com.cursor_springa_ai.playground.model.enums.PortfolioStyle;
-import com.cursor_springa_ai.playground.repository.AiAnalysisRepository;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpStatus;
@@ -36,12 +35,11 @@ import static org.mockito.Mockito.when;
 
 class PortfolioChatServiceTest {
 
-    private final AiAnalysisRepository repo = mock(AiAnalysisRepository.class);
     private final PortfolioAdvisorAgent advisor = mock(PortfolioAdvisorAgent.class);
     private final AiAnalysisService aiAnalysisService = mock(AiAnalysisService.class);
     private final ObjectMapper objectMapper = new ObjectMapper();
-        private final PortfolioReasoningContextFactory reasoningContextFactory = mock(PortfolioReasoningContextFactory.class);
-        private final PortfolioChatService service = new PortfolioChatService(repo, advisor, aiAnalysisService, objectMapper, reasoningContextFactory);
+    private final PortfolioReasoningContextFactory reasoningContextFactory = mock(PortfolioReasoningContextFactory.class);
+    private final PortfolioChatService service = new PortfolioChatService(advisor, aiAnalysisService, objectMapper, reasoningContextFactory);
 
     @Test
     void askQuestion_rejectsBlankQuestion() {
@@ -57,7 +55,7 @@ class PortfolioChatServiceTest {
     @Test
     void askQuestion_requiresExistingPortfolioAnalysis() {
         User user = user();
-        when(repo.findTopByUserIdAndAnalysisTypeOrderByCreatedAtDesc(7L, AnalysisType.PORTFOLIO_ANALYSIS))
+        when(aiAnalysisService.findLatestPortfolioAnalysis(7L))
                 .thenReturn(Optional.empty());
 
         ResponseStatusException exception = assertThrows(ResponseStatusException.class,
@@ -82,7 +80,7 @@ class PortfolioChatServiceTest {
                 "V1"
         );
         ReflectionTestUtils.setField(analysis, "id", 5L);
-        when(repo.findTopByUserIdAndAnalysisTypeOrderByCreatedAtDesc(7L, AnalysisType.PORTFOLIO_ANALYSIS))
+        when(aiAnalysisService.findLatestPortfolioAnalysis(7L))
                 .thenReturn(Optional.of(analysis));
 
         ResponseStatusException exception = assertThrows(ResponseStatusException.class,
@@ -132,9 +130,9 @@ class PortfolioChatServiceTest {
         );
         ReflectionTestUtils.setField(savedChat, "id", 11L);
 
-        when(repo.findTopByUserIdAndAnalysisTypeOrderByCreatedAtDesc(7L, AnalysisType.PORTFOLIO_ANALYSIS))
+        when(aiAnalysisService.findLatestPortfolioAnalysis(7L))
                 .thenReturn(Optional.of(analysis));
-        when(repo.findTop3ByParentAnalysisIdAndAnalysisTypeOrderByCreatedAtDesc(5L, AnalysisType.PORTFOLIO_CHAT))
+        when(aiAnalysisService.findRecentChatHistory(5L))
                 .thenReturn(List.of(priorChat));
         when(reasoningContextFactory.build(user)).thenReturn(mock(PortfolioReasoningContext.class));
         when(advisor.answerQuestion(any(), any(), any(), eq("What changed?")))
@@ -147,7 +145,7 @@ class PortfolioChatServiceTest {
         assertEquals("Risk remains concentrated.", response.getAnswer());
         assertEquals(savedChat.getId(), response.getChatId());
         assertEquals(analysis.getId(), response.getAnalysisId());
-                verify(advisor).answerQuestion(any(), any(), eq(List.of(priorChat)), eq("What changed?"));
+        verify(advisor).answerQuestion(any(), any(), eq(List.of(priorChat)), eq("What changed?"));
         verify(aiAnalysisService).saveChat(user, "What changed?", "Risk remains concentrated.", analysis.getId());
     }
 

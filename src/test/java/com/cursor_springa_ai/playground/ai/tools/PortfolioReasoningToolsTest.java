@@ -1,5 +1,6 @@
 package com.cursor_springa_ai.playground.ai.tools;
 
+import com.cursor_springa_ai.playground.ai.reasoning.PortfolioReasoningTools;
 import com.cursor_springa_ai.playground.ai.reasoning.PortfolioReasoningContext;
 import com.cursor_springa_ai.playground.analytics.model.EnrichedHoldingData;
 import com.cursor_springa_ai.playground.analytics.model.PortfolioSummary;
