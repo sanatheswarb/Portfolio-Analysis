@@ -7,24 +7,17 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.ai.tool.annotation.Tool;
 
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
-import java.util.logging.Logger;
 
 public class PortfolioChatReasoningTools {
 
-    private static final Logger logger = Logger.getLogger(PortfolioChatReasoningTools.class.getName());
     private static final TypeReference<Map<String, Object>> STRING_OBJECT_MAP = new TypeReference<>() { };
 
     private final AnalysisSnapshot snapshot;
     private final List<AiAnalysis> chats;
     private final ObjectMapper objectMapper;
-    private final ToolInvocationRecorder toolInvocationRecorder;
-    private final Map<String, Integer> toolInvocationCounts = new LinkedHashMap<>();
-    private int invocationCount;
-    private String firstInvokedTool;
+    private final ToolCallTracker toolCallTracker;
     private String snapshotOverviewCache;
     private String topHoldingsCache;
     private String sectorExposureCache;
@@ -41,7 +34,8 @@ public class PortfolioChatReasoningTools {
         this.snapshot = snapshot;
         this.chats = chats == null ? List.of() : List.copyOf(chats);
         this.objectMapper = objectMapper;
-        this.toolInvocationRecorder = toolInvocationRecorder;
+        this.toolCallTracker = new ToolCallTracker(
+                PortfolioChatReasoningTools.class, "Chat advisor tool invoked: ", toolInvocationRecorder);
     }
 
     @Tool(name = "snapshot_overview", description = "Returns the saved portfolio snapshot overview including classification, portfolio stats, and risk flags. Call this first.")
@@ -96,15 +90,15 @@ public class PortfolioChatReasoningTools {
     }
 
     public int invocationCount() {
-        return invocationCount;
+        return toolCallTracker.invocationCount();
     }
 
     public Map<String, Integer> invocationCounts() {
-        return Map.copyOf(toolInvocationCounts);
+        return toolCallTracker.invocationCounts();
     }
 
     public String firstInvokedTool() {
-        return firstInvokedTool;
+        return toolCallTracker.firstInvokedTool();
     }
 
     private String extractAnswer(AiAnalysis chat) {
@@ -126,21 +120,6 @@ public class PortfolioChatReasoningTools {
     }
 
     private void recordToolInvocation(String toolName) {
-        String safeToolName = Objects.requireNonNull(toolName, "toolName must not be null");
-        invocationCount++;
-        if (firstInvokedTool == null) {
-            firstInvokedTool = safeToolName;
-        }
-        if (toolInvocationRecorder != null) {
-            toolInvocationRecorder.record(safeToolName);
-        }
-        logger.info("Chat advisor tool invoked: " + safeToolName);
-
-        Integer currentCount = toolInvocationCounts.get(safeToolName);
-        if (currentCount == null) {
-            toolInvocationCounts.put(safeToolName, 1);
-            return;
-        }
-        toolInvocationCounts.put(safeToolName, currentCount + 1);
+        toolCallTracker.record(toolName);
     }
 }

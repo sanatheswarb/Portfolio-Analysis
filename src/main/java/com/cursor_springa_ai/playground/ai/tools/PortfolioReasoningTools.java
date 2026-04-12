@@ -1,10 +1,6 @@
 package com.cursor_springa_ai.playground.ai.tools;
 
 import com.cursor_springa_ai.playground.ai.reasoning.PortfolioReasoningContext;
-import com.cursor_springa_ai.playground.ai.tools.FlaggedHoldingsBuilder;
-import com.cursor_springa_ai.playground.ai.tools.HoldingDetailsBuilder;
-import com.cursor_springa_ai.playground.ai.tools.HoldingsListBuilder;
-import com.cursor_springa_ai.playground.ai.tools.PortfolioOverviewBuilder;
 import com.cursor_springa_ai.playground.analytics.model.EnrichedHoldingData;
 import com.cursor_springa_ai.playground.util.StringNormalizer;
 import com.fasterxml.jackson.core.type.TypeReference;
@@ -17,12 +13,9 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
-import java.util.logging.Logger;
 
 public class PortfolioReasoningTools {
 
-    private static final Logger logger = Logger.getLogger(PortfolioReasoningTools.class.getName());
     private static final TypeReference<Map<String, Object>> STRING_OBJECT_MAP = new TypeReference<>() { };
 
     private final PortfolioReasoningContext context;
@@ -32,10 +25,7 @@ public class PortfolioReasoningTools {
     private final PortfolioOverviewBuilder overviewBuilder;
     private final HoldingsListBuilder holdingsListBuilder;
     private final Map<String, EnrichedHoldingData> holdingsBySymbol;
-    private final ToolInvocationRecorder toolInvocationRecorder;
-    private final Map<String, Integer> toolInvocationCounts = new LinkedHashMap<>();
-    private int invocationCount;
-    private String firstInvokedTool;
+    private final ToolCallTracker toolCallTracker;
     private String portfolioOverviewCache;
     private String flaggedHoldingsCache;
     private String holdingsListCache;
@@ -55,7 +45,8 @@ public class PortfolioReasoningTools {
         this.overviewBuilder = new PortfolioOverviewBuilder();
         this.holdingsListBuilder = new HoldingsListBuilder();
         this.holdingsBySymbol = buildHoldingsBySymbol(context.enrichedHoldings());
-        this.toolInvocationRecorder = toolInvocationRecorder;
+        this.toolCallTracker = new ToolCallTracker(
+                PortfolioReasoningTools.class, "Advisor tool invoked: ", toolInvocationRecorder);
     }
 
     @Tool(name = "portfolio_overview", description = """
@@ -148,19 +139,19 @@ public class PortfolioReasoningTools {
     }
 
     public int invocationCount() {
-        return invocationCount;
+        return toolCallTracker.invocationCount();
     }
 
     public Map<String, Integer> invocationCounts() {
-        return Map.copyOf(toolInvocationCounts);
+        return toolCallTracker.invocationCounts();
     }
 
     public String firstInvokedTool() {
-        return firstInvokedTool;
+        return toolCallTracker.firstInvokedTool();
     }
 
     public boolean hasInvokedTool(String toolName) {
-        return toolInvocationCounts.containsKey(toolName);
+        return toolCallTracker.hasInvokedTool(toolName);
     }
 
     private String toJson(Object value) {
@@ -172,22 +163,7 @@ public class PortfolioReasoningTools {
     }
 
     private void recordToolInvocation(String toolName) {
-        String safeToolName = Objects.requireNonNull(toolName, "toolName must not be null");
-        invocationCount++;
-        if (firstInvokedTool == null) {
-            firstInvokedTool = safeToolName;
-        }
-        if (toolInvocationRecorder != null) {
-            toolInvocationRecorder.record(safeToolName);
-        }
-        logger.info("Advisor tool invoked: " + safeToolName);
-
-        Integer currentCount = toolInvocationCounts.get(safeToolName);
-        if (currentCount == null) {
-            toolInvocationCounts.put(safeToolName, 1);
-            return;
-        }
-        toolInvocationCounts.put(safeToolName, currentCount + 1);
+        toolCallTracker.record(toolName);
     }
 
     private Map<String, EnrichedHoldingData> buildHoldingsBySymbol(List<EnrichedHoldingData> holdings) {
