@@ -23,7 +23,7 @@ class InstrumentEnrichmentServiceTest {
     void resolveInstrument_marksInstrumentSectorAsEtf() {
         InstrumentRepository repository = mock(InstrumentRepository.class);
         NseApiClient nseApiClient = mock(NseApiClient.class);
-        InstrumentEnrichmentService service = new InstrumentEnrichmentService(repository, nseApiClient);
+        InstrumentEnrichmentService service = new InstrumentEnrichmentService(repository, nseApiClient, 1);
         ZerodhaHoldingItem item = holdingItem(1L, "NIFTYBEES");
         Instrument instrument = new Instrument(1L, "NIFTYBEES", "NSE", "INF204KB14I2");
         NseQuoteResponse quote = new NseQuoteResponse(
@@ -50,7 +50,7 @@ class InstrumentEnrichmentServiceTest {
     void resolveInstrument_usesQuoteSectorForNonEtfInstrument() {
         InstrumentRepository repository = mock(InstrumentRepository.class);
         NseApiClient nseApiClient = mock(NseApiClient.class);
-        InstrumentEnrichmentService service = new InstrumentEnrichmentService(repository, nseApiClient);
+        InstrumentEnrichmentService service = new InstrumentEnrichmentService(repository, nseApiClient, 1);
         ZerodhaHoldingItem item = holdingItem(2L, "INFY");
         Instrument instrument = new Instrument(2L, "INFY", "NSE", "INE009A01021");
         NseQuoteResponse quote = new NseQuoteResponse(
@@ -77,7 +77,7 @@ class InstrumentEnrichmentServiceTest {
     void resolveInstrument_reusesExistingInstrumentWhenTokenChangesButIsinMatches() {
         InstrumentRepository repository = mock(InstrumentRepository.class);
         NseApiClient nseApiClient = mock(NseApiClient.class);
-        InstrumentEnrichmentService service = new InstrumentEnrichmentService(repository, nseApiClient);
+        InstrumentEnrichmentService service = new InstrumentEnrichmentService(repository, nseApiClient, 1);
         ZerodhaHoldingItem item = holdingItem(200L, "INFY");
         item.setIsin("INE009A01021");
 

@@ -6,6 +6,7 @@ import com.cursor_springa_ai.playground.dto.zerodha.ZerodhaHoldingItem;
 import com.cursor_springa_ai.playground.model.entity.Instrument;
 import com.cursor_springa_ai.playground.repository.InstrumentRepository;
 import com.cursor_springa_ai.playground.util.StringNormalizer;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -33,9 +34,22 @@ public class InstrumentEnrichmentService {
     private final InstrumentRepository instrumentRepository;
     private final NseApiClient nseApiClient;
 
-    public InstrumentEnrichmentService(InstrumentRepository instrumentRepository, NseApiClient nseApiClient) {
+    /**
+     * How many months before a previously-enriched instrument is re-fetched from the NSE quote
+     * API. Defaults to 1 month. Configurable via {@code instrument.enrichment.refresh-months}.
+     * <p>Increasing this value reduces NSE quote traffic during bulk imports at the cost of
+     * potentially stale metadata (sector, industry, market-cap category). Set to {@code 0} to
+     * always re-enrich.
+     */
+    private final int enrichmentRefreshMonths;
+
+    public InstrumentEnrichmentService(
+            InstrumentRepository instrumentRepository,
+            NseApiClient nseApiClient,
+            @Value("${instrument.enrichment.refresh-months:1}") int enrichmentRefreshMonths) {
         this.instrumentRepository = instrumentRepository;
         this.nseApiClient = nseApiClient;
+        this.enrichmentRefreshMonths = enrichmentRefreshMonths;
     }
 
     /**
@@ -58,7 +72,7 @@ public class InstrumentEnrichmentService {
             existing = findExistingInstrument(item);
         }
 
-        // 3. Nothing found — insert a minimal row (requires a token for the PK)
+        // 3. Nothing found — insert a minimal row (requires an instrument token for de-duplication)
         Instrument instrument = existing.orElseGet(
                 () -> token != null ? insertMinimal(item) : null);
 
@@ -68,7 +82,7 @@ public class InstrumentEnrichmentService {
 
 
         if (instrument.getLastEnriched() == null
-                || instrument.getLastEnriched().isBefore(LocalDateTime.now().minusMonths(1))) {
+                || instrument.getLastEnriched().isBefore(LocalDateTime.now().minusMonths(enrichmentRefreshMonths))) {
             enrichFromNse(instrument, StringNormalizer.normalize(item.getTradingSymbol()));
         }
 
@@ -102,11 +116,12 @@ public class InstrumentEnrichmentService {
     }
 
     private Instrument insertMinimal(ZerodhaHoldingItem item) {
+        String normalizedExchange = StringNormalizer.normalize(item.getExchange());
         Instrument instrument = new Instrument(
                 item.getInstrumentToken(),
                 StringNormalizer.normalize(item.getTradingSymbol()),
-                item.getExchange() != null ? item.getExchange() : "NSE",
-                item.getIsin()
+                normalizedExchange != null ? normalizedExchange : "NSE",
+                StringNormalizer.normalize(item.getIsin())
         );
         logger.info("Inserting new instrument: token=" + item.getInstrumentToken()
                 + " symbol=" + item.getTradingSymbol());
