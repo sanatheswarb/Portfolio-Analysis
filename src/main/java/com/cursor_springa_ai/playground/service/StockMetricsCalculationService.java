@@ -1,11 +1,11 @@
 package com.cursor_springa_ai.playground.service;
 
 import com.cursor_springa_ai.playground.analytics.HoldingAnalyticsService;
-import com.cursor_springa_ai.playground.model.Instrument;
-import com.cursor_springa_ai.playground.model.StockFundamentals;
-import com.cursor_springa_ai.playground.model.User;
-import com.cursor_springa_ai.playground.model.UserHolding;
-import com.cursor_springa_ai.playground.model.UserStockMetrics;
+import com.cursor_springa_ai.playground.model.entity.Instrument;
+import com.cursor_springa_ai.playground.model.entity.StockFundamentals;
+import com.cursor_springa_ai.playground.model.entity.User;
+import com.cursor_springa_ai.playground.model.entity.UserHolding;
+import com.cursor_springa_ai.playground.model.entity.UserStockMetrics;
 import com.cursor_springa_ai.playground.repository.StockFundamentalsRepository;
 import com.cursor_springa_ai.playground.repository.UserHoldingRepository;
 import com.cursor_springa_ai.playground.repository.UserStockMetricsRepository;

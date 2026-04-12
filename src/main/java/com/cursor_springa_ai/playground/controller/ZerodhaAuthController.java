@@ -1,8 +1,8 @@
 package com.cursor_springa_ai.playground.controller;
 
-import com.cursor_springa_ai.playground.dto.ZerodhaLoginUrlResponse;
-import com.cursor_springa_ai.playground.dto.ZerodhaSessionResponseDto;
-import com.cursor_springa_ai.playground.dto.ZerodhaSessionStatusResponse;
+import com.cursor_springa_ai.playground.dto.zerodha.ZerodhaLoginUrlResponse;
+import com.cursor_springa_ai.playground.dto.zerodha.ZerodhaSessionResponseDto;
+import com.cursor_springa_ai.playground.dto.zerodha.ZerodhaSessionStatusResponse;
 import com.cursor_springa_ai.playground.service.ZerodhaAuthService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;

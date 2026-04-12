@@ -1,6 +1,6 @@
 package com.cursor_springa_ai.playground.repository;
 
-import com.cursor_springa_ai.playground.model.UserHolding;
+import com.cursor_springa_ai.playground.model.entity.UserHolding;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;

@@ -1,9 +1,9 @@
 package com.cursor_springa_ai.playground.ai.advisor;
 
 import com.cursor_springa_ai.playground.ai.reasoning.PortfolioReasoningContext;
-import com.cursor_springa_ai.playground.dto.ai.PortfolioDecisionHints;
-import com.cursor_springa_ai.playground.dto.EnrichedHoldingData;
-import com.cursor_springa_ai.playground.model.RiskFlag;
+import com.cursor_springa_ai.playground.ai.dto.PortfolioDecisionHints;
+import com.cursor_springa_ai.playground.analytics.model.EnrichedHoldingData;
+import com.cursor_springa_ai.playground.model.enums.RiskFlag;
 import org.springframework.stereotype.Component;
 
 import java.math.BigDecimal;

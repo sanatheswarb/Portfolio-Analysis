@@ -1,9 +1,9 @@
 package com.cursor_springa_ai.playground.service;
 
-import com.cursor_springa_ai.playground.model.HoldingSnapshot;
-import com.cursor_springa_ai.playground.model.Instrument;
-import com.cursor_springa_ai.playground.model.User;
-import com.cursor_springa_ai.playground.model.UserHolding;
+import com.cursor_springa_ai.playground.model.entity.HoldingSnapshot;
+import com.cursor_springa_ai.playground.model.entity.Instrument;
+import com.cursor_springa_ai.playground.model.entity.User;
+import com.cursor_springa_ai.playground.model.entity.UserHolding;
 import com.cursor_springa_ai.playground.repository.HoldingSnapshotRepository;
 import com.cursor_springa_ai.playground.repository.UserHoldingRepository;
 import com.cursor_springa_ai.playground.repository.UserRepository;

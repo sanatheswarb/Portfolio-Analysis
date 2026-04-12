@@ -1,13 +1,13 @@
 package com.cursor_springa_ai.playground.ai.tools;
 
 import com.cursor_springa_ai.playground.ai.reasoning.PortfolioReasoningContext;
-import com.cursor_springa_ai.playground.dto.EnrichedHoldingData;
-import com.cursor_springa_ai.playground.dto.ai.AnalysisSnapshot;
-import com.cursor_springa_ai.playground.dto.ai.DecisionSignals;
-import com.cursor_springa_ai.playground.dto.ai.PortfolioStatsSummary;
-import com.cursor_springa_ai.playground.dto.ai.SectorExposureSummary;
-import com.cursor_springa_ai.playground.dto.ai.TopHoldingSummary;
-import com.cursor_springa_ai.playground.model.PortfolioStats;
+import com.cursor_springa_ai.playground.analytics.model.EnrichedHoldingData;
+import com.cursor_springa_ai.playground.ai.dto.AnalysisSnapshot;
+import com.cursor_springa_ai.playground.ai.dto.DecisionSignals;
+import com.cursor_springa_ai.playground.ai.dto.PortfolioStatsSummary;
+import com.cursor_springa_ai.playground.ai.dto.SectorExposureSummary;
+import com.cursor_springa_ai.playground.ai.dto.TopHoldingSummary;
+import com.cursor_springa_ai.playground.model.entity.PortfolioStats;
 import org.springframework.stereotype.Component;
 
 import java.math.BigDecimal;

@@ -1,11 +1,11 @@
 package com.cursor_springa_ai.playground.ai.persistence;
 
 import com.cursor_springa_ai.playground.dto.PortfolioAdviceResponse;
-import com.cursor_springa_ai.playground.dto.ai.AnalysisDecisionTrace;
-import com.cursor_springa_ai.playground.dto.ai.AnalysisSnapshot;
-import com.cursor_springa_ai.playground.dto.ai.PortfolioStatsSummary;
-import com.cursor_springa_ai.playground.model.AiAnalysis;
-import com.cursor_springa_ai.playground.model.AnalysisType;
+import com.cursor_springa_ai.playground.ai.dto.AnalysisDecisionTrace;
+import com.cursor_springa_ai.playground.ai.dto.AnalysisSnapshot;
+import com.cursor_springa_ai.playground.ai.dto.PortfolioStatsSummary;
+import com.cursor_springa_ai.playground.model.entity.AiAnalysis;
+import com.cursor_springa_ai.playground.model.enums.AnalysisType;
 import com.cursor_springa_ai.playground.model.PortfolioClassification;
 import com.cursor_springa_ai.playground.model.enums.ConcentrationLevel;
 import com.cursor_springa_ai.playground.model.enums.DiversificationLevel;

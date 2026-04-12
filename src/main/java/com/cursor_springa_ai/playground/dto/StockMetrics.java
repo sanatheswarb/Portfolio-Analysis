@@ -36,6 +36,9 @@ public record StockMetrics(
         BigDecimal dma200,
 
         @JsonProperty("last_price")
-        BigDecimal lastPrice
+        BigDecimal lastPrice,
+
+        @JsonProperty("previous_close")
+        BigDecimal previousClose
 ) {
 }

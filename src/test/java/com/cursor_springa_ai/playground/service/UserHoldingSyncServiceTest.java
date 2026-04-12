@@ -1,8 +1,8 @@
 package com.cursor_springa_ai.playground.service;
 
-import com.cursor_springa_ai.playground.model.Instrument;
-import com.cursor_springa_ai.playground.model.User;
-import com.cursor_springa_ai.playground.model.UserHolding;
+import com.cursor_springa_ai.playground.model.entity.Instrument;
+import com.cursor_springa_ai.playground.model.entity.User;
+import com.cursor_springa_ai.playground.model.entity.UserHolding;
 import com.cursor_springa_ai.playground.repository.UserHoldingRepository;
 import org.junit.jupiter.api.Test;
 
@@ -27,6 +27,7 @@ class UserHoldingSyncServiceTest {
         UserHolding holding = new UserHolding(
                 user,
                 instrument,
+                "INFY",
                 10,
                 BigDecimal.valueOf(1500),
                 BigDecimal.valueOf(1550),
@@ -35,6 +36,7 @@ class UserHoldingSyncServiceTest {
                 BigDecimal.valueOf(16000),
                 BigDecimal.valueOf(1000),
                 BigDecimal.valueOf(6.67),
+                BigDecimal.ZERO,
                 BigDecimal.ZERO,
                 BigDecimal.ZERO
         );

@@ -1,13 +1,13 @@
 package com.cursor_springa_ai.playground.ai.advisor;
 
-import com.cursor_springa_ai.playground.dto.ai.AnalysisSnapshot;
-import com.cursor_springa_ai.playground.model.AiAnalysis;
-import com.cursor_springa_ai.playground.ai.reasoning.PortfolioChatReasoningTools;
+import com.cursor_springa_ai.playground.ai.dto.AnalysisSnapshot;
+import com.cursor_springa_ai.playground.model.entity.AiAnalysis;
+import com.cursor_springa_ai.playground.ai.tools.PortfolioChatReasoningTools;
 import com.cursor_springa_ai.playground.ai.reasoning.PortfolioReasoningContext;
-import com.cursor_springa_ai.playground.ai.reasoning.PortfolioReasoningTools;
-import com.cursor_springa_ai.playground.ai.reasoning.ToolInvocationRecorder;
+import com.cursor_springa_ai.playground.ai.tools.PortfolioReasoningTools;
+import com.cursor_springa_ai.playground.ai.tools.ToolInvocationRecorder;
 import com.cursor_springa_ai.playground.dto.PortfolioAdviceResponse;
-import com.cursor_springa_ai.playground.dto.ai.PortfolioDecisionHints;
+import com.cursor_springa_ai.playground.ai.dto.PortfolioDecisionHints;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.ollama.api.OllamaChatOptions;

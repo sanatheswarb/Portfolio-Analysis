@@ -2,8 +2,8 @@ package com.cursor_springa_ai.playground.service;
 
 import com.cursor_springa_ai.playground.integration.market.NseApiClient;
 import com.cursor_springa_ai.playground.integration.market.dto.NseQuoteResponse;
-import com.cursor_springa_ai.playground.integration.zerodha.dto.ZerodhaHoldingItem;
-import com.cursor_springa_ai.playground.model.Instrument;
+import com.cursor_springa_ai.playground.dto.zerodha.ZerodhaHoldingItem;
+import com.cursor_springa_ai.playground.model.entity.Instrument;
 import com.cursor_springa_ai.playground.repository.InstrumentRepository;
 import org.junit.jupiter.api.Test;
 
@@ -20,10 +20,10 @@ import static org.mockito.Mockito.when;
 class InstrumentEnrichmentServiceTest {
 
     @Test
-    void upsertAndEnrich_marksInstrumentSectorAsEtf() {
+    void resolveInstrument_marksInstrumentSectorAsEtf() {
         InstrumentRepository repository = mock(InstrumentRepository.class);
         NseApiClient nseApiClient = mock(NseApiClient.class);
-        InstrumentEnrichmentService service = new InstrumentEnrichmentService(repository, nseApiClient);
+        InstrumentEnrichmentService service = new InstrumentEnrichmentService(repository, nseApiClient, 1);
         ZerodhaHoldingItem item = holdingItem(1L, "NIFTYBEES");
         Instrument instrument = new Instrument(1L, "NIFTYBEES", "NSE", "INF204KB14I2");
         NseQuoteResponse quote = new NseQuoteResponse(
@@ -39,7 +39,7 @@ class InstrumentEnrichmentServiceTest {
         when(nseApiClient.resolveSector(quote)).thenReturn("ETF");
         when(repository.save(instrument)).thenReturn(instrument);
 
-        Instrument enriched = service.upsertAndEnrich(item);
+        Instrument enriched = service.resolveInstrument(item);
 
         assertNotNull(enriched.getLastEnriched());
         assertEquals("ETF", enriched.getSector());
@@ -47,10 +47,10 @@ class InstrumentEnrichmentServiceTest {
     }
 
     @Test
-    void upsertAndEnrich_usesQuoteSectorForNonEtfInstrument() {
+    void resolveInstrument_usesQuoteSectorForNonEtfInstrument() {
         InstrumentRepository repository = mock(InstrumentRepository.class);
         NseApiClient nseApiClient = mock(NseApiClient.class);
-        InstrumentEnrichmentService service = new InstrumentEnrichmentService(repository, nseApiClient);
+        InstrumentEnrichmentService service = new InstrumentEnrichmentService(repository, nseApiClient, 1);
         ZerodhaHoldingItem item = holdingItem(2L, "INFY");
         Instrument instrument = new Instrument(2L, "INFY", "NSE", "INE009A01021");
         NseQuoteResponse quote = new NseQuoteResponse(
@@ -66,7 +66,7 @@ class InstrumentEnrichmentServiceTest {
         when(nseApiClient.resolveSector(quote)).thenReturn("Information Technology");
         when(repository.save(instrument)).thenReturn(instrument);
 
-        Instrument enriched = service.upsertAndEnrich(item);
+        Instrument enriched = service.resolveInstrument(item);
 
         assertNotNull(enriched.getLastEnriched());
         assertEquals("Information Technology", enriched.getSector());
@@ -74,10 +74,10 @@ class InstrumentEnrichmentServiceTest {
     }
 
     @Test
-    void upsertAndEnrich_reusesExistingInstrumentWhenTokenChangesButIsinMatches() {
+    void resolveInstrument_reusesExistingInstrumentWhenTokenChangesButIsinMatches() {
         InstrumentRepository repository = mock(InstrumentRepository.class);
         NseApiClient nseApiClient = mock(NseApiClient.class);
-        InstrumentEnrichmentService service = new InstrumentEnrichmentService(repository, nseApiClient);
+        InstrumentEnrichmentService service = new InstrumentEnrichmentService(repository, nseApiClient, 1);
         ZerodhaHoldingItem item = holdingItem(200L, "INFY");
         item.setIsin("INE009A01021");
 
@@ -87,7 +87,7 @@ class InstrumentEnrichmentServiceTest {
         when(repository.findByInstrumentToken(200L)).thenReturn(Optional.empty());
         when(repository.findByIsinIgnoreCase("INE009A01021")).thenReturn(Optional.of(existingInstrument));
 
-        Instrument resolved = service.upsertAndEnrich(item);
+        Instrument resolved = service.resolveInstrument(item);
 
         assertEquals(2L, resolved.getInstrumentToken());
         verify(repository, never()).save(existingInstrument);

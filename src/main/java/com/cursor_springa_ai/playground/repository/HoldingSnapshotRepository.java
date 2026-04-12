@@ -1,7 +1,7 @@
 package com.cursor_springa_ai.playground.repository;
 
-import com.cursor_springa_ai.playground.model.HoldingSnapshot;
-import com.cursor_springa_ai.playground.model.HoldingSnapshotId;
+import com.cursor_springa_ai.playground.model.entity.HoldingSnapshot;
+import com.cursor_springa_ai.playground.model.entity.HoldingSnapshotId;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 

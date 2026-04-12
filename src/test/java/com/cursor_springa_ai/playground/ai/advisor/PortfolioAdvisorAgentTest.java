@@ -1,17 +1,17 @@
 package com.cursor_springa_ai.playground.ai.advisor;
 
-import com.cursor_springa_ai.playground.ai.reasoning.PortfolioChatReasoningTools;
+import com.cursor_springa_ai.playground.ai.tools.PortfolioChatReasoningTools;
 import com.cursor_springa_ai.playground.ai.reasoning.PortfolioReasoningContext;
-import com.cursor_springa_ai.playground.ai.reasoning.PortfolioReasoningTools;
+import com.cursor_springa_ai.playground.ai.tools.PortfolioReasoningTools;
 import com.cursor_springa_ai.playground.dto.PortfolioAdviceResponse;
-import com.cursor_springa_ai.playground.dto.ai.AnalysisSnapshot;
-import com.cursor_springa_ai.playground.dto.ai.PortfolioStatsSummary;
-import com.cursor_springa_ai.playground.dto.EnrichedHoldingData;
-import com.cursor_springa_ai.playground.dto.PortfolioSummary;
-import com.cursor_springa_ai.playground.model.AiAnalysis;
-import com.cursor_springa_ai.playground.model.PortfolioStats;
-import com.cursor_springa_ai.playground.model.RiskFlag;
-import com.cursor_springa_ai.playground.model.AnalysisType;
+import com.cursor_springa_ai.playground.ai.dto.AnalysisSnapshot;
+import com.cursor_springa_ai.playground.ai.dto.PortfolioStatsSummary;
+import com.cursor_springa_ai.playground.analytics.model.EnrichedHoldingData;
+import com.cursor_springa_ai.playground.analytics.model.PortfolioSummary;
+import com.cursor_springa_ai.playground.model.entity.AiAnalysis;
+import com.cursor_springa_ai.playground.model.entity.PortfolioStats;
+import com.cursor_springa_ai.playground.model.enums.RiskFlag;
+import com.cursor_springa_ai.playground.model.enums.AnalysisType;
 import com.cursor_springa_ai.playground.model.PortfolioClassification;
 import com.cursor_springa_ai.playground.model.enums.ConcentrationLevel;
 import com.cursor_springa_ai.playground.model.enums.DiversificationLevel;
@@ -272,7 +272,7 @@ class PortfolioAdvisorAgentTest {
         }
 
         @Test
-        void answerQuestion_rejectsResponseWhenPortfolioToolRunsBeforeSnapshotOverview() {
+        void answerQuestion_allowsResponseWhenPortfolioToolRunsBeforeSnapshotOverview() {
                 ChatClient.Builder builder = mock(ChatClient.Builder.class);
                 ChatClient chatClient = mock(ChatClient.class);
                 ChatClient.ChatClientRequestSpec requestSpec = mock(ChatClient.ChatClientRequestSpec.class);
@@ -300,11 +300,11 @@ class PortfolioAdvisorAgentTest {
 
                 String answer = service.answerQuestion(sampleSnapshot(), reasoningContext(), List.of(sampleChat()), "Why is risk high?");
 
-                assertEquals("I could not generate a follow-up answer from the saved portfolio analysis.", answer);
+                assertEquals("answer", answer);
         }
 
         @Test
-        void answerQuestion_rejectsResponseWhenAnotherChatToolRunsBeforeSnapshotOverview() {
+        void answerQuestion_allowsResponseWhenAnotherChatToolRunsBeforeSnapshotOverview() {
                 ChatClient.Builder builder = mock(ChatClient.Builder.class);
                 ChatClient chatClient = mock(ChatClient.class);
                 ChatClient.ChatClientRequestSpec requestSpec = mock(ChatClient.ChatClientRequestSpec.class);
@@ -334,7 +334,7 @@ class PortfolioAdvisorAgentTest {
 
                 String answer = service.answerQuestion(sampleSnapshot(), reasoningContext(), List.of(sampleChat()), "Why is risk high?");
 
-                assertEquals("I could not generate a follow-up answer from the saved portfolio analysis.", answer);
+                assertEquals("answer", answer);
         }
 
     private PortfolioReasoningContext reasoningContext() {

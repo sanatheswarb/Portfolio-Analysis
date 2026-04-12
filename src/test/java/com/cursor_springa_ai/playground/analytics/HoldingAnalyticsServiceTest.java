@@ -1,11 +1,11 @@
 package com.cursor_springa_ai.playground.analytics;
 
-import com.cursor_springa_ai.playground.dto.EnrichedHoldingData;
-import com.cursor_springa_ai.playground.model.Instrument;
-import com.cursor_springa_ai.playground.model.RiskFlag;
-import com.cursor_springa_ai.playground.model.StockFundamentals;
-import com.cursor_springa_ai.playground.model.User;
-import com.cursor_springa_ai.playground.model.UserHolding;
+import com.cursor_springa_ai.playground.analytics.model.EnrichedHoldingData;
+import com.cursor_springa_ai.playground.model.entity.Instrument;
+import com.cursor_springa_ai.playground.model.enums.RiskFlag;
+import com.cursor_springa_ai.playground.model.entity.StockFundamentals;
+import com.cursor_springa_ai.playground.model.entity.User;
+import com.cursor_springa_ai.playground.model.entity.UserHolding;
 import org.junit.jupiter.api.Test;
 
 import java.lang.reflect.Field;
@@ -94,6 +94,7 @@ class HoldingAnalyticsServiceTest {
         UserHolding holding = new UserHolding(
                 user,
                 instrument,
+                symbol,
                 10,
                 BigDecimal.valueOf(100),
                 BigDecimal.valueOf(138),
@@ -103,10 +104,9 @@ class HoldingAnalyticsServiceTest {
                 BigDecimal.valueOf(400),
                 pnlPercent,
                 BigDecimal.valueOf(-28),
-                dayChangePercent
+                dayChangePercent,
+                weightPercent
         );
-        holding.setSymbol(symbol);
-        holding.setWeightPercent(weightPercent);
         return holding;
     }
 

@@ -1,6 +1,6 @@
 package com.cursor_springa_ai.playground.ai.tools;
 
-import com.cursor_springa_ai.playground.dto.EnrichedHoldingData;
+import com.cursor_springa_ai.playground.analytics.model.EnrichedHoldingData;
 
 import java.math.BigDecimal;
 import java.util.Comparator;

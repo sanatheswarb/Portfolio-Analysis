@@ -1,13 +1,13 @@
 package com.cursor_springa_ai.playground.integration.zerodha;
 
-import com.cursor_springa_ai.playground.integration.zerodha.dto.ZerodhaHoldingItem;
+import com.cursor_springa_ai.playground.exception.ZerodhaClientException;
+import com.cursor_springa_ai.playground.dto.zerodha.ZerodhaHoldingItem;
 import com.zerodhatech.kiteconnect.kitehttp.exceptions.KiteException;
 import com.zerodhatech.models.Holding;
 import org.springframework.stereotype.Component;
 
 import java.io.IOException;
 import java.math.BigDecimal;
-import java.math.RoundingMode;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -115,26 +115,6 @@ public class ZerodhaHoldingsClient {
             item.setProfitLoss(holding.pnl >= 0 ? "profit" : "loss");
         }
 
-        // If a base 'price' is available as close price, map and compute day delta
-        BigDecimal closePrice = null;
-        if (holding.price != null && !holding.price.isBlank()) {
-            try {
-                closePrice = new BigDecimal(holding.price);
-                item.setClosePrice(closePrice);
-            } catch (NumberFormatException ignored) {
-                // ignore non-numeric price values
-            }
-        }
-
-        if (item.getLastPrice() != null && closePrice != null) {
-            BigDecimal dayChange = item.getLastPrice().subtract(closePrice);
-            item.setDayChange(dayChange);
-            if (closePrice.compareTo(BigDecimal.ZERO) != 0) {
-                item.setDayChangePercentage(dayChange
-                        .divide(closePrice, 6, RoundingMode.HALF_UP)
-                        .multiply(BigDecimal.valueOf(100)));
-            }
-        }
 
         return item;
     }

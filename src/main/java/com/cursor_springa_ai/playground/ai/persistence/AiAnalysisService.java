@@ -1,11 +1,11 @@
 package com.cursor_springa_ai.playground.ai.persistence;
 
 import com.cursor_springa_ai.playground.dto.PortfolioAdviceResponse;
-import com.cursor_springa_ai.playground.dto.ai.AnalysisDecisionTrace;
-import com.cursor_springa_ai.playground.dto.ai.AnalysisSnapshot;
-import com.cursor_springa_ai.playground.model.AiAnalysis;
-import com.cursor_springa_ai.playground.model.AnalysisType;
-import com.cursor_springa_ai.playground.model.User;
+import com.cursor_springa_ai.playground.ai.dto.AnalysisDecisionTrace;
+import com.cursor_springa_ai.playground.ai.dto.AnalysisSnapshot;
+import com.cursor_springa_ai.playground.model.entity.AiAnalysis;
+import com.cursor_springa_ai.playground.model.enums.AnalysisType;
+import com.cursor_springa_ai.playground.model.entity.User;
 import com.cursor_springa_ai.playground.repository.AiAnalysisRepository;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;

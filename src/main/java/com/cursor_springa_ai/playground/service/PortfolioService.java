@@ -1,8 +1,8 @@
 package com.cursor_springa_ai.playground.service;
 
 import com.cursor_springa_ai.playground.dto.UserHoldingDto;
-import com.cursor_springa_ai.playground.model.User;
-import com.cursor_springa_ai.playground.model.UserHolding;
+import com.cursor_springa_ai.playground.model.entity.User;
+import com.cursor_springa_ai.playground.model.entity.UserHolding;
 import com.cursor_springa_ai.playground.repository.UserHoldingRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -27,22 +27,22 @@ public class PortfolioService {
                 .toList();
     }
 
-    private UserHoldingDto toDto(UserHolding h) {
+    private UserHoldingDto toDto(UserHolding userHolding) {
         return new UserHoldingDto(
-                h.getId(),
-                h.getSymbol(),
-                h.getQuantity(),
-                h.getAvgPrice(),
-                h.getClosePrice(),
-                h.getLastPrice(),
-                h.getInvestedValue(),
-                h.getCurrentValue(),
-                h.getPnl(),
-                h.getPnlPercent(),
-                h.getDayChange(),
-                h.getDayChangePercent(),
-                h.getWeightPercent(),
-                h.getUpdatedAt()
+                userHolding.getId(),
+                userHolding.getSymbol(),
+                userHolding.getQuantity(),
+                userHolding.getAvgPrice(),
+                userHolding.getClosePrice(),
+                userHolding.getLastPrice(),
+                userHolding.getInvestedValue(),
+                userHolding.getCurrentValue(),
+                userHolding.getPnl(),
+                userHolding.getPnlPercent(),
+                userHolding.getDayChange(),
+                userHolding.getDayChangePercent(),
+                userHolding.getWeightPercent(),
+                userHolding.getUpdatedAt()
         );
     }
 }

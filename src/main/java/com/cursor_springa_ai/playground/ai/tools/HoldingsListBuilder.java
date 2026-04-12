@@ -1,7 +1,7 @@
 package com.cursor_springa_ai.playground.ai.tools;
 
 import com.cursor_springa_ai.playground.ai.reasoning.PortfolioReasoningContext;
-import com.cursor_springa_ai.playground.dto.ai.HoldingListItemDto;
+import com.cursor_springa_ai.playground.ai.dto.HoldingListItemDto;
 
 import java.util.List;
 

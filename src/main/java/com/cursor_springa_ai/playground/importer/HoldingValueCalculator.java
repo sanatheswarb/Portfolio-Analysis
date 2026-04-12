@@ -1,6 +1,7 @@
 package com.cursor_springa_ai.playground.importer;
 
-import com.cursor_springa_ai.playground.integration.zerodha.dto.ZerodhaHoldingItem;
+import com.cursor_springa_ai.playground.dto.zerodha.ZerodhaHoldingItem;
+import com.cursor_springa_ai.playground.util.StringNormalizer;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
@@ -40,7 +41,7 @@ public class HoldingValueCalculator {
      *
      * @param item               raw holding item from the Zerodha API
      * @param totalCurrentValue  pre-computed total portfolio value, used for weight calculation
-     * @param nsePreviousClose   NSE previous close (preferred over Kite close price when available)
+     * @param nsePreviousClose   NSE previous close price, used for close price and day-change calculations
      * @return a {@link HoldingComputedValues} record with all derived fields
      */
     public HoldingComputedValues computeValues(ZerodhaHoldingItem item,
@@ -52,17 +53,23 @@ public class HoldingValueCalculator {
         int qtyInt = qty.setScale(0, RoundingMode.HALF_UP).intValue();
         BigDecimal avgPrice = Objects.requireNonNullElse(item.getAveragePrice(), BigDecimal.ZERO);
         BigDecimal lastPrice = Objects.requireNonNullElse(item.getLastPrice(), BigDecimal.ZERO);
-        BigDecimal closePrice = resolveClosePrice(item.getClosePrice(), nsePreviousClose);
-        String symbol = TradingSymbolNormalizer.normalize(item.getTradingSymbol());
+        BigDecimal closePrice = Objects.requireNonNullElse(nsePreviousClose, lastPrice);
+        String symbol = StringNormalizer.normalize(item.getTradingSymbol());
 
-        BigDecimal investedValue = qty.multiply(avgPrice);
-        BigDecimal currentValue = qty.multiply(lastPrice);
+        BigDecimal investedValue = avgPrice.multiply(BigDecimal.valueOf(qtyInt));
+        BigDecimal currentValue = lastPrice.multiply(BigDecimal.valueOf(qtyInt));
         BigDecimal pnl = Objects.requireNonNullElse(item.getPnl(), BigDecimal.ZERO);
         BigDecimal pnlPercent = investedValue.compareTo(BigDecimal.ZERO) != 0
                 ? pnl.divide(investedValue, 6, RoundingMode.HALF_UP).multiply(BigDecimal.valueOf(100))
                 : BigDecimal.ZERO;
-        BigDecimal dayChange = calculateDayChange(lastPrice, closePrice, item.getDayChange());
-        BigDecimal dayChangePct = calculateDayChangePct(dayChange, closePrice, item.getDayChangePercentage());
+        BigDecimal dayChange = closePrice.compareTo(BigDecimal.ZERO) > 0
+                ? lastPrice.subtract(closePrice).multiply(BigDecimal.valueOf(qtyInt))
+                : BigDecimal.ZERO;
+        BigDecimal dayChangePct = closePrice.compareTo(BigDecimal.ZERO) > 0
+                ? lastPrice.subtract(closePrice)
+                        .divide(closePrice, 6, RoundingMode.HALF_UP)
+                        .multiply(BigDecimal.valueOf(100))
+                : BigDecimal.ZERO;
         BigDecimal weightPercent = totalCurrentValue.compareTo(BigDecimal.ZERO) != 0
                 ? currentValue.divide(totalCurrentValue, 6, RoundingMode.HALF_UP)
                         .multiply(BigDecimal.valueOf(100))
@@ -75,35 +82,5 @@ public class HoldingValueCalculator {
         );
     }
 
-    // ------------------------------------------------------------------
-    // private helpers
-    // ------------------------------------------------------------------
-
-    /**
-     * Prefer the NSE previous close over the Kite close price when available and positive.
-     */
-    private BigDecimal resolveClosePrice(BigDecimal kiteClosePrice, BigDecimal nsePreviousClose) {
-        if (nsePreviousClose != null && nsePreviousClose.compareTo(BigDecimal.ZERO) > 0) {
-            return nsePreviousClose;
-        }
-        return Objects.requireNonNullElse(kiteClosePrice, BigDecimal.ZERO);
-    }
-
-    private BigDecimal calculateDayChange(BigDecimal lastPrice, BigDecimal closePrice,
-                                          BigDecimal fallbackDayChange) {
-        if (closePrice != null && closePrice.compareTo(BigDecimal.ZERO) > 0) {
-            return Objects.requireNonNullElse(lastPrice, BigDecimal.ZERO).subtract(closePrice);
-        }
-        return Objects.requireNonNullElse(fallbackDayChange, BigDecimal.ZERO);
-    }
-
-    private BigDecimal calculateDayChangePct(BigDecimal dayChange, BigDecimal closePrice,
-                                             BigDecimal fallbackPct) {
-        if (closePrice != null && closePrice.compareTo(BigDecimal.ZERO) > 0) {
-            return dayChange.divide(closePrice, 6, RoundingMode.HALF_UP)
-                    .multiply(BigDecimal.valueOf(100));
-        }
-        return Objects.requireNonNullElse(fallbackPct, BigDecimal.ZERO);
-    }
 
 }

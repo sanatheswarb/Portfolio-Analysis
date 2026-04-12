@@ -1,6 +1,6 @@
 package com.cursor_springa_ai.playground.importer;
 
-import com.cursor_springa_ai.playground.model.UserHolding;
+import com.cursor_springa_ai.playground.model.entity.UserHolding;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
@@ -15,14 +15,13 @@ public class HoldingMergeService {
 
     private static final Logger logger = Logger.getLogger(HoldingMergeService.class.getName());
 
-    List<UserHolding> mergeDuplicateHoldings(List<PreparedHolding> preparedHoldings) {
+    List<UserHolding> mergeDuplicateHoldings(List<UserHolding> holdings) {
         Map<Long, UserHolding> mergedByInstrumentId = new LinkedHashMap<>();
-        for (PreparedHolding preparedHolding : preparedHoldings) {
-            UserHolding holding = preparedHolding.userHolding();
+        for (UserHolding holding : holdings) {
             Long instrumentId = holding.getInstrument().getId();
             if (instrumentId == null) {
                 throw new IllegalStateException(
-                        "Instrument id missing for symbol " + preparedHolding.symbol());
+                        "Instrument id missing for symbol " + holding.getSymbol());
             }
 
             UserHolding existing = mergedByInstrumentId.get(instrumentId);

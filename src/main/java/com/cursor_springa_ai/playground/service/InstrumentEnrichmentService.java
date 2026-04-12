@@ -2,9 +2,11 @@ package com.cursor_springa_ai.playground.service;
 
 import com.cursor_springa_ai.playground.integration.market.NseApiClient;
 import com.cursor_springa_ai.playground.integration.market.dto.NseQuoteResponse;
-import com.cursor_springa_ai.playground.integration.zerodha.dto.ZerodhaHoldingItem;
-import com.cursor_springa_ai.playground.model.Instrument;
+import com.cursor_springa_ai.playground.dto.zerodha.ZerodhaHoldingItem;
+import com.cursor_springa_ai.playground.model.entity.Instrument;
 import com.cursor_springa_ai.playground.repository.InstrumentRepository;
+import com.cursor_springa_ai.playground.util.StringNormalizer;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -32,9 +34,22 @@ public class InstrumentEnrichmentService {
     private final InstrumentRepository instrumentRepository;
     private final NseApiClient nseApiClient;
 
-    public InstrumentEnrichmentService(InstrumentRepository instrumentRepository, NseApiClient nseApiClient) {
+    /**
+     * How many months before a previously-enriched instrument is re-fetched from the NSE quote
+     * API. Defaults to 1 month. Configurable via {@code instrument.enrichment.refresh-months}.
+     * <p>Increasing this value reduces NSE quote traffic during bulk imports at the cost of
+     * potentially stale metadata (sector, industry, market-cap category). Set to {@code 0} to
+     * always re-enrich.
+     */
+    private final int enrichmentRefreshMonths;
+
+    public InstrumentEnrichmentService(
+            InstrumentRepository instrumentRepository,
+            NseApiClient nseApiClient,
+            @Value("${instrument.enrichment.refresh-months:1}") int enrichmentRefreshMonths) {
         this.instrumentRepository = instrumentRepository;
         this.nseApiClient = nseApiClient;
+        this.enrichmentRefreshMonths = enrichmentRefreshMonths;
     }
 
     /**
@@ -44,18 +59,31 @@ public class InstrumentEnrichmentService {
      * @return the persisted {@link Instrument}
      */
     @Transactional
-    public Instrument upsertAndEnrich(ZerodhaHoldingItem item) {
+    public Instrument resolveInstrument(ZerodhaHoldingItem item) {
         Long token = item.getInstrumentToken();
-        if (token == null) {
+
+        // 1. Try by instrument token
+        Optional<Instrument> existing = token != null
+                ? instrumentRepository.findByInstrumentToken(token)
+                : Optional.empty();
+
+        // 2. Fallback: try by ISIN, then by symbol + exchange
+        if (existing.isEmpty()) {
+            existing = findExistingInstrument(item);
+        }
+
+        // 3. Nothing found — insert a minimal row (requires an instrument token for de-duplication)
+        Instrument instrument = existing.orElseGet(
+                () -> token != null ? insertMinimal(item) : null);
+
+        if (instrument == null) {
             return null;
         }
 
-        Instrument instrument = instrumentRepository.findByInstrumentToken(token)
-                .orElseGet(() -> findExistingInstrument(item)
-                        .orElseGet(() -> insertMinimal(item)));
 
-        if (instrument.getLastEnriched() == null) {
-            tryEnrich(instrument, item.getTradingSymbol());
+        if (instrument.getLastEnriched() == null
+                || instrument.getLastEnriched().isBefore(LocalDateTime.now().minusMonths(enrichmentRefreshMonths))) {
+            enrichFromNse(instrument, StringNormalizer.normalize(item.getTradingSymbol()));
         }
 
         return instrument;
@@ -66,7 +94,7 @@ public class InstrumentEnrichmentService {
     // ------------------------------------------------------------------
 
     private Optional<Instrument> findExistingInstrument(ZerodhaHoldingItem item) {
-        String isin = normalize(item.getIsin());
+        String isin = StringNormalizer.normalize(item.getIsin());
         if (isin != null) {
             Optional<Instrument> existingByIsin = instrumentRepository.findByIsinIgnoreCase(isin);
             if (existingByIsin.isPresent()) {
@@ -75,8 +103,9 @@ public class InstrumentEnrichmentService {
             }
         }
 
-        String symbol = normalize(item.getTradingSymbol());
-        String exchange = normalize(item.getExchange()) != null ? normalize(item.getExchange()) : "NSE";
+        String symbol = StringNormalizer.normalize(item.getTradingSymbol());
+        String normalizedExchange = StringNormalizer.normalize(item.getExchange());
+        String exchange = normalizedExchange != null ? normalizedExchange : "NSE";
         if (symbol == null) {
             return Optional.empty();
         }
@@ -87,11 +116,12 @@ public class InstrumentEnrichmentService {
     }
 
     private Instrument insertMinimal(ZerodhaHoldingItem item) {
+        String normalizedExchange = StringNormalizer.normalize(item.getExchange());
         Instrument instrument = new Instrument(
                 item.getInstrumentToken(),
-                item.getTradingSymbol() != null ? item.getTradingSymbol().toUpperCase() : null,
-                item.getExchange() != null ? item.getExchange() : "NSE",
-                item.getIsin()
+                StringNormalizer.normalize(item.getTradingSymbol()),
+                normalizedExchange != null ? normalizedExchange : "NSE",
+                StringNormalizer.normalize(item.getIsin())
         );
         logger.info("Inserting new instrument: token=" + item.getInstrumentToken()
                 + " symbol=" + item.getTradingSymbol());
@@ -99,6 +129,9 @@ public class InstrumentEnrichmentService {
     }
 
     private void logTokenMismatch(ZerodhaHoldingItem item, Instrument instrument, String matchedBy) {
+        if (item.getInstrumentToken() == null) {
+            return;
+        }
         if (item.getInstrumentToken().equals(instrument.getInstrumentToken())) {
             return;
         }
@@ -109,18 +142,12 @@ public class InstrumentEnrichmentService {
                 + ". Reusing existing instrument row.");
     }
 
-    private String normalize(String value) {
-        if (value == null || value.isBlank()) {
-            return null;
-        }
-        return value.trim().toUpperCase();
-    }
 
-    private void tryEnrich(Instrument instrument, String symbol) {
+    private void enrichFromNse(Instrument instrument, String symbol) {
         if (symbol == null || symbol.isBlank()) {
             return;
         }
-        Optional<NseQuoteResponse> quoteOpt = nseApiClient.fetchQuote(symbol.toUpperCase());
+        Optional<NseQuoteResponse> quoteOpt = nseApiClient.fetchQuote(symbol);
         if (quoteOpt.isEmpty()) {
             return;
         }
@@ -168,11 +195,11 @@ public class InstrumentEnrichmentService {
         if (quote.priceInfo() == null || quote.priceInfo().lastPrice() == null) {
             return null;
         }
-        double marketCapCrore = (quote.securityInfo().issuedSize() * quote.priceInfo().lastPrice()) / 1e7;
-        if (marketCapCrore >= 20_000) {
+        double marketCapInCrores = (quote.securityInfo().issuedSize() * quote.priceInfo().lastPrice()) / 1e7;
+        if (marketCapInCrores >= 20_000) {
             return "LARGE_CAP";
         }
-        if (marketCapCrore >= 5_000) {
+        if (marketCapInCrores >= 5_000) {
             return "MID_CAP";
         }
         return "SMALL_CAP";

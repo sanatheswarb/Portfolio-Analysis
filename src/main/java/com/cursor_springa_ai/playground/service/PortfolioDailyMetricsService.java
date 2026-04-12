@@ -1,8 +1,8 @@
 package com.cursor_springa_ai.playground.service;
 
-import com.cursor_springa_ai.playground.model.PortfolioDailyMetrics;
-import com.cursor_springa_ai.playground.model.User;
-import com.cursor_springa_ai.playground.model.UserHolding;
+import com.cursor_springa_ai.playground.model.entity.PortfolioDailyMetrics;
+import com.cursor_springa_ai.playground.model.entity.User;
+import com.cursor_springa_ai.playground.model.entity.UserHolding;
 import com.cursor_springa_ai.playground.repository.PortfolioDailyMetricsRepository;
 import com.cursor_springa_ai.playground.repository.UserHoldingRepository;
 import com.cursor_springa_ai.playground.repository.UserRepository;

@@ -150,11 +150,14 @@ Browse the full interactive API documentation at **http://localhost:8080/swagger
 **Import response**
 ```json
 {
-  "portfolioId": "user-id",
+  "portfolioUserId": "user-id",
   "importedHoldings": 12,
+  "totalCurrentValue": 268500.00,
   "symbols": ["RELIANCE", "INFY", "TCS", "..."]
 }
 ```
+
+`importedHoldings` reflects the final persisted holdings count after duplicate instrument merges.
 
 ### Portfolio Management
 
@@ -225,7 +228,7 @@ The advisor flow keeps **metrics deterministic** and uses the LLM only for reaso
 
 ## Risk Flags
 
-Fixed risk flag names are centralized in `com.cursor_springa_ai.playground.model.RiskFlag`.
+Fixed risk flag names are centralized in `com.cursor_springa_ai.playground.model.enums.RiskFlag`.
 
 ### Holding-level
 
@@ -253,15 +256,44 @@ Fixed risk flag names are centralized in `com.cursor_springa_ai.playground.model
 ```
 src/main/java/.../
 ├── controller/          REST endpoints (Portfolio, ZerodhaAuth)
-├── service/             Business logic (analysis, metrics, AI advisor, import)
+├── ai/
+│   ├── advisor/         Spring AI agents and prompt builders
+│   ├── dto/             AI-only snapshot/trace/tool DTOs
+│   ├── service/         AI orchestration services
+│   └── tools/           Tool-calling helpers and builders
+├── analytics/
+│   ├── model/           Internal analytics read models (e.g., PortfolioSummary)
+│   └── ...
+├── importer/            Zerodha import pipeline orchestration + calculators
+├── service/             Core business services (auth, enrichment, snapshots, persistence helpers)
 ├── integration/
-│   ├── zerodha/         KiteConnect SDK wrapper + DTOs
-│   └── market/          NSE API client + DTOs
-├── model/               Domain models (Portfolio, Holding, AssetType, JPA entities)
+│   ├── zerodha/         KiteConnect SDK wrappers
+│   └── market/          NSE API client + wire DTOs
+├── model/
+│   ├── entity/          JPA entities
+│   └── enums/           Shared domain enums (RiskFlag, AnalysisType, ...)
 ├── repository/          Spring Data JPA repositories
-├── dto/                 Request/response DTOs
+├── dto/                 API request/response DTOs (plus dto/zerodha)
 └── config/              Spring beans (RestTemplate, OpenAPI)
 ```
+
+## Package Notes
+
+- AI DTOs moved from `dto.ai` to `ai.dto`.
+- `PortfolioSummary` and `EnrichedHoldingData` moved to `analytics.model` (internal read models, not API DTOs).
+- `AnalysisType` and `RiskFlag` moved to `model.enums`.
+- Import pipeline no longer uses a `PreparedHolding` intermediate; preparation returns `UserHolding` directly.
+
+### Migration Map (Old -> New)
+
+| Old path | New path |
+|---|---|
+| `com.cursor_springa_ai.playground.dto.ai.*` | `com.cursor_springa_ai.playground.ai.dto.*` |
+| `com.cursor_springa_ai.playground.dto.PortfolioSummary` | `com.cursor_springa_ai.playground.analytics.model.PortfolioSummary` |
+| `com.cursor_springa_ai.playground.dto.EnrichedHoldingData` | `com.cursor_springa_ai.playground.analytics.model.EnrichedHoldingData` |
+| `com.cursor_springa_ai.playground.model.AnalysisType` | `com.cursor_springa_ai.playground.model.enums.AnalysisType` |
+| `com.cursor_springa_ai.playground.model.RiskFlag` | `com.cursor_springa_ai.playground.model.enums.RiskFlag` |
+| `PreparedHolding` wrapper record | Removed; importer flow now prepares `UserHolding` directly |
 
 ---
 

@@ -1,8 +1,8 @@
 package com.cursor_springa_ai.playground.ai.advisor;
 
 import com.cursor_springa_ai.playground.ai.reasoning.PortfolioReasoningContext;
-import com.cursor_springa_ai.playground.dto.PortfolioSummary;
-import com.cursor_springa_ai.playground.model.RiskFlag;
+import com.cursor_springa_ai.playground.analytics.model.PortfolioSummary;
+import com.cursor_springa_ai.playground.model.enums.RiskFlag;
 import org.junit.jupiter.api.Test;
 
 import java.math.BigDecimal;
