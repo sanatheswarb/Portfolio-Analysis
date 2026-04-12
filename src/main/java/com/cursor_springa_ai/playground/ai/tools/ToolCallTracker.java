@@ -30,7 +30,8 @@ public final class ToolCallTracker {
      * @param sharedRecorder optional cross-instance recorder; may be {@code null}
      */
     public ToolCallTracker(Class<?> ownerClass, String logPrefix, ToolInvocationRecorder sharedRecorder) {
-        this.logger = Logger.getLogger(ownerClass.getName());
+        this.logger = Logger.getLogger(
+                Objects.requireNonNull(ownerClass, "ownerClass must not be null").getName());
         this.logPrefix = Objects.requireNonNull(logPrefix, "logPrefix must not be null");
         this.sharedRecorder = sharedRecorder;
     }
