@@ -1,4 +1,4 @@
-package com.cursor_springa_ai.playground.model;
+package com.cursor_springa_ai.playground.model.entity;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.EmbeddedId;

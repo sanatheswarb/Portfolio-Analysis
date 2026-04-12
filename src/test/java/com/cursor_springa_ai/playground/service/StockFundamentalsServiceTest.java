@@ -2,8 +2,8 @@ package com.cursor_springa_ai.playground.service;
 
 import com.cursor_springa_ai.playground.integration.market.NseApiClient;
 import com.cursor_springa_ai.playground.integration.market.dto.NseQuoteResponse;
-import com.cursor_springa_ai.playground.model.Instrument;
-import com.cursor_springa_ai.playground.model.StockFundamentals;
+import com.cursor_springa_ai.playground.model.entity.Instrument;
+import com.cursor_springa_ai.playground.model.entity.StockFundamentals;
 import com.cursor_springa_ai.playground.repository.StockFundamentalsRepository;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;

@@ -9,9 +9,9 @@ import com.cursor_springa_ai.playground.dto.EnrichedHoldingData;
 import com.cursor_springa_ai.playground.dto.PortfolioSummary;
 import com.cursor_springa_ai.playground.dto.ai.PortfolioDecisionHints;
 import com.cursor_springa_ai.playground.model.PortfolioClassification;
-import com.cursor_springa_ai.playground.model.PortfolioStats;
-import com.cursor_springa_ai.playground.model.User;
-import com.cursor_springa_ai.playground.model.UserHolding;
+import com.cursor_springa_ai.playground.model.entity.PortfolioStats;
+import com.cursor_springa_ai.playground.model.entity.User;
+import com.cursor_springa_ai.playground.model.entity.UserHolding;
 import com.cursor_springa_ai.playground.repository.UserHoldingRepository;
 import org.springframework.stereotype.Component;
 

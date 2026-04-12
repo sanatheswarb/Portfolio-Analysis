@@ -3,7 +3,7 @@ package com.cursor_springa_ai.playground.service;
 import com.cursor_springa_ai.playground.integration.market.NseApiClient;
 import com.cursor_springa_ai.playground.integration.market.dto.NseQuoteResponse;
 import com.cursor_springa_ai.playground.integration.zerodha.dto.ZerodhaHoldingItem;
-import com.cursor_springa_ai.playground.model.Instrument;
+import com.cursor_springa_ai.playground.model.entity.Instrument;
 import com.cursor_springa_ai.playground.repository.InstrumentRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;

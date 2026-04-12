@@ -1,7 +1,7 @@
-package com.cursor_springa_ai.playground.ai.reasoning;
+package com.cursor_springa_ai.playground.ai.tools;
 
 import com.cursor_springa_ai.playground.dto.ai.AnalysisSnapshot;
-import com.cursor_springa_ai.playground.model.AiAnalysis;
+import com.cursor_springa_ai.playground.model.entity.AiAnalysis;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;

@@ -1,15 +1,15 @@
 package com.cursor_springa_ai.playground.ai.advisor;
 
-import com.cursor_springa_ai.playground.ai.reasoning.PortfolioChatReasoningTools;
+import com.cursor_springa_ai.playground.ai.tools.PortfolioChatReasoningTools;
 import com.cursor_springa_ai.playground.ai.reasoning.PortfolioReasoningContext;
-import com.cursor_springa_ai.playground.ai.reasoning.PortfolioReasoningTools;
+import com.cursor_springa_ai.playground.ai.tools.PortfolioReasoningTools;
 import com.cursor_springa_ai.playground.dto.PortfolioAdviceResponse;
 import com.cursor_springa_ai.playground.dto.ai.AnalysisSnapshot;
 import com.cursor_springa_ai.playground.dto.ai.PortfolioStatsSummary;
 import com.cursor_springa_ai.playground.dto.EnrichedHoldingData;
 import com.cursor_springa_ai.playground.dto.PortfolioSummary;
-import com.cursor_springa_ai.playground.model.AiAnalysis;
-import com.cursor_springa_ai.playground.model.PortfolioStats;
+import com.cursor_springa_ai.playground.model.entity.AiAnalysis;
+import com.cursor_springa_ai.playground.model.entity.PortfolioStats;
 import com.cursor_springa_ai.playground.model.RiskFlag;
 import com.cursor_springa_ai.playground.model.AnalysisType;
 import com.cursor_springa_ai.playground.model.PortfolioClassification;

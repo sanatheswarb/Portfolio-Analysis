@@ -1,4 +1,4 @@
-package com.cursor_springa_ai.playground.ai.reasoning;
+package com.cursor_springa_ai.playground.ai.tools;
 
 import java.util.Objects;
 

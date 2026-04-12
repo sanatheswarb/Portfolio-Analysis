@@ -4,7 +4,7 @@ import com.cursor_springa_ai.playground.dto.EnrichedHoldingData;
 import com.cursor_springa_ai.playground.dto.PortfolioSummary;
 import com.cursor_springa_ai.playground.dto.ai.PortfolioDecisionHints;
 import com.cursor_springa_ai.playground.model.PortfolioClassification;
-import com.cursor_springa_ai.playground.model.PortfolioStats;
+import com.cursor_springa_ai.playground.model.entity.PortfolioStats;
 
 import java.util.List;
 

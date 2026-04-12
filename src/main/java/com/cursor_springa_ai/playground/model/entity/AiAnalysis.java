@@ -1,4 +1,4 @@
-package com.cursor_springa_ai.playground.model;
+package com.cursor_springa_ai.playground.model.entity;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -15,6 +15,8 @@ import jakarta.persistence.Table;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
+
+import com.cursor_springa_ai.playground.model.AnalysisType;
 
 import java.time.LocalDateTime;
 

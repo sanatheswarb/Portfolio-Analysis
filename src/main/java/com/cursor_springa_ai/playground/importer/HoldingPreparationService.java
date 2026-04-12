@@ -1,9 +1,9 @@
 package com.cursor_springa_ai.playground.importer;
 
 import com.cursor_springa_ai.playground.integration.zerodha.dto.ZerodhaHoldingItem;
-import com.cursor_springa_ai.playground.model.Instrument;
-import com.cursor_springa_ai.playground.model.User;
-import com.cursor_springa_ai.playground.model.UserHolding;
+import com.cursor_springa_ai.playground.model.entity.Instrument;
+import com.cursor_springa_ai.playground.model.entity.User;
+import com.cursor_springa_ai.playground.model.entity.UserHolding;
 import com.cursor_springa_ai.playground.service.InstrumentEnrichmentService;
 import com.cursor_springa_ai.playground.service.StockFundamentalsService;
 import org.springframework.stereotype.Service;

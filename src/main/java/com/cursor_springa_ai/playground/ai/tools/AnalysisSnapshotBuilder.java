@@ -7,7 +7,7 @@ import com.cursor_springa_ai.playground.dto.ai.DecisionSignals;
 import com.cursor_springa_ai.playground.dto.ai.PortfolioStatsSummary;
 import com.cursor_springa_ai.playground.dto.ai.SectorExposureSummary;
 import com.cursor_springa_ai.playground.dto.ai.TopHoldingSummary;
-import com.cursor_springa_ai.playground.model.PortfolioStats;
+import com.cursor_springa_ai.playground.model.entity.PortfolioStats;
 import org.springframework.stereotype.Component;
 
 import java.math.BigDecimal;

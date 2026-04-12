@@ -2,7 +2,7 @@ package com.cursor_springa_ai.playground.service;
 
 import com.cursor_springa_ai.playground.integration.zerodha.KiteConnectClient;
 import com.cursor_springa_ai.playground.integration.zerodha.ZerodhaClientException;
-import com.cursor_springa_ai.playground.model.User;
+import com.cursor_springa_ai.playground.model.entity.User;
 import com.cursor_springa_ai.playground.repository.UserRepository;
 import com.zerodhatech.kiteconnect.kitehttp.exceptions.KiteException;
 import org.springframework.stereotype.Service;
